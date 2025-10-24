@@ -1,17 +1,17 @@
-class BookEntity {
+class NewspaperEntity {
   final int documentId;
-  final String? isbn;
-  final int? edition;
-  final int? pageCount;
+  final String? issn;
+  final DateTime? issueDate;
+  final int? issueNumber;
   final bool deleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  const BookEntity({
+  const NewspaperEntity({
     required this.documentId,
-    this.isbn,
-    this.edition,
-    this.pageCount,
+    this.issn,
+    this.issueDate,
+    this.issueNumber,
     this.deleted = false,
     this.createdAt,
     this.updatedAt,

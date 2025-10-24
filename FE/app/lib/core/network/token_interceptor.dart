@@ -62,7 +62,7 @@ class TokenInterceptor extends Interceptor {
 
       // Call API refresh token
       final response = await dio.post(
-        '/auth/refresh',
+        '/auth/refresh-token',
         data: {'refreshToken': refreshToken},
       );
 

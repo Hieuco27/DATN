@@ -1,10 +1,17 @@
-import '../../domain/entities/book_entity.dart';
+import '../../domain/entities/category_entity.dart';
 
 int? _toInt(dynamic v) {
   if (v == null) return null;
   if (v is int) return v;
   if (v is double) return v.toInt();
   return int.tryParse(v.toString());
+}
+
+double? _toDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is double) return v;
+  if (v is int) return v.toDouble();
+  return double.tryParse(v.toString());
 }
 
 bool _toBool(dynamic v) {
@@ -23,32 +30,29 @@ DateTime? _parseDateTime(dynamic v) {
   return DateTime.tryParse(s);
 }
 
-class BookModel extends BookEntity {
-  const BookModel({
-    required super.documentId,
-    super.isbn,
-    super.edition,
-    super.pageCount,
+class CategoryModel extends CategoryEntity {
+  const CategoryModel({
+    required super.categoryId,
+    required super.name,
+    super.depositRate,
     super.deleted = false,
     super.createdAt,
     super.updatedAt,
   });
 
-  factory BookModel.fromJson(Map<String, dynamic> json) => BookModel(
-        documentId: _toInt(json['documentId']) ?? 0,
-        isbn: json['isbn'],
-        edition: _toInt(json['edition']),
-        pageCount: _toInt(json['pageCount']),
+  factory CategoryModel.fromJson(Map<String, dynamic> json) => CategoryModel(
+        categoryId: _toInt(json['categoryId']) ?? 0,
+        name: json['name'] ?? '',
+        depositRate: _toDouble(json['deposit_rate']),
         deleted: _toBool(json['deleted'] ?? 0),
         createdAt: _parseDateTime(json['created_at']),
         updatedAt: _parseDateTime(json['updated_at']),
       );
 
   Map<String, dynamic> toJson() => {
-        'documentId': documentId,
-        'isbn': isbn,
-        'edition': edition,
-        'pageCount': pageCount,
+        'categoryId': categoryId,
+        'name': name,
+        'deposit_rate': depositRate,
         'deleted': deleted ? 1 : 0,
         'created_at': createdAt?.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),

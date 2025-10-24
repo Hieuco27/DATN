@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class PageIndicator extends StatelessWidget {
   final int currentPage;
-  final int totalPages;
+  final int totolPages;
   final Color activeColor;
   final Color inactiveColor;
   final double dotSize;
@@ -11,7 +11,7 @@ class PageIndicator extends StatelessWidget {
   const PageIndicator({
     super.key,
     required this.currentPage,
-    required this.totalPages,
+    required this.totolPages,
     this.activeColor = const Color.fromARGB(255, 27, 157, 244),
     this.inactiveColor = const Color.fromARGB(135, 100, 109, 118),
     this.dotSize = 8.0,
@@ -23,7 +23,7 @@ class PageIndicator extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
-        totalPages,
+        totolPages,
         (index) => AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           margin: EdgeInsets.symmetric(horizontal: spacing / 2),

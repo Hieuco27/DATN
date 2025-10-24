@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
         curveSize: 80,
         items: const [
           TabItem(icon: Icons.home, title: 'Trang chủ'),
-          TabItem(icon: Icons.search, title: 'Tìm kiếm sách'),
+          TabItem(icon: Icons.notifications, title: 'Thông báo'),
           TabItem(icon: Icons.favorite, title: 'Sách của tôi'),
           TabItem(icon: Icons.person, title: 'Tài khoản'),
         ],

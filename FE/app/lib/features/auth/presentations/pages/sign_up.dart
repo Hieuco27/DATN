@@ -126,8 +126,8 @@ class _SignUpPageState extends State<SignUpPage> {
             if (value == null || value.isEmpty) {
               return 'Vui lòng nhập số điện thoại';
             }
-            if (!RegExp(r'^(?:[+0]9)?[0-9]{10}$').hasMatch(value)) {
-              return 'Số điện thoại không hợp lệ';
+            if (!RegExp(r'^(0|\+84)[3|5|7|8|9][0-9]{8}$').hasMatch(value)) {
+              return 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam';
             }
             return null;
           },
@@ -198,13 +198,21 @@ class _SignUpPageState extends State<SignUpPage> {
   void _register() {
     if (_formKey.currentState!.validate()) {
       final registerData = {
-        'fullName': _nameController.text.trim(), // Thêm fullName
+        'username': _emailController.text.trim(), // Sử dụng email làm username
         'email': _emailController.text.trim(),
         'password': _passwordController.text,
-        'phoneNumber': _phoneController.text.trim(),
-        'roleId': 3, // Mặc định là Reader role
+        'phoneNumber': _phoneController.text.trim(), // Sử dụng phoneNumber theo database schema
+        'fullName': _nameController.text.trim(), // Sử dụng fullName theo database schema
+        'roleId': 3, // 1 = doc_gia (reader) theo database schema
       };
       print('📝 Register data: ${registerData.toString()}');
+      print('📝 Data validation:');
+      print('  - Username: ${registerData['username']}');
+      print('  - Email: ${registerData['email']}');
+      print('  - Password length: ${(registerData['password'] as String).length}');
+      print('  - Phone: ${registerData['phoneNumber']}');
+      print('  - FullName: ${registerData['fullName']}');
+      print('  - RoleId: ${registerData['roleId']}');
 
       // Dispatch register event tới AuthBloc
       context.read<AuthBloc>().add(

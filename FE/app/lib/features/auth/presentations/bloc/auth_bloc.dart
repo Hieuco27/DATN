@@ -4,14 +4,25 @@ import 'package:equatable/equatable.dart';
 import '../../domain/entities/account_entity.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_event.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
+import '../../domain/usecases/login_usecase.dart';
+import '../../domain/usecases/register_usecase.dart';
+import '../../domain/core/result.dart';
+import '../../domain/core/failure.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthenticationRepository _authRepository;
+  final LoginUseCase _loginUseCase;
+  final RegisterUseCase _registerUseCase;
   DateTime? _lastLoginAttempt;
 
-  AuthBloc({required AuthenticationRepository authRepository})
-    : _authRepository = authRepository,
-      super(const AuthInitial()) {
+  AuthBloc({
+    required AuthenticationRepository authRepository,
+    LoginUseCase? loginUseCase,
+    RegisterUseCase? registerUseCase,
+  }) : _authRepository = authRepository,
+       _loginUseCase = loginUseCase ?? LoginUseCase(authRepository),
+       _registerUseCase = registerUseCase ?? RegisterUseCase(authRepository),
+       super(const AuthInitial()) {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
@@ -25,25 +36,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      //Validation form
-      final validationError = _validateLoginForm(event.email, event.password);
-      if (validationError != null) {
-        emit(AuthError(message: validationError));
-        return;
-      }
-
       emit(const AuthLoading());
-
-      final response = await _authRepository.login(
-        event.email.trim(),
-        event.password,
+      final result = await _loginUseCase(
+        LoginParams(email: event.email.trim(), password: event.password),
       );
 
-      if (response.success && response.data != null) {
-        emit(AuthLoginSuccess(account: response.data!));
-        emit(AuthAuthenticated(account: response.data!));
+      if (result.isSuccess && result.value != null) {
+        final response = result.value!;
+        if (response.success && response.data != null) {
+          emit(AuthAuthenticated(account: response.data!));
+        } else {
+          emit(AuthError(message: response.message));
+        }
       } else {
-        emit(AuthError(message: response.message));
+        final err = result.error;
+        final message = err is Failure ? err.message : err.toString();
+        emit(AuthError(message: message));
       }
     } catch (e) {
       emit(AuthError(message: e.toString()));
@@ -56,14 +64,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       emit(const AuthLoading());
+      final data = event.registerData;
+      final params = RegisterParams(
+        name: (data['fullName'] ?? data['name'] ?? '').toString(),
+        email: (data['email'] ?? '').toString(),
+        password: (data['password'] ?? '').toString(),
+        phone: (data['phoneNumber'] ?? data['phone'] ?? '').toString(),
+      );
 
-      final response = await _authRepository.register(event.registerData);
+      final result = await _registerUseCase(params);
 
-      if (response.success && response.data != null) {
-        emit(AuthRegisterSuccess(account: response.data!));
-        emit(AuthAuthenticated(account: response.data!));
+      if (result.isSuccess && result.value != null) {
+        final response = result.value!;
+        if (response.success && response.data != null) {
+          emit(AuthAuthenticated(account: response.data!));
+        } else {
+          emit(AuthError(message: response.message));
+        }
       } else {
-        emit(AuthError(message: response.message));
+        final err = result.error;
+        final message = err is Failure ? err.message : err.toString();
+        emit(AuthError(message: message));
       }
     } catch (e) {
       emit(AuthError(message: e.toString()));
@@ -74,18 +95,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    emit(const AuthLoading());
+
     try {
-      emit(const AuthLoading());
-
       await _authRepository.logout();
-
-      emit(const AuthLogoutSuccess());
-      emit(const AuthUnauthenticated());
     } catch (e) {
-      // Ngay cả khi logout thất bại, vẫn chuyển về unauthenticated
-      emit(const AuthLogoutSuccess());
-      emit(const AuthUnauthenticated());
+      print('Logout error: $e');
     }
+
+    // Luôn chuyển về unauthenticated ngay
+    emit(const AuthUnauthenticated());
   }
 
   Future<void> _onTokenRefreshRequested(

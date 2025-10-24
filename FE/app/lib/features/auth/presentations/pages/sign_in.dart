@@ -26,41 +26,44 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          // Nếu đang loading từ sign in action
-          if (state is AuthLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          // Form đăng nhập bình thường
-          return Form(
-            key: _formKey,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Sign In',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 60,
-                      fontWeight: FontWeight.bold,
+      body: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) => _handleAuthState(context, state),
+        child: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            // Nếu đang loading từ sign in action
+            if (state is AuthLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            // Form đăng nhập bình thường
+            return Form(
+              key: _formKey,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Sign In',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 60,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 30),
-                  _buildEmailField(),
-                  SizedBox(height: 15),
-                  _buildPasswordField(),
-                  SizedBox(height: 15),
-                  _buildSignInButton(),
-                  SizedBox(height: 15),
-                  _buildSignUpNavigation(context),
-                ],
+                    SizedBox(height: 30),
+                    _buildEmailField(),
+                    SizedBox(height: 15),
+                    _buildPasswordField(),
+                    SizedBox(height: 15),
+                    _buildSignInButton(),
+                    SizedBox(height: 15),
+                    _buildSignUpNavigation(context),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -160,19 +163,8 @@ class _SignInPageState extends State<SignInPage> {
 }
 
 void _handleAuthState(BuildContext context, AuthState state) {
-  if (state is AuthLoading) {
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-  } else if (state is AuthAuthenticated) {
-    // Đóng dialog loading nếu có
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-
+  // ✅ REMOVE loading handling từ listener
+  if (state is AuthAuthenticated) {
     // Điều hướng đến trang chủ
     Navigator.pushReplacement(
       context,
@@ -186,11 +178,6 @@ void _handleAuthState(BuildContext context, AuthState state) {
       ),
     );
   } else if (state is AuthError) {
-    // Đóng dialog loading nếu có
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(state.message), backgroundColor: Colors.red),
     );

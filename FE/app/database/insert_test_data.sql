@@ -48,7 +48,7 @@ INSERT INTO accounts (email, phoneNumber, passwordHash, roleId) VALUES
 -- =============================================
 -- 3. Insert Reader Profile
 -- =============================================
-INSERT INTO readers (accountId, fullName, dateOfBirth, cccd, address, totalBorrow, note) VALUES
+INSERT INTO readers (accountId, fullName, dateOfBirth, cccd, address, totolBorrow, note) VALUES
 (2, 'Nguyễn Văn Đọc', '1995-05-15', '123456789012', '123 Đường ABC, Quận 1, TP.HCM', 0, 'Độc giả thường xuyên');
 
 -- =============================================
@@ -66,7 +66,7 @@ INSERT INTO accounts (email, phoneNumber, passwordHash, roleId) VALUES
 ('reader2@booktech.com', '0111222333', 
  UNHEX('243261243132244C6B4A4E4B7A4F6A4B6B4A4E4B7A4F6A4B6B4A4E4B7A4F6A4B6B4A4E4B7A4F6A4B6B4A4E4B7A4F6A4B'), 1);
 
-INSERT INTO readers (accountId, fullName, dateOfBirth, cccd, address, totalBorrow, note) VALUES
+INSERT INTO readers (accountId, fullName, dateOfBirth, cccd, address, totolBorrow, note) VALUES
 (4, 'Lê Thị Lan', '1998-08-20', '456789012345', '789 Đường DEF, Quận 5, TP.HCM', 2, 'Sinh viên đại học');
 
 -- Librarian 2

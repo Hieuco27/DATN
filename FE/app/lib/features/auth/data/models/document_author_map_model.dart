@@ -1,4 +1,4 @@
-import '../../domain/entities/book_entity.dart';
+import '../../domain/entities/document_author_map_entity.dart';
 
 int? _toInt(dynamic v) {
   if (v == null) return null;
@@ -23,34 +23,35 @@ DateTime? _parseDateTime(dynamic v) {
   return DateTime.tryParse(s);
 }
 
-class BookModel extends BookEntity {
-  const BookModel({
+class DocumentAuthorMapModel extends DocumentAuthorMapEntity {
+  const DocumentAuthorMapModel({
     required super.documentId,
-    super.isbn,
-    super.edition,
-    super.pageCount,
+    required super.authorId,
+    super.role,
+    super.ord,
     super.deleted = false,
     super.createdAt,
     super.updatedAt,
   });
 
-  factory BookModel.fromJson(Map<String, dynamic> json) => BookModel(
+  factory DocumentAuthorMapModel.fromJson(Map<String, dynamic> json) =>
+      DocumentAuthorMapModel(
         documentId: _toInt(json['documentId']) ?? 0,
-        isbn: json['isbn'],
-        edition: _toInt(json['edition']),
-        pageCount: _toInt(json['pageCount']),
+        authorId: _toInt(json['authorId']) ?? 0,
+        role: json['role'],
+        ord: _toInt(json['ord']),
         deleted: _toBool(json['deleted'] ?? 0),
         createdAt: _parseDateTime(json['created_at']),
         updatedAt: _parseDateTime(json['updated_at']),
       );
 
   Map<String, dynamic> toJson() => {
-        'documentId': documentId,
-        'isbn': isbn,
-        'edition': edition,
-        'pageCount': pageCount,
-        'deleted': deleted ? 1 : 0,
-        'created_at': createdAt?.toIso8601String(),
-        'updated_at': updatedAt?.toIso8601String(),
-      };
+    'documentId': documentId,
+    'authorId': authorId,
+    'role': role,
+    'ord': ord,
+    'deleted': deleted ? 1 : 0,
+    'created_at': createdAt?.toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+  };
 }

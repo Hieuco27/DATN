@@ -1,4 +1,4 @@
-import '../../domain/entities/book_entity.dart';
+import '../../domain/entities/document_genre_map_entity.dart';
 
 int? _toInt(dynamic v) {
   if (v == null) return null;
@@ -23,22 +23,19 @@ DateTime? _parseDateTime(dynamic v) {
   return DateTime.tryParse(s);
 }
 
-class BookModel extends BookEntity {
-  const BookModel({
+class DocumentGenreMapModel extends DocumentGenreMapEntity {
+  const DocumentGenreMapModel({
     required super.documentId,
-    super.isbn,
-    super.edition,
-    super.pageCount,
+    required super.genreId,
     super.deleted = false,
     super.createdAt,
     super.updatedAt,
   });
 
-  factory BookModel.fromJson(Map<String, dynamic> json) => BookModel(
+  factory DocumentGenreMapModel.fromJson(Map<String, dynamic> json) =>
+      DocumentGenreMapModel(
         documentId: _toInt(json['documentId']) ?? 0,
-        isbn: json['isbn'],
-        edition: _toInt(json['edition']),
-        pageCount: _toInt(json['pageCount']),
+        genreId: _toInt(json['genreId']) ?? 0,
         deleted: _toBool(json['deleted'] ?? 0),
         createdAt: _parseDateTime(json['created_at']),
         updatedAt: _parseDateTime(json['updated_at']),
@@ -46,9 +43,7 @@ class BookModel extends BookEntity {
 
   Map<String, dynamic> toJson() => {
         'documentId': documentId,
-        'isbn': isbn,
-        'edition': edition,
-        'pageCount': pageCount,
+        'genreId': genreId,
         'deleted': deleted ? 1 : 0,
         'created_at': createdAt?.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),

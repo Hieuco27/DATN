@@ -1,0 +1,11 @@
+{
+    "dart.flutterSdkPath": null,
+    "dart.debugExternalLibraries": false,
+    "dart.debugSdkLibraries": false,
+    "dart.previewFlutterUiGuides": true,
+    "dart.previewFlutterUiGuidesCustomTracking": true,
+    "dart.openDevTools": "flutter",
+    "dart.flutterSelectDeviceWhenConnected": true,
+    "dart.flutterHotReloadOnSave": "manual",
+    "dart.flutterHotRestartOnSave": "never"
+}

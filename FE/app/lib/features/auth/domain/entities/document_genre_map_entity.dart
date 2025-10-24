@@ -1,17 +1,13 @@
-class BookEntity {
+class DocumentGenreMapEntity {
   final int documentId;
-  final String? isbn;
-  final int? edition;
-  final int? pageCount;
+  final int genreId;
   final bool deleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  const BookEntity({
+  const DocumentGenreMapEntity({
     required this.documentId,
-    this.isbn,
-    this.edition,
-    this.pageCount,
+    required this.genreId,
     this.deleted = false,
     this.createdAt,
     this.updatedAt,

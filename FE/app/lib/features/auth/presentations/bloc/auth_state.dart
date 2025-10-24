@@ -1,8 +1,10 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/account_entity.dart';
+import '../../domain/entities/reader_entity.dart';
 
 class AuthState extends Equatable {
   const AuthState();
+
   @override
   List<Object?> get props => [];
 }
