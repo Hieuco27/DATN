@@ -1,15 +1,18 @@
 // lib/features/auth/data/repositories/document_repository_impl.dart
+import 'package:book_tech/features/auth/data/models/model.dart';
+
 import '../../domain/entities/document_entity.dart';
 import '../../domain/entities/genre_entity.dart';
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
 import '../datasources/document_remote_data_source.dart';
 import '../models/document_response_model.dart';
+import '../models/document_detail_model.dart';
 
 class DocumentRepositoryImpl implements DocumentRepository {
   final DocumentRemoteDataSource remoteDataSource;
 
   DocumentRepositoryImpl({required this.remoteDataSource});
-
+  // get all documents for reader
   @override
   Future<List<DocumentEntity>> getDocumentsForReader({
     required String accessToken, // Thêm parameter này
@@ -38,6 +41,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
     }
   }
 
+  // get documents by category
   @override
   Future<Map<GenreEntity, List<DocumentEntity>>> getDocumentsByCategory({
     required String accessToken, // Thêm parameter này
@@ -59,7 +63,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
         final genre = GenreEntity(
           genreId: doc.documentId, // Sử dụng documentId làm genreId tạm thời
           name: doc.categoryName,
-          documentType: doc.documentType,
         );
 
         // Convert DocumentResponseModel to DocumentEntity
@@ -80,6 +83,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
     }
   }
 
+  // get documents by type
   @override
   Future<List<DocumentResponseModel>> getDocumentsByType({
     required String accessToken, // Thêm parameter này
@@ -94,5 +98,142 @@ class DocumentRepositoryImpl implements DocumentRepository {
     } catch (e) {
       throw Exception('Failed to fetch documents by type: $e');
     }
+  }
+
+  // Lay chi tiet tai lieu
+  @override
+  Future<DocumentDetailModel> getDocumentDetail({
+    required String accessToken,
+    required int documentId,
+  }) async {
+    try {
+      print('📚 Fetching document detail for ID: $documentId');
+
+      final response = await remoteDataSource.getDocumentDetail(
+        accessToken: accessToken,
+        documentId: documentId,
+      );
+
+      print('📚 Document detail fetched successfully');
+      return response;
+    } catch (e) {
+      print('❌ Error fetching document detail: $e');
+      throw Exception('Failed to fetch document detail: $e');
+    }
+  }
+
+  // Thêm vào DocumentRepositoryImpl class
+  @override
+  Future<List<DocumentEntity>> getDocumentsByGenre({
+    required String accessToken,
+    required List<int> genreIds,
+    String? documentType,
+    int page = 1,
+    int limit = 20,
+    String match = 'any',
+  }) async {
+    try {
+      print('📚 Fetching documents by genre...');
+
+      final documents = await remoteDataSource.getDocumentsByGenre(
+        accessToken: accessToken,
+        genreIds: genreIds,
+        documentType: documentType,
+        page: page,
+        limit: limit,
+        match: match,
+      );
+
+      print('📚 Fetched ${documents.length} documents by genre');
+
+      return documents.map((doc) => doc.toEntity()).toList();
+    } catch (e) {
+      print('❌ Error in repository: $e');
+      throw Exception('Failed to fetch documents by genre: $e');
+    }
+  }
+
+  // Thêm vào DocumentRepositoryImpl class, sau method getDocumentsByGenre:
+  @override
+  Future<List<GenreModel>> getGenres({required String accessToken}) async {
+    try {
+      print('🎭 Fetching genres...');
+
+      final genres = await remoteDataSource.getGenres(accessToken: accessToken);
+
+      print('🎭 Fetched ${genres.length} genres');
+
+      return genres; // Trả về trực tiếp GenreModel từ remoteDataSource
+    } catch (e) {
+      print('❌ Error in repository: $e');
+      throw Exception('Failed to fetch genres: $e');
+    }
+  }
+
+  // Thêm method này vào DocumentRepositoryImpl class
+  @override
+  Future<List<DocumentResponseModel>> searchDocuments({
+    required String accessToken,
+    required String query,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('🔍 Searching documents for query: "$query"');
+
+      final documents = await remoteDataSource.searchDocuments(
+        accessToken: accessToken,
+        query: query,
+        page: page,
+        limit: limit,
+      );
+
+      print('🔍 Found ${documents.length} search results');
+      return documents;
+    } catch (e) {
+      print('❌ Error in search repository: $e');
+      throw Exception('Failed to search documents: $e');
+    }
+  }
+
+  // Thêm method getDocumentsBySearch nếu cần
+  @override
+  Future<List<DocumentEntity>> getDocumentsBySearch({
+    required String accessToken,
+    required String query,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('🔍 Searching documents by search for query: "$query"');
+
+      final documents = await remoteDataSource.searchDocuments(
+        accessToken: accessToken,
+        query: query,
+        page: page,
+        limit: limit,
+      );
+
+      print('🔍 Found ${documents.length} search results');
+      return documents.map((doc) => doc.toEntity()).toList();
+    } catch (e) {
+      print('❌ Error in search repository: $e');
+      throw Exception('Failed to search documents: $e');
+    }
+  }
+
+  @override
+  Future<List<DocumentResponseModel>> searchDocumentsFallback({
+    required String accessToken,
+    required String query,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return await remoteDataSource.searchDocumentsFallback(
+      accessToken: accessToken,
+      query: query,
+      page: page,
+      limit: limit,
+    );
   }
 }

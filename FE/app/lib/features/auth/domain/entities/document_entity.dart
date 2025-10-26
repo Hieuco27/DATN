@@ -30,4 +30,5 @@ class DocumentEntity {
     this.createdAt,
     this.updatedAt,
   });
+
 }

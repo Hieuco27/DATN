@@ -1,4 +1,7 @@
 // lib/features/auth/presentations/providers/document_provider.dart
+import 'package:book_tech/features/auth/data/models/genre_model.dart';
+import 'package:book_tech/features/auth/domain/entities/document_entity.dart';
+import 'package:book_tech/features/auth/domain/entities/genre_entity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart'; // Thêm import này
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,78 +11,112 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 
 class DocumentProvider with ChangeNotifier {
-  final DocumentRepository repo;
-  DocumentProvider(this.repo);
+  final DocumentRepository _documentRepository;
+  DocumentProvider(this._documentRepository);
 
-  bool _loading = false;
-  String? _error;
-  bool get isLoading => _loading;
-  String? get error => _error;
+  //Genres
+  List<GenreModel> _genres = [];
+  List<GenreModel> get genres => _genres;
+  bool _isLoadingGenres = false;
+  bool get isLoadingGenres => _isLoadingGenres;
 
-  List<DocumentResponseModel> _books = [];
-  List<DocumentResponseModel> _magazines = [];
-  List<DocumentResponseModel> _newspapers = [];
+  get error => null;
+  Map<int, List<DocumentEntity>> _documentsByGenre = {};
+  Map<int, bool> _isLoadingByGenre = {};
 
-  List<DocumentResponseModel> get books => _books;
-  List<DocumentResponseModel> get magazines => _magazines;
-  List<DocumentResponseModel> get newspapers => _newspapers;
+  // Get documents by genre với cache
+  Future<List<DocumentEntity>> getDocumentsByGenre({
+    required String accessToken,
+    required int genreId,
+    String? documentType,
+    int page = 1,
+    int limit = 20,
+    bool useCache = true,
+  }) async {
+    // Kiểm tra cache trước
+    if (useCache &&
+        _documentsByGenre.containsKey(genreId) &&
+        !(_isLoadingByGenre[genreId] ?? false)) {
+      return _documentsByGenre[genreId]!;
+    }
 
-  Future<void> loadPreviews(BuildContext context) async {
-    _loading = true;
-    _error = null;
+    // Set loading state
+    _isLoadingByGenre[genreId] = true;
     notifyListeners();
 
     try {
-      final authState = context.read<AuthBloc>().state;
-      if (authState is! AuthAuthenticated ||
-          authState.account.accessToken?.isEmpty == true) {
-        throw Exception('User not authenticated');
-      }
+      final documents = await _documentRepository.getDocumentsByGenre(
+        accessToken: accessToken,
+        genreIds: [genreId],
+        documentType: documentType,
+        page: page,
+        limit: limit,
+        match: 'any',
+      );
 
-      final accessToken = authState.account.accessToken!;
-
-      print('🔄 Loading documents by type...');
-
-      final results = await Future.wait([
-        repo.getDocumentsByType(accessToken: accessToken, documentType: 'book'),
-        repo.getDocumentsByType(
-          accessToken: accessToken,
-          documentType: 'magazine',
-        ),
-        repo.getDocumentsByType(
-          accessToken: accessToken,
-          documentType: 'newspaper',
-        ),
-      ]);
-
-      _books = results[0];
-      _magazines = results[1];
-      _newspapers = results[2];
-
-      print('📚 Books loaded: ${_books.length}');
-      print('📰 Magazines loaded: ${_magazines.length}');
-      print('📰 Newspapers loaded: ${_newspapers.length}');
-
-      // Debug: Check document types in each list
-      for (var book in _books) {
-        print('📚 Book: ${book.title} - Type: ${book.documentType}');
-      }
+      // Cache kết quả
+      _documentsByGenre[genreId] = documents;
+      return documents;
     } catch (e) {
-      _error = e.toString();
-      print('❌ Error in loadPreviews: $e');
+      print('❌ Error loading documents by genre: $e');
+      return [];
     } finally {
-      _loading = false;
+      _isLoadingByGenre[genreId] = false;
       notifyListeners();
     }
   }
 
-  Map<String, List<DocumentResponseModel>> groupByCategoryName(
-    List<DocumentResponseModel> docs,
-  ) {
-    final map = <String, List<DocumentResponseModel>>{};
-    for (final d in docs) {
-      map.putIfAbsent(d.categoryName, () => []).add(d);
+  // Check if loading for specific genre
+  bool isLoadingGenre(int genreId) {
+    return _isLoadingByGenre[genreId] ?? false;
+  }
+
+  // Get cached documents for genre
+  List<DocumentEntity> getCachedDocumentsByGenre(int genreId) {
+    return _documentsByGenre[genreId] ?? [];
+  }
+
+  // Thêm method này vào DocumentProvider class
+  Future<List<DocumentEntity>> getDocumentsForReader({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? categoryName,
+    String? documentType,
+  }) async {
+    try {
+      final documents = await _documentRepository.getDocumentsForReader(
+        accessToken: accessToken,
+        page: page,
+        limit: limit,
+        categoryName: categoryName,
+        documentType: documentType,
+      );
+      return documents;
+    } catch (e) {
+      print('❌ Error loading documents: $e');
+      return [];
     }
-    return map;
+  }
+
+  // Thêm method này vào DocumentProvider nếu chưa có:
+  Future<void> loadGenres(BuildContext context) async {
+    _isLoadingGenres = true;
+    notifyListeners();
+
+    try {
+      final authBloc = context.read<AuthBloc>();
+      if (authBloc.state is AuthAuthenticated) {
+        final authState = authBloc.state as AuthAuthenticated;
+        _genres = await _documentRepository.getGenres(
+          accessToken: authState.account.accessToken!,
+        );
+      }
+    } catch (e) {
+      print('❌ Error loading genres: $e');
+    } finally {
+      _isLoadingGenres = false;
+      notifyListeners();
+    }
   }
 }

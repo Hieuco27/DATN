@@ -27,8 +27,6 @@ class GenreModel extends GenreEntity {
   const GenreModel({
     required super.genreId,
     required super.name,
-    super.documentType,
-    super.description,
     super.deleted = false,
     super.createdAt,
     super.updatedAt,
@@ -37,8 +35,6 @@ class GenreModel extends GenreEntity {
   factory GenreModel.fromJson(Map<String, dynamic> json) => GenreModel(
         genreId: _toInt(json['genreId']) ?? 0,
         name: json['name'] ?? '',
-        documentType: json['documentType'],
-        description: json['description'],
         deleted: _toBool(json['deleted'] ?? 0),
         createdAt: _parseDateTime(json['created_at']),
         updatedAt: _parseDateTime(json['updated_at']),
@@ -47,8 +43,6 @@ class GenreModel extends GenreEntity {
   Map<String, dynamic> toJson() => {
         'genreId': genreId,
         'name': name,
-        'documentType': documentType,
-        'description': description,
         'deleted': deleted ? 1 : 0,
         'created_at': createdAt?.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),

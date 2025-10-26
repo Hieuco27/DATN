@@ -1,9 +1,13 @@
 // lib/features/auth/domain/repositories/document_repository.dart
+import 'package:book_tech/features/auth/data/models/genre_model.dart';
+
 import '../entities/document_entity.dart';
 import '../entities/genre_entity.dart';
 import '../../data/models/document_response_model.dart';
+import '../../data/models/document_detail_model.dart';
 
 abstract class DocumentRepository {
+  // get all documents for reader
   Future<List<DocumentEntity>> getDocumentsForReader({
     required String accessToken, // Thêm parameter này
     int page = 1,
@@ -12,12 +16,41 @@ abstract class DocumentRepository {
     String? documentType,
   });
 
+  // get documents by category
   Future<Map<GenreEntity, List<DocumentEntity>>> getDocumentsByCategory({
     required String accessToken, // Thêm parameter này
   });
-
+  // get documents by type
   Future<List<DocumentResponseModel>> getDocumentsByType({
     required String accessToken, // Thêm parameter này
     required String documentType,
+  });
+  // Thêm method tìm kiếm
+  Future<List<DocumentResponseModel>> searchDocuments({
+    required String accessToken,
+    required String query,
+    int page = 1,
+    int limit = 20,
+  });
+  // Lay chi tiet tai lieu
+  Future<DocumentDetailModel> getDocumentDetail({
+    required String accessToken,
+    required int documentId,
+  });
+  // Thêm vào abstract class DocumentRepository
+  Future<List<DocumentEntity>> getDocumentsByGenre({
+    required String accessToken,
+    required List<int> genreIds,
+    String? documentType,
+    int page = 1,
+    int limit = 20,
+    String match = 'any',
+  });
+  Future<List<GenreModel>> getGenres({required String accessToken});
+  Future<List<DocumentEntity>> getDocumentsBySearch({
+    required String accessToken,
+    required String query,
+    int page = 1,
+    int limit = 20,
   });
 }

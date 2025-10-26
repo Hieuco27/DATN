@@ -1,3 +1,4 @@
+import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +15,10 @@ import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/data/datasources/document_remote_data_source.dart';
 import 'package:book_tech/features/auth/data/repositories/document_repository_impl.dart';
 import 'package:book_tech/features/auth/presentations/providers/document_provider.dart';
+import 'package:book_tech/features/auth/presentations/providers/search_provider.dart';
+import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +47,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (context) =>
               AuthBloc(authRepository: authRepository)
-                ..add(const AuthCheckLoginStatus()), // Check ngay khi app start
+                ..add(const AuthCheckLoginStatus()),
         ),
         Provider<DocumentRemoteDataSource>(
           create: (_) => DocumentRemoteDataSourceImpl(),
@@ -50,6 +55,15 @@ class MyApp extends StatelessWidget {
         Provider<DocumentRepositoryImpl>(
           create: (ctx) => DocumentRepositoryImpl(
             remoteDataSource: ctx.read<DocumentRemoteDataSource>(),
+          ),
+        ),
+        Provider<DocumentRepository>(
+          create: (context) => context.read<DocumentRepositoryImpl>(),
+        ),
+        // SearchProvider có thể đọc DocumentRepositoryImpl
+        ChangeNotifierProvider(
+          create: (context) => SearchProvider(
+            Provider.of<DocumentRepository>(context, listen: false),
           ),
         ),
         ChangeNotifierProvider<DocumentProvider>(
@@ -60,6 +74,16 @@ class MyApp extends StatelessWidget {
         title: 'Book Tech',
         theme: AppTheme.darkThemeMode,
         home: const AuthWrapper(),
+        routes: {
+          '/document-detail': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments;
+            if (args is int) {
+              return DocumentDetailPage(documentId: args);
+            }
+            throw Exception('Document ID is required');
+          },
+          '/search': (context) => const SearchPage(),
+        },
       ),
     );
   }
@@ -72,13 +96,12 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        // Log state changes
         print('🔄 Auth state changed: ${state.runtimeType}');
 
         if (state is AuthAuthenticated) {
           // Navigate to main home page when authenticated
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const MainHomePage()),
+            MaterialPageRoute(builder: (_) => const HomePage()),
           );
         }
       },

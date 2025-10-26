@@ -1,3 +1,4 @@
+// lib/features/auth/presentations/pages/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:convex_bottom_bar/convex_bottom_bar.dart';
@@ -28,16 +29,25 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: ConvexAppBar(
-        backgroundColor: AppPalette.gradient1,
-        color: Colors.white,
-        activeColor: const Color.fromARGB(255, 37, 240, 65),
+        backgroundColor: Colors.white, // Nền trắng
+        color: Colors.grey, // Màu xám cho tab không active
+        activeColor: Colors.red, // Màu đỏ cho tab active
         style: TabStyle.react,
         curveSize: 80,
         items: const [
           TabItem(icon: Icons.home, title: 'Trang chủ'),
-          TabItem(icon: Icons.notifications, title: 'Thông báo'),
-          TabItem(icon: Icons.favorite, title: 'Sách của tôi'),
-          TabItem(icon: Icons.person, title: 'Tài khoản'),
+          TabItem(
+            icon: Icons.grid_view,
+            title: 'Thể loại',
+          ), // Thay đổi icon và title
+          TabItem(
+            icon: Icons.library_books,
+            title: 'Thư viện',
+          ), // Thay đổi icon và title
+          TabItem(
+            icon: Icons.settings,
+            title: 'Cài đặt',
+          ), // Thay đổi icon và title
         ],
         initialActiveIndex: 0,
         onTap: (int index) {

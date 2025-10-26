@@ -1,7 +1,11 @@
 // lib/features/auth/data/datasources/document_remote_data_source.dart
 import 'dart:convert';
+import 'package:book_tech/features/auth/data/models/genre_model.dart';
+import 'package:book_tech/features/auth/domain/entities/genre_entity.dart';
 import 'package:http/http.dart' as http;
 import '../models/document_response_model.dart';
+import '../models/document_detail_model.dart';
+import 'package:dio/dio.dart';
 
 abstract class DocumentRemoteDataSource {
   Future<List<DocumentResponseModel>> getDocumentsForReader({
@@ -11,6 +15,42 @@ abstract class DocumentRemoteDataSource {
     String? categoryName,
     String? documentType,
   });
+  Future<DocumentDetailModel> getDocumentDetail({
+    required String accessToken,
+    required int documentId,
+  });
+
+  Future<List<GenreModel>> getGenres({required String accessToken});
+
+  Future<List<DocumentResponseModel>> searchDocuments({
+    required String accessToken,
+    required String query,
+    required int page,
+    required int limit,
+  });
+  // Thêm vào abstract class DocumentRemoteDataSource
+  Future<List<DocumentResponseModel>> getDocumentsByGenre({
+    required String accessToken,
+    required List<int> genreIds,
+    String? documentType,
+    int page = 1,
+    int limit = 20,
+    String match = 'any', // 'any' hoặc 'all'
+  });
+
+  Future<List<DocumentResponseModel>> searchDocumentsFallback({
+    required String accessToken,
+    required String query,
+    required int page,
+    required int limit,
+  }) async {
+    return await searchDocumentsFallback(
+      accessToken: accessToken,
+      query: query,
+      page: page,
+      limit: limit,
+    );
+  }
 }
 
 class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
@@ -106,6 +146,370 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     } catch (e) {
       print('❌ Error fetching documents: $e');
       throw Exception('Error fetching documents: $e');
+    }
+  }
+
+  @override
+  Future<List<GenreModel>> getGenres({required String accessToken}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/documents/genres'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('📡 Genres response status: ${response.statusCode}');
+      print('📡 Genres response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        List<dynamic> genres;
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            genres = responseData['data'] as List<dynamic>;
+          } else {
+            throw Exception(
+              'Cannot find genres data in response: ${responseData.keys}',
+            );
+          }
+        } else if (responseData is List<dynamic>) {
+          genres = responseData;
+        } else {
+          throw Exception(
+            'Unexpected response format: ${responseData.runtimeType}',
+          );
+        }
+
+        print('📚 Total genres returned: ${genres.length}');
+        for (var genre in genres) {
+          print('🎭 Genre: ${genre['name']} - ID: ${genre['genreId']}');
+        }
+
+        return genres.map((item) => GenreModel.fromJson(item)).toList();
+      } else {
+        throw Exception(
+          'Failed to load genres: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error fetching genres: $e');
+      throw Exception('Error fetching genres: $e');
+    }
+  }
+
+  // Lay chi tiet tai lieu
+  @override
+  Future<DocumentDetailModel> getDocumentDetail({
+    required String accessToken,
+    required int documentId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/documents/reader/$documentId'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['success'] == true) {
+          return DocumentDetailModel.fromJson(jsonData['data']);
+        } else {
+          throw Exception(
+            jsonData['message'] ?? 'Failed to fetch document detail',
+          );
+        }
+      } else {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error in getDocumentDetail: $e');
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Thêm vào DocumentRemoteDataSourceImpl
+  Future<void> testSearchWithDifferentQueries(String accessToken) async {
+    final testQueries = [
+      'Tuổi thơ dữ dội',
+      'tuổi thơ dữ dội',
+      'TUỔI THƠ DỮ DỘI',
+      'tuoi tho du doi',
+      'sách',
+      'book',
+      'test',
+    ];
+
+    for (final query in testQueries) {
+      try {
+        print('🧪 Testing query: "$query"');
+
+        final encodedQuery = Uri.encodeComponent(query);
+        final uri = Uri.parse(
+          '$baseUrl/api/documents/reader/search?query=$encodedQuery&page=1&limit=5',
+        );
+
+        final response = await http.get(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          final dataLength = responseData['data']?.length ?? 0;
+          print('✅ Query "$query": $dataLength results');
+        } else {
+          print('❌ Query "$query": Failed with ${response.statusCode}');
+        }
+      } catch (e) {
+        print('❌ Query "$query": Error $e');
+      }
+    }
+  }
+
+  // Thêm vào DocumentRemoteDataSourceImpl
+  Future<List<DocumentResponseModel>> searchDocumentsFallback({
+    required String accessToken,
+    required String query,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('🔄 Using fallback search method for: "$query"');
+
+      // Lấy tất cả documents và filter local
+      final allDocuments = await getDocumentsForReader(
+        accessToken: accessToken,
+        page: 1,
+        limit: 100, // Lấy nhiều hơn để search
+      );
+
+      print('🔄 Retrieved ${allDocuments.length} documents for local search');
+
+      // Filter local với nhiều điều kiện
+      final filteredDocuments = allDocuments.where((doc) {
+        final title = doc.title.toLowerCase();
+        final category = doc.categoryName.toLowerCase();
+        final searchQuery = query.toLowerCase();
+
+        // Tìm kiếm trong title và category
+        final titleMatch = title.contains(searchQuery);
+        final categoryMatch = category.contains(searchQuery);
+
+        // Tìm kiếm từng từ riêng lẻ
+        final words = searchQuery.split(' ');
+        final wordMatch = words.any(
+          (word) => title.contains(word) || category.contains(word),
+        );
+
+        return titleMatch || categoryMatch || wordMatch;
+      }).toList();
+
+      print('🔄 Fallback search found: ${filteredDocuments.length} results');
+
+      // In ra một số kết quả để debug
+      for (int i = 0; i < filteredDocuments.length && i < 3; i++) {
+        final doc = filteredDocuments[i];
+        print('🔄 Fallback result $i: ${doc.title} - ${doc.categoryName}');
+      }
+
+      return filteredDocuments;
+    } catch (e) {
+      print('❌ Fallback search error: $e');
+      throw Exception('Fallback search failed: $e');
+    }
+  }
+
+  @override
+  Future<List<DocumentResponseModel>> searchDocuments({
+    required String accessToken,
+    required String query,
+    required int page,
+    required int limit,
+  }) async {
+    try {
+      // Encode query để xử lý ký tự đặc biệt
+      final encodedQuery = Uri.encodeComponent(query);
+
+      final Map<String, String> queryParams = {
+        'query': encodedQuery, // Sử dụng encoded query
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+
+      final uri = Uri.parse(
+        '$baseUrl/api/documents/reader/search',
+      ).replace(queryParameters: queryParams);
+
+      print('🔍 Searching documents: $uri');
+      print('📋 Original query: "$query"');
+      print('📋 Encoded query: "$encodedQuery"');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('📡 Search response status: ${response.statusCode}');
+      print('📡 Search response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        if (responseData is Map<String, dynamic>) {
+          print('📊 Response structure: ${responseData.keys}');
+          print('📊 Success: ${responseData['success']}');
+          print('📊 Message: ${responseData['message']}');
+          print('📊 Data length: ${responseData['data']?.length ?? 0}');
+          print('📊 Filter: ${responseData['filter']}');
+
+          if (responseData['success'] == true &&
+              responseData.containsKey('data')) {
+            final List<dynamic> documents =
+                responseData['data'] as List<dynamic>;
+
+            print('📚 Search results: ${documents.length} documents found');
+
+            if (documents.isEmpty) {
+              print('⚠️ No documents found, checking filter info...');
+              if (responseData.containsKey('filter')) {
+                print('🔍 Filter info: ${responseData['filter']}');
+              }
+              if (responseData.containsKey('pagination')) {
+                print('📄 Pagination info: ${responseData['pagination']}');
+              }
+            }
+
+            // Parse documents thành DocumentResponseModel
+            final List<DocumentResponseModel> result = documents
+                .map((item) {
+                  try {
+                    return DocumentResponseModel.fromJson(item);
+                  } catch (e) {
+                    print('❌ Error parsing document: $e');
+                    print('❌ Document data: $item');
+                    return null;
+                  }
+                })
+                .where((item) => item != null)
+                .cast<DocumentResponseModel>()
+                .toList();
+
+            print('✅ Successfully parsed ${result.length} documents');
+            return result;
+          } else {
+            print('❌ API returned success=false or no data');
+            print('❌ Response: $responseData');
+            throw Exception(
+              'Search API error: ${responseData['message'] ?? 'Unknown error'}',
+            );
+          }
+        } else {
+          print('❌ Response is not a Map: ${responseData.runtimeType}');
+          throw Exception('Unexpected response format');
+        }
+      } else {
+        print('❌ Search failed with status: ${response.statusCode}');
+        print('❌ Error body: ${response.body}');
+        throw Exception(
+          'Failed to search documents: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error searching documents: $e');
+      throw Exception('Error searching documents: $e');
+    }
+  }
+
+  // Thêm implementation vào DocumentRemoteDataSourceImpl
+  @override
+  Future<List<DocumentResponseModel>> getDocumentsByGenre({
+    required String accessToken,
+    required List<int> genreIds,
+    String? documentType,
+    int page = 1,
+    int limit = 20,
+    String match = 'any',
+  }) async {
+    try {
+      final Map<String, String> queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        'match': match,
+      };
+
+      // Thêm genreIds
+      if (genreIds.isNotEmpty) {
+        queryParams['genreIds'] = genreIds.join(',');
+      }
+
+      if (documentType != null && documentType.isNotEmpty) {
+        queryParams['type'] = documentType;
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl/api/documents/reader/by-genre',
+      ).replace(queryParameters: queryParams);
+
+      print('🌐 Fetching documents by genre from: $uri');
+      print('📋 Query params: $queryParams');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('📡 Response status: ${response.statusCode}');
+      print('📡 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        if (responseData is Map<String, dynamic> &&
+            responseData['success'] == true) {
+          final List<dynamic> documents = responseData['data'] as List<dynamic>;
+
+          print('📚 Total documents returned: ${documents.length}');
+          for (var doc in documents) {
+            print(
+              '📄 Document: ${doc['title']} - Genre: ${doc['categoryName']}',
+            );
+          }
+
+          return documents
+              .map((item) => DocumentResponseModel.fromJson(item))
+              .toList();
+        } else {
+          throw Exception(
+            'API returned error: ${responseData['message'] ?? 'Unknown error'}',
+          );
+        }
+      } else {
+        throw Exception(
+          'Failed to load documents by genre: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error fetching documents by genre: $e');
+      throw Exception('Error fetching documents by genre: $e');
     }
   }
 }
