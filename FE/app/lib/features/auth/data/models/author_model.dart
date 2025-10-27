@@ -28,26 +28,29 @@ class AuthorModel extends AuthorEntity {
     required super.authorId,
     required super.fullName,
     super.note,
+    super.role,
     super.deleted = false,
     super.createdAt,
     super.updatedAt,
   });
 
   factory AuthorModel.fromJson(Map<String, dynamic> json) => AuthorModel(
-        authorId: _toInt(json['authorId']) ?? 0,
-        fullName: json['fullName'] ?? '',
-        note: json['note'],
-        deleted: _toBool(json['deleted'] ?? 0),
-        createdAt: _parseDateTime(json['created_at']),
-        updatedAt: _parseDateTime(json['updated_at']),
-      );
+    authorId: _toInt(json['authorId']) ?? 0,
+    fullName: json['fullName'] ?? '',
+    note: json['note'],
+    role: json['role'],
+    deleted: _toBool(json['deleted'] ?? 0),
+    createdAt: _parseDateTime(json['created_at']),
+    updatedAt: _parseDateTime(json['updated_at']),
+  );
 
   Map<String, dynamic> toJson() => {
-        'authorId': authorId,
-        'fullName': fullName,
-        'note': note,
-        'deleted': deleted ? 1 : 0,
-        'created_at': createdAt?.toIso8601String(),
-        'updated_at': updatedAt?.toIso8601String(),
-      };
+    'authorId': authorId,
+    'fullName': fullName,
+    'note': note,
+    'role': role,
+    'deleted': deleted ? 1 : 0,
+    'created_at': createdAt?.toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+  };
 }

@@ -32,6 +32,14 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
     _loadDocuments();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_documents.isEmpty && !_isLoading) {
+      _loadDocuments();
+    }
+  }
+
   Future<void> _loadDocuments() async {
     setState(() {
       _isLoading = true;

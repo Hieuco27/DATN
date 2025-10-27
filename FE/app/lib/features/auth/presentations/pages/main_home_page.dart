@@ -284,7 +284,6 @@ class _MainHomePageState extends State<MainHomePage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    // child: const Document3DBanner(), // Banner 3D mới
                   ),
                   const SizedBox(height: 30),
 
@@ -294,11 +293,10 @@ class _MainHomePageState extends State<MainHomePage> {
                       if (documentProvider.isLoadingGenres) {
                         return const Center(child: CircularProgressIndicator());
                       }
-
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Hiển thị từng genre với danh sách sách (giống như trong ảnh)
+                          // Hiển thị từng genre với danh sách sách
                           ...documentProvider.genres.map((genre) {
                             return GenreSectionWidget(
                               genre: genre,

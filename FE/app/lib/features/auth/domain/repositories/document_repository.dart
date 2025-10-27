@@ -53,4 +53,8 @@ abstract class DocumentRepository {
     int page = 1,
     int limit = 20,
   });
+  Future<String> getEbook({
+    required String accessToken,
+    required int documentId,
+  });
 }

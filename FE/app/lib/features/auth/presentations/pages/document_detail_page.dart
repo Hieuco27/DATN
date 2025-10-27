@@ -1,3 +1,4 @@
+import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
@@ -507,10 +508,27 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
+  // Thay thế method _readNow hiện tại
   void _readNow() {
-    // TODO: Implement read now functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng đọc ngay đang được phát triển')),
+    if (_document?.ebookUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tài liệu này không có phiên bản điện tử'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Navigate trực tiếp đến EbookReaderPage
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EbookReaderPage(
+          document: _document!,
+          ebookUrl: _document!.ebookUrl!,
+        ),
+      ),
     );
   }
 

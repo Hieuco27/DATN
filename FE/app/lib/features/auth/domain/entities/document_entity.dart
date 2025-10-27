@@ -31,4 +31,5 @@ class DocumentEntity {
     this.updatedAt,
   });
 
+  get categoryName => null;
 }

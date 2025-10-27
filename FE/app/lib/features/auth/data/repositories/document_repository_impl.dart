@@ -222,18 +222,25 @@ class DocumentRepositoryImpl implements DocumentRepository {
     }
   }
 
+  // Thêm implementation vào DocumentRepositoryImpl
   @override
-  Future<List<DocumentResponseModel>> searchDocumentsFallback({
+  Future<String> getEbook({
     required String accessToken,
-    required String query,
-    int page = 1,
-    int limit = 20,
+    required int documentId,
   }) async {
-    return await remoteDataSource.searchDocumentsFallback(
-      accessToken: accessToken,
-      query: query,
-      page: page,
-      limit: limit,
-    );
+    try {
+      print('📖 Fetching ebook content for document: $documentId');
+
+      final content = await remoteDataSource.getEbook(
+        accessToken: accessToken,
+        documentId: documentId,
+      );
+
+      print('📖 Fetched ebook content: ${content.length} characters');
+      return content;
+    } catch (e) {
+      print('❌ Error in repository: $e');
+      throw Exception('Failed to fetch ebook: $e');
+    }
   }
 }

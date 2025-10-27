@@ -37,20 +37,10 @@ abstract class DocumentRemoteDataSource {
     int limit = 20,
     String match = 'any', // 'any' hoặc 'all'
   });
-
-  Future<List<DocumentResponseModel>> searchDocumentsFallback({
+  Future<String> getEbook({
     required String accessToken,
-    required String query,
-    required int page,
-    required int limit,
-  }) async {
-    return await searchDocumentsFallback(
-      accessToken: accessToken,
-      query: query,
-      page: page,
-      limit: limit,
-    );
-  }
+    required int documentId,
+  });
 }
 
 class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
@@ -234,102 +224,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     }
   }
 
-  // Thêm vào DocumentRemoteDataSourceImpl
-  Future<void> testSearchWithDifferentQueries(String accessToken) async {
-    final testQueries = [
-      'Tuổi thơ dữ dội',
-      'tuổi thơ dữ dội',
-      'TUỔI THƠ DỮ DỘI',
-      'tuoi tho du doi',
-      'sách',
-      'book',
-      'test',
-    ];
-
-    for (final query in testQueries) {
-      try {
-        print('🧪 Testing query: "$query"');
-
-        final encodedQuery = Uri.encodeComponent(query);
-        final uri = Uri.parse(
-          '$baseUrl/api/documents/reader/search?query=$encodedQuery&page=1&limit=5',
-        );
-
-        final response = await http.get(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $accessToken',
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final responseData = json.decode(response.body);
-          final dataLength = responseData['data']?.length ?? 0;
-          print('✅ Query "$query": $dataLength results');
-        } else {
-          print('❌ Query "$query": Failed with ${response.statusCode}');
-        }
-      } catch (e) {
-        print('❌ Query "$query": Error $e');
-      }
-    }
-  }
-
-  // Thêm vào DocumentRemoteDataSourceImpl
-  Future<List<DocumentResponseModel>> searchDocumentsFallback({
-    required String accessToken,
-    required String query,
-    int page = 1,
-    int limit = 20,
-  }) async {
-    try {
-      print('🔄 Using fallback search method for: "$query"');
-
-      // Lấy tất cả documents và filter local
-      final allDocuments = await getDocumentsForReader(
-        accessToken: accessToken,
-        page: 1,
-        limit: 100, // Lấy nhiều hơn để search
-      );
-
-      print('🔄 Retrieved ${allDocuments.length} documents for local search');
-
-      // Filter local với nhiều điều kiện
-      final filteredDocuments = allDocuments.where((doc) {
-        final title = doc.title.toLowerCase();
-        final category = doc.categoryName.toLowerCase();
-        final searchQuery = query.toLowerCase();
-
-        // Tìm kiếm trong title và category
-        final titleMatch = title.contains(searchQuery);
-        final categoryMatch = category.contains(searchQuery);
-
-        // Tìm kiếm từng từ riêng lẻ
-        final words = searchQuery.split(' ');
-        final wordMatch = words.any(
-          (word) => title.contains(word) || category.contains(word),
-        );
-
-        return titleMatch || categoryMatch || wordMatch;
-      }).toList();
-
-      print('🔄 Fallback search found: ${filteredDocuments.length} results');
-
-      // In ra một số kết quả để debug
-      for (int i = 0; i < filteredDocuments.length && i < 3; i++) {
-        final doc = filteredDocuments[i];
-        print('🔄 Fallback result $i: ${doc.title} - ${doc.categoryName}');
-      }
-
-      return filteredDocuments;
-    } catch (e) {
-      print('❌ Fallback search error: $e');
-      throw Exception('Fallback search failed: $e');
-    }
-  }
-
   @override
   Future<List<DocumentResponseModel>> searchDocuments({
     required String accessToken,
@@ -342,7 +236,7 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
       final encodedQuery = Uri.encodeComponent(query);
 
       final Map<String, String> queryParams = {
-        'query': encodedQuery, // Sử dụng encoded query
+        'q': encodedQuery,
         'page': page.toString(),
         'limit': limit.toString(),
       };
@@ -393,15 +287,12 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
                 print('📄 Pagination info: ${responseData['pagination']}');
               }
             }
-
             // Parse documents thành DocumentResponseModel
             final List<DocumentResponseModel> result = documents
                 .map((item) {
                   try {
                     return DocumentResponseModel.fromJson(item);
                   } catch (e) {
-                    print('❌ Error parsing document: $e');
-                    print('❌ Document data: $item');
                     return null;
                   }
                 })
@@ -412,8 +303,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
             print('✅ Successfully parsed ${result.length} documents');
             return result;
           } else {
-            print('❌ API returned success=false or no data');
-            print('❌ Response: $responseData');
             throw Exception(
               'Search API error: ${responseData['message'] ?? 'Unknown error'}',
             );
@@ -477,9 +366,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         },
       );
 
-      print('📡 Response status: ${response.statusCode}');
-      print('📡 Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
 
@@ -493,7 +379,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
               '📄 Document: ${doc['title']} - Genre: ${doc['categoryName']}',
             );
           }
-
           return documents
               .map((item) => DocumentResponseModel.fromJson(item))
               .toList();
@@ -508,8 +393,54 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         );
       }
     } catch (e) {
-      print('❌ Error fetching documents by genre: $e');
       throw Exception('Error fetching documents by genre: $e');
+    }
+  }
+
+  // Thêm implementation vào DocumentRemoteDataSourceImpl
+  @override
+  Future<String> getEbook({
+    required String accessToken,
+    required int documentId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/documents/ebook/$documentId'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+      print('📖 Ebook response status: ${response.statusCode}');
+      print('📖 Ebook response body length: ${response.body.length}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        if (responseData is Map<String, dynamic>) {
+          if (responseData['success'] == true &&
+              responseData.containsKey('data')) {
+            return responseData['data']['content'] ??
+                responseData['data']['text'] ??
+                '';
+          } else {
+            throw Exception(
+              'API returned error: ${responseData['message'] ?? 'Unknown error'}',
+            );
+          }
+        } else if (responseData is String) {
+          return responseData;
+        } else {
+          throw Exception('Unexpected response format');
+        }
+      } else {
+        throw Exception(
+          'Failed to load ebook: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error fetching ebook: $e');
+      throw Exception('Error fetching ebook: $e');
     }
   }
 }

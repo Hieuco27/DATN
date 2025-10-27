@@ -1,4 +1,5 @@
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
+import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -83,6 +84,16 @@ class MyApp extends StatelessWidget {
             throw Exception('Document ID is required');
           },
           '/search': (context) => const SearchPage(),
+          '/ebook-reader': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments;
+            if (args is Map<String, dynamic>) {
+              return EbookReaderPage(
+                document: args['document'],
+                ebookUrl: args['ebookUrl'],
+              );
+            }
+            throw Exception('Document and ebookUrl are required');
+          },
         },
       ),
     );

@@ -164,7 +164,10 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 16),
                   const Text(
                     'Nhập từ khóa để tìm kiếm',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color.fromARGB(255, 0, 0, 0),
+                    ),
                   ),
                   if (searchProvider.searchHistory.isNotEmpty) ...[
                     const SizedBox(height: 24),

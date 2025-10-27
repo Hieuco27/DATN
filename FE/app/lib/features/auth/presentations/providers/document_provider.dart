@@ -42,7 +42,10 @@ class DocumentProvider with ChangeNotifier {
 
     // Set loading state
     _isLoadingByGenre[genreId] = true;
-    notifyListeners();
+    // Defer notifyListeners() to avoid calling during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
 
     try {
       final documents = await _documentRepository.getDocumentsByGenre(
@@ -62,7 +65,10 @@ class DocumentProvider with ChangeNotifier {
       return [];
     } finally {
       _isLoadingByGenre[genreId] = false;
-      notifyListeners();
+      // Defer notifyListeners() to avoid calling during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
     }
   }
 
