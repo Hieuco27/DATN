@@ -57,4 +57,11 @@ abstract class DocumentRepository {
     required String accessToken,
     required int documentId,
   });
+  // Thêm vào abstract class DocumentRepository
+  Future<List<DocumentEntity>> getSimilarDocuments({
+    required String accessToken,
+    required int documentId,
+    int page = 1,
+    int limit = 10,
+  });
 }

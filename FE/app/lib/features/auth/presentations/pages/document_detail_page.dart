@@ -1,4 +1,5 @@
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
+import 'package:book_tech/features/auth/presentations/widgets/document/similar_book.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
@@ -7,6 +8,7 @@ import 'package:book_tech/features/auth/domain/repositories/document_repository.
 import '../bloc/auth_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
+import 'package:book_tech/features/auth/data/models/document_response_model.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -21,6 +23,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   DocumentDetailModel? _document;
   bool _isLoading = true;
   String? _error;
+  List<DocumentResponseModel> _similarBooks = [];
+  bool _isLoadingSimilar = false;
+
   bool _isBookmarked = false;
 
   @override
@@ -50,10 +55,64 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         _document = document;
         _isLoading = false;
       });
+      _loadSimilarBooks();
     } catch (e) {
       setState(() {
         _error = e.toString();
         _isLoading = false;
+      });
+    }
+  }
+
+  // Thêm method để load similar books
+  Future<void> _loadSimilarBooks() async {
+    if (_document == null) return;
+
+    setState(() {
+      _isLoadingSimilar = true;
+    });
+
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is! AuthAuthenticated ||
+          authState.account.accessToken?.isEmpty == true) {
+        throw Exception('User not authenticated');
+      }
+
+      final repository = Provider.of<DocumentRepository>(
+        context,
+        listen: false,
+      );
+
+      final similarBooks = await repository.getSimilarDocuments(
+        accessToken: authState.account.accessToken!,
+        documentId: _document!.documentId,
+        limit: 10,
+      );
+
+      setState(() {
+        _similarBooks = similarBooks.map((entity) {
+          // Convert DocumentEntity to DocumentResponseModel
+          return DocumentResponseModel(
+            documentId: entity.documentId,
+            title: entity.title,
+            coverPhoto: entity.coverPhoto,
+            minDeposit: 0,
+            maxDeposit: 0,
+            coverPrice: entity.coverPrice ?? 0,
+            categoryName: '', // Có thể cần lấy từ API khác
+            depositRate: 0.0,
+            totalCopies: entity.numberOfCopy,
+            availableCopies: entity.numberOfCopy, // Giả định tất cả đều có sẵn
+            documentType: 'book',
+          );
+        }).toList();
+        _isLoadingSimilar = false;
+      });
+    } catch (e) {
+      print('Error loading similar books: $e');
+      setState(() {
+        _isLoadingSimilar = false;
       });
     }
   }
@@ -142,13 +201,21 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
     return SingleChildScrollView(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 20),
           _buildHeader(),
           _buildInfo(),
           _buildActions(),
           _buildDescription(),
           _buildDetails(),
+          // Thêm widget hiển thị sách tương tự
+          SimilarBooksWidget(
+            similarBooks: _similarBooks,
+            isLoading: _isLoadingSimilar,
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -189,10 +256,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
           ),
           const SizedBox(width: 16),
-          // Thông tin cơ bản
-          Expanded(
+          // Thông tin cơ bản - Sử dụng Flexible thay vì Expanded
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // Thêm dòng này
               children: [
                 Text(
                   _document!.title,
@@ -216,8 +284,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-
-                const SizedBox(height: 60),
+                const SizedBox(height: 60), // Thay vì dùng Spacer()
                 ElevatedButton.icon(
                   onPressed: _document!.ebookUrl != null ? _readNow : null,
                   icon: const Icon(Icons.play_arrow, size: 1),
@@ -234,7 +301,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                     ),
                   ),
                 ),
-                // Nhà xuất bản
               ],
             ),
           ),

@@ -1,11 +1,15 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:pdfx/pdfx.dart';
+// import 'package:pdfx/pdfx.dart'; // ❌ Xóa import này
 import 'package:flutter_html/flutter_html.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:book_tech/core/services/ebook_reader_service.dart';
+import 'package:book_tech/features/auth/data/models/ebook_model.dart';
+import 'package:book_tech/core/services/ebook_settings_service.dart';
+import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_settings_dialog.dart';
+import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_table_of_contents.dart';
+import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_highlights_panel.dart';
 
 class UniversalEbookReader extends StatefulWidget {
   final String ebookUrl;
@@ -23,22 +27,43 @@ class UniversalEbookReader extends StatefulWidget {
   State<UniversalEbookReader> createState() => _UniversalEbookReaderState();
 }
 
-class _UniversalEbookReaderState extends State<UniversalEbookReader> {
+class _UniversalEbookReaderState extends State<UniversalEbookReader>
+    with TickerProviderStateMixin {
   EbookFormat? _detectedFormat;
   bool _isLoading = true;
   String? _error;
   String? _localFilePath;
-  PdfController? _pdfController;
+  // ✅ Sử dụng PdfViewerController từ Syncfusion
+  PdfViewerController? _pdfController;
+
+  // New state variables
+  EbookSettings _settings = EbookSettings();
+  List<EbookChapter> _chapters = [];
+  List<EbookHighlight> _highlights = [];
+  int _currentPage = 1;
+  bool _showTableOfContents = false;
+  bool _showHighlights = false;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _initializeReader();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeReader() async {
     try {
       setState(() => _isLoading = true);
+
+      // Load settings
+      _settings = await EbookSettingsService.getSettings();
 
       // Detect format
       _detectedFormat =
@@ -50,6 +75,12 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader> {
         _localFilePath = await EbookReaderService.downloadFile(widget.ebookUrl);
       }
 
+      // Load highlights
+      _highlights = await EbookSettingsService.getHighlights(widget.title);
+
+      // Generate mock chapters
+      _generateMockChapters();
+
       // Load specific format
       await _loadEbookContent();
     } catch (e) {
@@ -60,13 +91,22 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader> {
     }
   }
 
+  void _generateMockChapters() {
+    _chapters = List.generate(10, (index) {
+      return EbookChapter(
+        id: 'chapter_${index + 1}',
+        title: 'Chương ${index + 1}',
+        pageNumber: (index * 5) + 1,
+      );
+    });
+  }
+
   Future<void> _loadEbookContent() async {
     try {
       switch (_detectedFormat) {
         case EbookFormat.pdf:
-          _pdfController = PdfController(
-            document: PdfDocument.openFile(_localFilePath!),
-          );
+          // ✅ Khởi tạo PdfViewerController từ Syncfusion
+          _pdfController = PdfViewerController();
           break;
         case EbookFormat.html:
           // HTML sẽ được load trực tiếp trong WebView
@@ -143,6 +183,65 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader> {
   }
 
   Widget _buildReaderWidget() {
+    if (_showTableOfContents) {
+      return _buildTableOfContents();
+    }
+
+    if (_showHighlights) {
+      return _buildHighlightsPanel();
+    }
+
+    return _buildMainReader();
+  }
+
+  Widget _buildTableOfContents() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mục lục'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => setState(() => _showTableOfContents = false),
+        ),
+      ),
+      body: EbookTableOfContents(
+        chapters: _chapters,
+        currentPage: _currentPage,
+        onChapterSelected: (chapter) {
+          _navigateToPage(chapter.pageNumber);
+        },
+      ),
+    );
+  }
+
+  Widget _buildHighlightsPanel() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Đánh dấu'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => setState(() => _showHighlights = false),
+        ),
+      ),
+      body: EbookHighlightsPanel(
+        highlights: _highlights,
+        onHighlightTap: (highlight) {
+          _navigateToPage(highlight.pageNumber);
+        },
+        onDeleteHighlight: (highlightId) async {
+          await EbookSettingsService.deleteHighlight(widget.title, highlightId);
+          setState(() {
+            _highlights.removeWhere((h) => h.id == highlightId);
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildMainReader() {
+    return Stack(children: [_buildReaderContent(), _buildFloatingControls()]);
+  }
+
+  Widget _buildReaderContent() {
     switch (_detectedFormat) {
       case EbookFormat.pdf:
         return _buildPdfReader();
@@ -153,33 +252,182 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader> {
     }
   }
 
+  // ✅ Sửa lại _buildPdfReader với Syncfusion
   Widget _buildPdfReader() {
-    return SfPdfViewer.file(
-      File(_localFilePath!),
-      enableDoubleTapZooming: true,
-      enableTextSelection: true,
-      onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-        setState(() {
-          _error = 'Không thể tải PDF: ${details.error}';
-        });
-      },
+    return Container(
+      color: _getBackgroundColor(),
+      child: SfPdfViewer.file(
+        File(_localFilePath!),
+        controller: _pdfController,
+        enableDoubleTapZooming: true,
+        enableTextSelection: true,
+        onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+          setState(() {
+            _error = 'Không thể tải PDF: ${details.error}';
+          });
+        },
+        onPageChanged: (PdfPageChangedDetails details) {
+          setState(() {
+            _currentPage = details.newPageNumber;
+          });
+        },
+      ),
     );
   }
 
   Widget _buildHtmlReader() {
-    return WebViewWidget(
-      controller: WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadRequest(Uri.parse(widget.ebookUrl)),
+    return Container(
+      color: _getBackgroundColor(),
+      child: WebViewWidget(
+        controller: WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..loadRequest(Uri.parse(widget.ebookUrl)),
+      ),
     );
   }
 
   Widget _buildWebViewReader() {
-    // Fallback to WebView for unknown/unsupported formats
-    return WebViewWidget(
-      controller: WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadRequest(Uri.parse(widget.ebookUrl)),
+    return Container(
+      color: _getBackgroundColor(),
+      child: WebViewWidget(
+        controller: WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..loadRequest(Uri.parse(widget.ebookUrl)),
+      ),
     );
+  }
+
+  // ✅ Thêm method để lấy màu nền theo theme
+  Color _getBackgroundColor() {
+    switch (_settings.theme) {
+      case 'dark':
+        return Colors.grey[900]!;
+      case 'light':
+      default:
+        return Colors.white;
+    }
+  }
+
+  // ✅ Thêm method để lấy màu text theo theme
+  Color _getTextColor() {
+    switch (_settings.theme) {
+      case 'dark':
+        return Colors.white;
+      case 'light':
+      default:
+        return Colors.black;
+    }
+  }
+
+  Widget _buildFloatingControls() {
+    return Positioned(
+      bottom: 20,
+      right: 20,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: "settings",
+            mini: true,
+            backgroundColor: _settings.theme == 'dark'
+                ? Colors.grey[800]
+                : Colors.blue,
+            onPressed: _showSettingsDialog,
+            child: Icon(
+              Icons.settings,
+              color: _settings.theme == 'dark' ? Colors.white : Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: "highlights",
+            mini: true,
+            backgroundColor: _settings.theme == 'dark'
+                ? Colors.grey[800]
+                : Colors.orange,
+            onPressed: () => setState(() => _showHighlights = true),
+            child: Icon(
+              Icons.highlight,
+              color: _settings.theme == 'dark' ? Colors.white : Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: "toc",
+            mini: true,
+            backgroundColor: _settings.theme == 'dark'
+                ? Colors.grey[800]
+                : Colors.green,
+            onPressed: () => setState(() => _showTableOfContents = true),
+            child: Icon(
+              Icons.list,
+              color: _settings.theme == 'dark' ? Colors.white : Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: "theme",
+            mini: true,
+            backgroundColor: _settings.theme == 'dark'
+                ? Colors.grey[800]
+                : Colors.purple,
+            onPressed: _toggleTheme,
+            child: Icon(
+              _settings.theme == 'dark' ? Icons.light_mode : Icons.dark_mode,
+              color: _settings.theme == 'dark' ? Colors.white : Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Thêm method để toggle theme nhanh
+  void _toggleTheme() async {
+    final newTheme = _settings.theme == 'dark' ? 'light' : 'dark';
+    final newSettings = _settings.copyWith(theme: newTheme);
+
+    await EbookSettingsService.saveSettings(newSettings);
+    setState(() {
+      _settings = newSettings;
+    });
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => EbookSettingsDialog(
+        currentSettings: _settings,
+        onSettingsChanged: (newSettings) async {
+          await EbookSettingsService.saveSettings(newSettings);
+          setState(() {
+            _settings = newSettings;
+          });
+        },
+      ),
+    );
+  }
+
+  void _navigateToPage(int pageNumber) {
+    if (_pdfController != null) {
+      _pdfController!.jumpToPage(pageNumber);
+    }
+    setState(() {
+      _currentPage = pageNumber;
+    });
+  }
+
+  void _addHighlight(String text, int pageNumber) {
+    final highlight = EbookHighlight(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      text: text,
+      pageNumber: pageNumber,
+      createdAt: DateTime.now(),
+    );
+
+    EbookSettingsService.saveHighlight(widget.title, highlight);
+    setState(() {
+      _highlights.add(highlight);
+    });
   }
 }

@@ -243,4 +243,31 @@ class DocumentRepositoryImpl implements DocumentRepository {
       throw Exception('Failed to fetch ebook: $e');
     }
   }
+
+  // hien thi danh sach tai lieu tương tự
+  @override
+  Future<List<DocumentEntity>> getSimilarDocuments({
+    required String accessToken,
+    required int documentId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      print('📚 Fetching similar documents for document: $documentId');
+
+      final documents = await remoteDataSource.getSimilarDocuments(
+        accessToken: accessToken,
+        documentId: documentId,
+        page: page,
+        limit: limit,
+      );
+
+      print('📚 Fetched ${documents.length} similar documents');
+
+      return documents.map((doc) => doc.toEntity()).toList();
+    } catch (e) {
+      print('❌ Error in repository: $e');
+      throw Exception('Failed to fetch similar documents: $e');
+    }
+  }
 }

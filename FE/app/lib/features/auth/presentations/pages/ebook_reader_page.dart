@@ -141,7 +141,6 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
   }
 
   Widget _buildBody() {
-    // ✅ Sử dụng UniversalEbookReader thay vì WebView trực tiếp
     return UniversalEbookReader(
       ebookUrl: widget.ebookUrl,
       title: widget.document.title,

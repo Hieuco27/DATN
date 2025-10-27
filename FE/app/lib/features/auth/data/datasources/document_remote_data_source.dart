@@ -41,6 +41,12 @@ abstract class DocumentRemoteDataSource {
     required String accessToken,
     required int documentId,
   });
+  Future<List<DocumentResponseModel>> getSimilarDocuments({
+    required String accessToken,
+    required int documentId,
+    int page = 1,
+    int limit = 10,
+  });
 }
 
 class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
@@ -139,6 +145,7 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     }
   }
 
+  // danh sach the loai chi tiet
   @override
   Future<List<GenreModel>> getGenres({required String accessToken}) async {
     try {
@@ -224,6 +231,7 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     }
   }
 
+  // tim kiem tai lieu
   @override
   Future<List<DocumentResponseModel>> searchDocuments({
     required String accessToken,
@@ -324,7 +332,7 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     }
   }
 
-  // Thêm implementation vào DocumentRemoteDataSourceImpl
+  // danh sach the loai chi tiet
   @override
   Future<List<DocumentResponseModel>> getDocumentsByGenre({
     required String accessToken,
@@ -397,7 +405,7 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     }
   }
 
-  // Thêm implementation vào DocumentRemoteDataSourceImpl
+  // lay noi dung ebook
   @override
   Future<String> getEbook({
     required String accessToken,
@@ -441,6 +449,75 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
     } catch (e) {
       print('❌ Error fetching ebook: $e');
       throw Exception('Error fetching ebook: $e');
+    }
+  }
+
+  // hien thi danh sach tai lieu tương tự
+  @override
+  Future<List<DocumentResponseModel>> getSimilarDocuments({
+    required String accessToken,
+    required int documentId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final Map<String, String> queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+
+      final uri = Uri.parse(
+        '$baseUrl/api/documents/reader/$documentId/similar',
+      ).replace(queryParameters: queryParams);
+
+      print('🌐 Fetching similar documents from: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('📡 Similar documents response status: ${response.statusCode}');
+      print('📡 Similar documents response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        if (responseData is Map<String, dynamic>) {
+          if (responseData['success'] == true &&
+              responseData.containsKey('data')) {
+            final List<dynamic> documents =
+                responseData['data'] as List<dynamic>;
+
+            print('📚 Similar documents found: ${documents.length}');
+            return documents
+                .map((item) => DocumentResponseModel.fromJson(item))
+                .toList();
+          } else {
+            throw Exception(
+              'API returned error: ${responseData['message'] ?? 'Unknown error'}',
+            );
+          }
+        } else if (responseData is List<dynamic>) {
+          // Nếu response là array trực tiếp
+          return responseData
+              .map((item) => DocumentResponseModel.fromJson(item))
+              .toList();
+        } else {
+          throw Exception('Unexpected response format');
+        }
+      } else {
+        throw Exception(
+          'Failed to load similar documents: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error fetching similar documents: $e');
+      throw Exception('Error fetching similar documents: $e');
     }
   }
 }

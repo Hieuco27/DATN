@@ -71,7 +71,32 @@ class DocumentResponseModel {
       'documentType': documentType,
     };
   }
+
+  // Thêm constructor từ DocumentEntity
+  factory DocumentResponseModel.fromEntity(
+    DocumentEntity entity, {
+    String categoryName = '',
+    int minDeposit = 0,
+    int maxDeposit = 0,
+    double depositRate = 0.0,
+    int totalCopies = 0,
+    int availableCopies = 0,
+    String documentType = 'book',
+  }) {
+    return DocumentResponseModel(
+      documentId: entity.documentId,
+      title: entity.title,
+      coverPhoto: entity.coverPhoto,
+      minDeposit: minDeposit,
+      maxDeposit: maxDeposit,
+      coverPrice: entity.coverPrice ?? 0,
+      categoryName: categoryName,
+      depositRate: depositRate,
+      totalCopies: totalCopies > 0 ? totalCopies : entity.numberOfCopy,
+      availableCopies: availableCopies > 0
+          ? availableCopies
+          : entity.numberOfCopy,
+      documentType: documentType,
+    );
+  }
 }
-
-
-  
