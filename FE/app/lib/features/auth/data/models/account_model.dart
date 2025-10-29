@@ -23,7 +23,6 @@ class AccountModel extends Equatable {
   });
 
   factory AccountModel.fromJson(Map<String, dynamic> json) {
-
     // Handle roleId conversion
     int? parsedRoleId;
     var rawRoleId = json['roleId'];
@@ -58,7 +57,7 @@ class AccountModel extends Equatable {
       'phoneNumber': phoneNumber,
       'fullName': fullName,
       if (password != null) 'password': password,
-      'roleId': roleId ?? 3,
+      'roleId': roleId,
       'accessToken': accessToken,
       'refreshToken': refreshToken,
     };
@@ -71,7 +70,7 @@ class AccountModel extends Equatable {
       email: email,
       fullName: fullName,
       phoneNumber: phoneNumber,
-      roleId: roleId ?? 3, 
+      roleId: roleId,
       accessToken: accessToken,
       refreshToken: refreshToken,
     );

@@ -22,8 +22,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     String? documentType,
   }) async {
     try {
-      print('📚 Fetching documents for reader...');
-
       final documents = await remoteDataSource.getDocumentsForReader(
         accessToken: accessToken, // Truyền token
         page: page,
@@ -32,11 +30,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
         documentType: documentType,
       );
 
-      print('📚 Fetched ${documents.length} documents');
-
       return documents.map((doc) => doc.toEntity()).toList();
     } catch (e) {
-      print('❌ Error in repository: $e');
       throw Exception('Failed to fetch documents: $e');
     }
   }
@@ -47,8 +42,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required String accessToken, // Thêm parameter này
   }) async {
     try {
-      print('📚 Grouping documents by category...');
-
       // Lấy tất cả documents
       final documents = await remoteDataSource.getDocumentsForReader(
         accessToken: accessToken, // Truyền token
@@ -74,11 +67,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
         groupedDocuments[genre]!.add(documentEntity);
       }
 
-      print('📚 Grouped into ${groupedDocuments.length} categories');
-
       return groupedDocuments;
     } catch (e) {
-      print('❌ Error grouping documents: $e');
       throw Exception('Failed to group documents by category: $e');
     }
   }
@@ -107,17 +97,13 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required int documentId,
   }) async {
     try {
-      print('📚 Fetching document detail for ID: $documentId');
-
       final response = await remoteDataSource.getDocumentDetail(
         accessToken: accessToken,
         documentId: documentId,
       );
 
-      print('📚 Document detail fetched successfully');
       return response;
     } catch (e) {
-      print('❌ Error fetching document detail: $e');
       throw Exception('Failed to fetch document detail: $e');
     }
   }
@@ -133,8 +119,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     String match = 'any',
   }) async {
     try {
-      print('📚 Fetching documents by genre...');
-
       final documents = await remoteDataSource.getDocumentsByGenre(
         accessToken: accessToken,
         genreIds: genreIds,
@@ -144,11 +128,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
         match: match,
       );
 
-      print('📚 Fetched ${documents.length} documents by genre');
-
       return documents.map((doc) => doc.toEntity()).toList();
     } catch (e) {
-      print('❌ Error in repository: $e');
       throw Exception('Failed to fetch documents by genre: $e');
     }
   }
@@ -157,15 +138,10 @@ class DocumentRepositoryImpl implements DocumentRepository {
   @override
   Future<List<GenreModel>> getGenres({required String accessToken}) async {
     try {
-      print('🎭 Fetching genres...');
-
       final genres = await remoteDataSource.getGenres(accessToken: accessToken);
-
-      print('🎭 Fetched ${genres.length} genres');
 
       return genres; // Trả về trực tiếp GenreModel từ remoteDataSource
     } catch (e) {
-      print('❌ Error in repository: $e');
       throw Exception('Failed to fetch genres: $e');
     }
   }
@@ -179,8 +155,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 20,
   }) async {
     try {
-      print('🔍 Searching documents for query: "$query"');
-
       final documents = await remoteDataSource.searchDocuments(
         accessToken: accessToken,
         query: query,
@@ -188,10 +162,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
         limit: limit,
       );
 
-      print('🔍 Found ${documents.length} search results');
       return documents;
     } catch (e) {
-      print('❌ Error in search repository: $e');
       throw Exception('Failed to search documents: $e');
     }
   }
@@ -205,8 +177,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 20,
   }) async {
     try {
-      print('🔍 Searching documents by search for query: "$query"');
-
       final documents = await remoteDataSource.searchDocuments(
         accessToken: accessToken,
         query: query,
@@ -214,10 +184,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
         limit: limit,
       );
 
-      print('🔍 Found ${documents.length} search results');
       return documents.map((doc) => doc.toEntity()).toList();
     } catch (e) {
-      print('❌ Error in search repository: $e');
       throw Exception('Failed to search documents: $e');
     }
   }
@@ -229,17 +197,13 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required int documentId,
   }) async {
     try {
-      print('📖 Fetching ebook content for document: $documentId');
-
       final content = await remoteDataSource.getEbook(
         accessToken: accessToken,
         documentId: documentId,
       );
 
-      print('📖 Fetched ebook content: ${content.length} characters');
       return content;
     } catch (e) {
-      print('❌ Error in repository: $e');
       throw Exception('Failed to fetch ebook: $e');
     }
   }
@@ -253,21 +217,28 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 10,
   }) async {
     try {
-      print('📚 Fetching similar documents for document: $documentId');
-
       final documents = await remoteDataSource.getSimilarDocuments(
         accessToken: accessToken,
         documentId: documentId,
         page: page,
         limit: limit,
       );
-
-      print('📚 Fetched ${documents.length} similar documents');
-
       return documents.map((doc) => doc.toEntity()).toList();
     } catch (e) {
-      print('❌ Error in repository: $e');
       throw Exception('Failed to fetch similar documents: $e');
     }
+  }
+
+  // Thêm implementation vào DocumentRepositoryImpl
+
+  @override
+  Future<Map<String, dynamic>> reserveBooks({
+    required String accessToken,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    return await remoteDataSource.reserveBooks(
+      accessToken: accessToken,
+      items: items,
+    );
   }
 }

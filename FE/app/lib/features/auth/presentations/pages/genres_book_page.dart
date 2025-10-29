@@ -67,7 +67,6 @@ class _GenreBooksPageState extends State<GenreBooksPage> {
         );
       }
     } catch (e) {
-      print('❌ Error loading documents: $e');
     } finally {
       setState(() {
         _isLoading = false;

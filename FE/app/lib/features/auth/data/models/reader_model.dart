@@ -9,6 +9,7 @@ class ReaderModel extends ReaderEntity {
     super.address,
     super.dateOfBirth,
     super.cccd,
+    super.gender,
     super.totolBorrow,
     super.note,
     super.createdAt,
@@ -16,7 +17,6 @@ class ReaderModel extends ReaderEntity {
   });
 
   // factory ReaderModel.fromJson(Map<String, dynamic> json) {
-  
 
   //   return ReaderModel(
   //     readerId: _parseInt(json['readerId']),
@@ -41,31 +41,31 @@ class ReaderModel extends ReaderEntity {
   factory ReaderModel.fromJson(Map<String, dynamic> json) {
     print('🔍 ReaderModel.fromJson input: $json');
 
-    // Extract profile and account data
-    final profile = json['profile'] as Map<String, dynamic>? ?? {};
+    // json ở đây chính là data['reader'] từ API
+    final reader = json; // json chính là reader data
     final account = json['account'] as Map<String, dynamic>? ?? {};
 
-    print('🔍 Profile data: $profile');
+    print('🔍 Reader data: $reader');
     print('🔍 Account data: $account');
 
     return ReaderModel(
-      readerId: _parseInt(profile['readerId']),
-      accountId: _parseInt(profile['accountId']),
-      fullName: profile['fullName'] as String?,
-      phoneNumber:
-          account['phoneNumber'] as String?, // phoneNumber is in account
-      address: profile['address'] as String?,
-      dateOfBirth: profile['dateOfBirth'] != null
-          ? DateTime.tryParse(profile['dateOfBirth'])
+      readerId: _parseInt(reader['readerId']),
+      accountId: _parseInt(reader['accountId']),
+      fullName: reader['fullName'] as String?,
+      phoneNumber: account['phoneNumber'] as String?,
+      address: reader['address'] as String?,
+      dateOfBirth: reader['dateOfBirth'] != null
+          ? DateTime.tryParse(reader['dateOfBirth'])
           : null,
-      cccd: profile['cccd'] as String?,
-      totolBorrow: _parseInt(profile['totolBorrow']),
-      note: profile['note'] as String?,
-      createdAt: profile['created_at'] != null
-          ? DateTime.tryParse(profile['created_at'])
+      gender: reader['gender'] as String?,
+      cccd: reader['cccd'] as String?,
+      totolBorrow: _parseInt(reader['totolBorrow']),
+      note: reader['note'] as String?,
+      createdAt: reader['created_at'] != null
+          ? DateTime.tryParse(reader['created_at'])
           : null,
-      updatedAt: profile['updated_at'] != null
-          ? DateTime.tryParse(profile['updated_at'])
+      updatedAt: reader['updated_at'] != null
+          ? DateTime.tryParse(reader['updated_at'])
           : null,
     );
   }
@@ -91,6 +91,7 @@ class ReaderModel extends ReaderEntity {
       'dateOfBirth': dateOfBirth?.millisecondsSinceEpoch,
       'cccd': cccd,
       'totolBorrow': totolBorrow,
+      'gender': gender,
       'note': note,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
@@ -103,6 +104,7 @@ class ReaderModel extends ReaderEntity {
       accountId: json['accountId'] as int,
       fullName: json['fullName'] as String?,
       phoneNumber: json['phoneNumber'] as String?,
+      gender: json['gender'] as String?,
       address: json['address'] as String?,
       dateOfBirth: json['dateOfBirth'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['dateOfBirth'])

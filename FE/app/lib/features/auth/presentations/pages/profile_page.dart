@@ -11,6 +11,10 @@ import 'package:book_tech/features/auth/presentations/pages/edit_profile_page.da
 import 'package:book_tech/features/auth/domain/entities/profile_usecase.dart';
 import 'package:book_tech/features/auth/data/repositories/profile_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/profile_remote_datasource.dart';
+import 'package:book_tech/features/auth/domain/repositories/auth_repository.dart';
+import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
+import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -26,6 +30,11 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _profileBloc = ProfileBloc(
+      authBloc: context.read<AuthBloc>(),
+      authRepository: AuthenticationRepositoryImpl(
+        remoteDataSource: AuthenticationRemoteDataSourceImpl(),
+        localStorageDataSource: LocalStorageDataSourceImpl(),
+      ),
       getProfileUseCase: GetProfileUseCase(
         ProfileRepositoryImpl(
           ProfileRemoteDataSourceImpl(
@@ -74,9 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         if (context.read<ProfileBloc>().state
                             is ProfileInitial) {
                           context.read<ProfileBloc>().add(
-                            ProfileLoadRequested(
-                              authState.account.accessToken!,
-                            ),
+                            ProfileLoadRequested(),
                           );
                         }
                       });
@@ -115,9 +122,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               authState.account.accessToken?.isNotEmpty == true) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (context.read<ProfileBloc>().state is ProfileInitial) {
-                context.read<ProfileBloc>().add(
-                  ProfileLoadRequested(authState.account.accessToken!),
-                );
+                context.read<ProfileBloc>().add(ProfileLoadRequested());
               }
             });
           }
@@ -212,9 +217,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     final authState = context.read<AuthBloc>().state;
                     if (authState is AuthAuthenticated &&
                         (authState.account.accessToken?.isNotEmpty ?? false)) {
-                      context.read<ProfileBloc>().add(
-                        ProfileLoadRequested(authState.account.accessToken!),
-                      );
+                      context.read<ProfileBloc>().add(ProfileLoadRequested());
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -240,10 +243,12 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           final authState = context.read<AuthBloc>().state;
           String userName = 'Người dùng';
           String userEmail = 'user@example.com';
+          String userPhoneNumber = '0000000000';
 
           if (authState is AuthAuthenticated) {
             userEmail = authState.account.email;
             userName = authState.account.fullName ?? userName;
+            userPhoneNumber = authState.account.phoneNumber;
           }
 
           if (state is ProfileLoaded) {
@@ -255,6 +260,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             userEmail = state.profile.phoneNumber?.isNotEmpty == true
                 ? state.profile.phoneNumber!
                 : userEmail;
+            // userPhoneNumber = state.profile.phoneNumber ?? userPhoneNumber;
           } else if (state is ProfileUpdated) {
             userName = state.profile.fullName?.isNotEmpty == true
                 ? state.profile.fullName!
@@ -264,8 +270,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             userEmail = state.profile.phoneNumber?.isNotEmpty == true
                 ? state.profile.phoneNumber!
                 : userEmail;
+            userPhoneNumber = state.profile.phoneNumber ?? userPhoneNumber;
           }
-
           // Thay thế dòng 266-333
           return Row(
             children: [
@@ -305,6 +311,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     const SizedBox(height: 4),
                     Text(
                       userEmail,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis, // Đã có
+                    ),
+                    Text(
+                      userPhoneNumber,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade600,
@@ -504,9 +519,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               final authState = context.read<AuthBloc>().state;
               if (authState is AuthAuthenticated &&
                   (authState.account.accessToken?.isNotEmpty ?? false)) {
-                context.read<ProfileBloc>().add(
-                  ProfileLoadRequested(authState.account.accessToken!),
-                );
+                context.read<ProfileBloc>().add(ProfileLoadRequested());
               }
             }
           });

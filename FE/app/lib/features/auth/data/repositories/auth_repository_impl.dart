@@ -22,8 +22,6 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   @override
   Future<LoginResponse> login(String email, String password) async {
     try {
-      print('🔐 Starting login process for: $email');
-
       // Validation cơ bản
       if (email.isEmpty || password.isEmpty) {
         throw Exception('Email và password không được để trống');
@@ -31,11 +29,17 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
 
       final LoginResponseModel response = await remoteDataSource.login(
         email,
-
         password,
       );
 
       if (response.success && response.data != null) {
+        // Kiêm tra roleId của trước khi lưulưu
+        if (response.data!.roleId != 3) {
+          print(
+            '❌ User is not a reader (roleId=${response.data!.roleId}). Blocking login.',
+          );
+          throw Exception('Ứng dụng này chỉ dành cho độc giả');
+        }
         // Kiểm tra token trước khi lưu
         if (response.data!.accessToken.isEmpty ||
             response.data!.refreshToken.isEmpty) {
@@ -57,10 +61,9 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
         print(' User role: ${response.data!.roleId}');
       } else {
         print(' Login failed: ${response.message}');
-        // Không clear data ở đây vì có thể user chỉ nhập sai password
       }
 
-      return response.toEntity(); // ✅ Trả về Entity thay vì Model
+      return response.toEntity();
     } catch (e) {
       print('Login error: $e');
 
@@ -80,46 +83,24 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   @override
   Future<RegisterResponse> register(Map<String, dynamic> data) async {
     try {
-      print('📝 Starting registration process for: ${data['email']}');
-      print('📝 Registration data received: $data');
-
       // Validation dữ liệu đăng ký
       if (data['email'] == null || data['password'] == null) {
-        print(
-          '❌ Missing required fields: email=${data['email']}, password=${data['password']}',
-        );
         throw Exception('Email và password là bắt buộc');
       }
 
       if ((data['password'] as String).length < 6) {
-        print(
-          '❌ Password too short: ${(data['password'] as String).length} characters',
-        );
         throw Exception('Mật khẩu phải có ít nhất 6 ký tự');
       }
-
-      print('✅ Repository validation passed, calling remote data source...');
-
       final RegisterResponseModel response = await remoteDataSource.register(
         data,
       );
-
-      print(
-        '📦 Repository received response: success=${response.success}, message=${response.message}',
-      );
-      print('📦 Response data: ${response.data}');
-
       if (response.success && response.data != null) {
-        print('✅ Registration successful for: ${data['email']}');
-        print('✅ Account created: ${response.data!.email}');
-
+        if (response.data!.roleId != 3) {
+          throw Exception('Ứng dụng này chỉ dành cho độc giả');
+        }
         // Kiểm tra token trước khi lưu
         if (response.data!.accessToken.isEmpty ||
             response.data!.refreshToken.isEmpty) {
-          print('⚠️ Warning: No tokens received from registration response');
-          print('📦 Response data structure: ${response.data!.toJson()}');
-          print('🔄 Attempting auto-login after registration...');
-
           // Tự động đăng nhập sau khi đăng ký thành công
           try {
             final loginResponse = await remoteDataSource.login(
@@ -128,7 +109,13 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
             );
 
             if (loginResponse.success && loginResponse.data != null) {
+              if (loginResponse.data!.roleId != 3) {
+                throw Exception('Ứng dụng này chỉ dành cho độc giả');
+              }
               // LƯU TOKEN VÀ ACCOUNT DATA SAU KHI AUTO-LOGIN THÀNH CÔNG
+              if (loginResponse.data!.roleId != 3) {
+                throw Exception('Ứng dụng này chỉ dành cho độc giả');
+              }
               await Future.wait([
                 localStorageDataSource.saveTokens(
                   loginResponse.data!.accessToken,
@@ -136,13 +123,8 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
                 ),
                 localStorageDataSource.saveAccount(loginResponse.data!),
               ]);
-              print('💾 Tokens and account data saved after auto-login');
-            } else {
-              print('❌ Auto-login failed: ${loginResponse.message}');
-            }
-          } catch (e) {
-            print('❌ Auto-login error: $e');
-          }
+            } else {}
+          } catch (e) {}
         } else {
           // LƯU TOKEN VÀ ACCOUNT DATA SAU KHI ĐĂNG KÝ THÀNH CÔNG
           await Future.wait([
@@ -152,17 +134,13 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
             ),
             localStorageDataSource.saveAccount(response.data!),
           ]);
-          print('💾 Tokens and account data saved after registration');
         }
       } else {
-        print('❌ Registration failed: ${response.message}');
         throw Exception('Đăng ký thất bại: ${response.message}');
       }
 
       return response.toEntity(); //  Trả về Entity thay vì Model
     } catch (e) {
-      print(' Registration error: $e');
-
       // Xử lý lỗi cụ thể cho đăng ký
       final errorMessage = e.toString();
       if (errorMessage.contains('Email already exists') ||
@@ -188,16 +166,13 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       if (accessToken != null && accessToken.isNotEmpty) {
         try {
           await remoteDataSource.logout(accessToken);
-          print(' Logout API call successful');
         } catch (e) {
-          print(' Logout API call failed but continuing: $e');
           // Vẫn tiếp tục clear local data dù API call thất bại
         }
       }
 
       // Luôn clear local data
       await localStorageDataSource.clearAllData();
-      print('Logout completed successfully');
     } catch (e) {
       // Vẫn clear local data ngay cả khi có lỗi
       await localStorageDataSource.clearAllData();
@@ -209,7 +184,6 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   Future<bool> isLoggedIn() async {
     try {
       final isLoggedIn = await localStorageDataSource.isLoggedIn();
-      print('🔍 Login status check: $isLoggedIn');
 
       if (isLoggedIn) {
         // Kiểm tra thêm xem token có hết hạn không (nếu cần)
@@ -219,7 +193,6 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
 
       return isLoggedIn;
     } catch (e) {
-      print(' Error checking login status: $e');
       // Khi có lỗi kiểm tra, coi như chưa đăng nhập để bảo mật
       return false;
     }
@@ -233,16 +206,11 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
 
       if (accountModel != null) {
         final account = accountModel.toEntity();
-        print(
-          ' Current user loaded: ${account.email} (Role: ${account.roleId})',
-        );
         return account; // Trả về Account Entity
       } else {
-        print(' No current user found');
         return null;
       }
     } catch (e) {
-      print(' Error getting current user: $e');
       return null;
     }
   }
@@ -252,17 +220,19 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
     try {
       final refreshToken = await localStorageDataSource.getRefreshToken();
       if (refreshToken == null) {
-        print('❌ No refresh token available for refresh');
         return null;
       }
-
-      print('🔄 Starting token refresh process...');
 
       final LoginResponseModel response = await remoteDataSource.refreshToken(
         refreshToken,
       );
 
       if (response.success && response.data != null) {
+        if (response.data!.roleId != 3) {
+          await localStorageDataSource.clearAllData();
+          throw Exception('Ứng dụng này chỉ dành cho độc giả');
+        }
+
         // Kiểm tra token trước khi lưu
         if (response.data!.accessToken.isEmpty ||
             response.data!.refreshToken.isEmpty) {
@@ -274,21 +244,13 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
           response.data!.refreshToken,
         );
 
-        print('✅ Token refresh successful');
         return response.toEntity();
       } else {
-        print('❌ Token refresh failed: ${response.message}');
         await localStorageDataSource.clearAllData();
         return null;
       }
     } catch (e) {
-      print('💥 Token refresh error: $e');
-
-      if (e.toString().contains('401') || e.toString().contains('invalid')) {
-        print('🚨 Refresh token invalid, clearing local data...');
-        await localStorageDataSource.clearAllData();
-      }
-
+      await localStorageDataSource.clearAllData();
       return null;
     }
   }
@@ -299,7 +261,6 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       final token = await localStorageDataSource.getAccessToken();
       return token;
     } catch (e) {
-      print('💥 Error getting access token: $e');
       return null;
     }
   }
@@ -307,21 +268,16 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   // Helper method: Tự động refresh token khi gặp lỗi 401
   Future<bool> _handleTokenExpiration() async {
     try {
-      print('🔄 Token expired, attempting to refresh...');
-
       final refreshResponse = await refreshToken();
       if (refreshResponse != null &&
           refreshResponse.success &&
           refreshResponse.data != null) {
-        print('✅ Token refreshed successfully');
         return true;
       } else {
-        print('❌ Token refresh failed');
         await localStorageDataSource.clearAllData();
         return false;
       }
     } catch (refreshError) {
-      print('❌ Token refresh error: $refreshError');
       await localStorageDataSource.clearAllData();
       return false;
     }
@@ -354,13 +310,12 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       );
 
       await localStorageDataSource.saveAccount(accountModel);
-      print(' User profile updated successfully');
     } catch (e) {
-      print(' Error updating user profile: $e');
       throw Exception('Failed to update user profile');
     }
   }
 
+  @override
   @override
   Future<ReaderEntity> getProfile() async {
     try {
@@ -369,63 +324,27 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
         throw Exception('Không có token để lấy thông tin profile');
       }
 
-      print('👤 Getting user profile...');
+      // call lần đầu với token hiện tại
       final ReaderModel profileModel = await remoteDataSource.getProfile(
         accessToken,
       );
-
-      print('✅ Profile loaded successfully for: ${profileModel.accountId}');
-      print('📦 Profile data: ${profileModel.toJson()}');
-
       return profileModel;
     } catch (e) {
-      print('💥 Error getting profile: $e');
-
-      // Kiểm tra nếu lỗi là do token hết hạn (401)
+      // chỉ refresh nếu là lỗi hết hạn/401
       if (e.toString().contains('Token không hợp lệ hoặc đã hết hạn') ||
           e.toString().contains('401')) {
         final refreshSuccess = await _handleTokenExpiration();
         if (refreshSuccess) {
-          try {
-            final ReaderModel profileModel = await _retryWithNewToken(
-              (token) => remoteDataSource.getProfile(token),
-            );
-            print(
-              '✅ Profile loaded successfully after token refresh for: ${profileModel.accountId}',
-            );
-          } catch (retryError) {
-            print('❌ Retry getProfile failed: $retryError');
-            throw Exception(
-              'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-            );
-          }
+          final ReaderModel retried = await _retryWithNewToken(
+            (t) => remoteDataSource.getProfile(t),
+          );
+          return retried;
         } else {
           throw Exception(
             'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
           );
         }
       }
-
-      // Nếu lỗi là do thiếu dữ liệu user, thử lấy từ account data đã lưu
-      if (e.toString().contains('Dữ liệu user không tồn tại')) {
-        print('🔄 Attempting to get profile from saved account data...');
-        try {
-          final savedAccount = await localStorageDataSource.getAccount();
-          if (savedAccount != null) {
-            print('📦 Using saved account data as profile');
-            final readerFromAccount = ReaderEntity(
-              readerId: savedAccount.accountId ?? 0,
-              accountId: savedAccount.accountId ?? 0,
-              fullName: savedAccount.fullName,
-              phoneNumber: savedAccount.phoneNumber,
-            );
-            return readerFromAccount;
-          }
-        } catch (accountError) {
-          print('❌ Error getting profile from account: $accountError');
-        }
-      }
-
       throw Exception(
         'Lỗi lấy thông tin profile: ${e.toString().replaceFirst('Exception: ', '')}',
       );
@@ -439,18 +358,12 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       if (accessToken == null || accessToken.isEmpty) {
         throw Exception('Không có token để cập nhật profile');
       }
-
-      print('✏️ Updating user profile...');
       final ReaderModel updatedProfile = await remoteDataSource.updateProfile(
         accessToken,
         profileData,
       );
-
-      print('✅ Profile updated successfully for: ${updatedProfile.accountId}');
       return updatedProfile;
     } catch (e) {
-      print('💥 Error updating profile: $e');
-
       // Kiểm tra nếu lỗi là do token hết hạn (401)
       if (e.toString().contains('Token không hợp lệ hoặc đã hết hạn') ||
           e.toString().contains('401')) {
@@ -460,12 +373,8 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
             final ReaderModel updatedProfile = await _retryWithNewToken(
               (token) => remoteDataSource.updateProfile(token, profileData),
             );
-            print(
-              '✅ Profile updated successfully after token refresh for: ${updatedProfile.accountId}',
-            );
             return updatedProfile;
           } catch (retryError) {
-            print('❌ Retry updateProfile failed: $retryError');
             throw Exception(
               'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
             );
@@ -476,7 +385,6 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
           );
         }
       }
-
       throw Exception(
         'Lỗi cập nhật profile: ${e.toString().replaceFirst('Exception: ', '')}',
       );

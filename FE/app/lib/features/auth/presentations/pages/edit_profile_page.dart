@@ -17,12 +17,14 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fullNameController;
-  late TextEditingController _phoneNumberController;
   late TextEditingController _addressController;
   late TextEditingController _cccdController;
   late TextEditingController _noteController;
   DateTime? _selectedDate;
+  String _selectedGender = '';
   bool _isLoading = false;
+
+  final List<String> _genderOptions = ['Nam', 'Nữ', 'Khác'];
 
   @override
   void initState() {
@@ -33,9 +35,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void _initializeControllers() {
     _fullNameController = TextEditingController(
       text: widget.profile.fullName ?? '',
-    );
-    _phoneNumberController = TextEditingController(
-      text: widget.profile.phoneNumber ?? '',
     );
     _addressController = TextEditingController(
       text: widget.profile.address ?? '',
@@ -48,7 +47,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void dispose() {
     _fullNameController.dispose();
-    _phoneNumberController.dispose();
     _addressController.dispose();
     _cccdController.dispose();
     _noteController.dispose();
@@ -61,9 +59,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
       listener: (context, state) {
         if (state is ProfileUpdated) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cập nhật thông tin thành công!'),
+            SnackBar(
+              content: const Text('Cập nhật thông tin thành công!'),
               backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           );
           Navigator.of(context).pop(state.profile);
@@ -72,6 +74,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
             SnackBar(
               content: Text('Lỗi: ${state.message}'),
               backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           );
           setState(() {
@@ -80,169 +86,206 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
         appBar: AppBar(
-          title: const Text('Chỉnh sửa thông tin'),
-          backgroundColor: AppPalette.gradient1,
+          title: const Text(
+            'Chỉnh sửa thông tin',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0.5,
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           actions: [
-            TextButton(
-              onPressed: _isLoading ? null : _saveProfile,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            Container(
+              margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.gradient1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        'Lưu',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    )
-                  : const Text('Lưu', style: TextStyle(color: Colors.white)),
+              ),
             ),
           ],
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Profile Header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 10,
-                        offset: const Offset(0, 1),
+          child: Column(
+            children: [
+              // Profile Header
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.08),
+                      spreadRadius: 1,
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppPalette.gradient1, AppPalette.gradient2],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(35),
                       ),
-                    ],
-                  ),
-                  child: Row(
+                      child: const Icon(
+                        Icons.person_rounded,
+                        size: 32,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Thông tin độc giả',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'ID: ${widget.profile.readerId}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Form Fields
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.06),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: AppPalette.gradient1,
-                        child: const Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.white,
-                        ),
+                      _buildTextField(
+                        controller: _fullNameController,
+                        label: 'Họ và tên',
+                        icon: Icons.person_rounded,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Vui lòng nhập họ và tên';
+                          }
+                          if (value.trim().length < 2) {
+                            return 'Họ và tên phải có ít nhất 2 ký tự';
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Thông tin độc giả',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              'ID: ${widget.profile.readerId}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
+                      const SizedBox(height: 20),
+
+                      _buildGenderField(),
+                      const SizedBox(height: 20),
+
+                      _buildDateField(),
+                      const SizedBox(height: 20),
+
+                      _buildTextField(
+                        controller: _addressController,
+                        label: 'Địa chỉ',
+                        icon: Icons.location_on_rounded,
+                        maxLines: 3,
+                        validator: (value) {
+                          if (value != null && value.length > 500) {
+                            return 'Địa chỉ không được quá 500 ký tự';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      _buildTextField(
+                        controller: _cccdController,
+                        label: 'CCCD/CMND',
+                        icon: Icons.credit_card_rounded,
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            if (!RegExp(r'^[0-9]{9,12}$').hasMatch(value)) {
+                              return 'CCCD/CMND không hợp lệ';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      _buildTextField(
+                        controller: _noteController,
+                        label: 'Ghi chú',
+                        icon: Icons.note_rounded,
+                        maxLines: 3,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
-
-                // Form Fields
-                _buildTextField(
-                  controller: _fullNameController,
-                  label: 'Họ và tên',
-                  icon: Icons.person,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Vui lòng nhập họ và tên';
-                    }
-                    if (value.trim().length < 2) {
-                      return 'Họ và tên phải có ít nhất 2 ký tự';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                _buildTextField(
-                  controller: _phoneNumberController,
-                  label: 'Số điện thoại',
-                  icon: Icons.phone,
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      if (!RegExp(r'^[0-9]{10,11}$').hasMatch(value)) {
-                        return 'Số điện thoại không hợp lệ';
-                      }
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                _buildTextField(
-                  controller: _addressController,
-                  label: 'Địa chỉ',
-                  icon: Icons.location_on,
-                  maxLines: 3,
-                  validator: (value) {
-                    if (value != null && value.length > 500) {
-                      return 'Địa chỉ không được quá 500 ký tự';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                // Date of Birth
-                _buildDateField(),
-                const SizedBox(height: 20),
-
-                // CCCD Field
-                _buildTextField(
-                  controller: _cccdController,
-                  label: 'CCCD/CMND',
-                  icon: Icons.credit_card,
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      if (!RegExp(r'^[0-9]{9,12}$').hasMatch(value)) {
-                        return 'CCCD/CMND không hợp lệ';
-                      }
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // Note Field
-                _buildTextField(
-                  controller: _noteController,
-                  label: 'Ghi chú',
-                  icon: Icons.note,
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 20),
-
-                // totol Borrow (Read-only)
-                _buildInfoField(
-                  'Số sách đã mượn',
-                  '${widget.profile.totolBorrow}',
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),
@@ -265,12 +308,72 @@ class _EditProfilePageState extends State<EditProfilePage> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppPalette.gradient1),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: AppPalette.gradient1),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppPalette.gradient1, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
         ),
       ),
+    );
+  }
+
+  Widget _buildGenderField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Giới tính',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey.shade50,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedGender.isEmpty ? null : _selectedGender,
+              hint: const Text('Chọn giới tính'),
+              isExpanded: true,
+              icon: Icon(
+                Icons.keyboard_arrow_down,
+                color: AppPalette.gradient1,
+              ),
+              items: _genderOptions.map((String gender) {
+                return DropdownMenuItem<String>(
+                  value: gender,
+                  child: Text(gender),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedGender = newValue ?? '';
+                });
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -292,12 +395,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey.shade50,
             ),
             child: Row(
               children: [
-                Icon(Icons.calendar_today, color: AppPalette.gradient1),
+                Icon(Icons.calendar_today_rounded, color: AppPalette.gradient1),
                 const SizedBox(width: 12),
                 Text(
                   _selectedDate != null
@@ -306,39 +410,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   style: TextStyle(
                     fontSize: 16,
                     color: _selectedDate != null
-                        ? Colors.black
+                        ? Colors.black87
                         : Colors.grey[600],
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(value, style: const TextStyle(fontSize: 16)),
         ),
       ],
     );
@@ -368,37 +446,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
 
     try {
-      // Tạo ReaderEntity mới với dữ liệu đã cập nhật
-      final updatedProfile = widget.profile.copyWith(
-        fullName: _fullNameController.text.trim().isEmpty
+      // Tạo data theo format API yêu cầu với đầy đủ thông tin từ widget.profile
+      final profileData = {
+        'readerId': widget.profile.readerId,
+        'accountId': widget.profile.accountId,
+        'fullName': _fullNameController.text.trim().isEmpty
             ? null
             : _fullNameController.text.trim(),
-        phoneNumber: _phoneNumberController.text.trim().isEmpty
-            ? null
-            : _phoneNumberController.text.trim(),
-        address: _addressController.text.trim().isEmpty
+        'gender': _selectedGender.isEmpty ? '' : _selectedGender,
+        'dateOfBirth': _selectedDate?.toIso8601String().split('T').first ?? '',
+        'address': _addressController.text.trim().isEmpty
             ? null
             : _addressController.text.trim(),
-        dateOfBirth: _selectedDate,
-        cccd: _cccdController.text.trim().isEmpty
-            ? null
+        'cccd': _cccdController.text.trim().isEmpty
+            ? ''
             : _cccdController.text.trim(),
-        note: _noteController.text.trim().isEmpty
-            ? null
+        'note': _noteController.text.trim().isEmpty
+            ? ''
             : _noteController.text.trim(),
-        updatedAt: DateTime.now(),
-      );
+        'phoneNumber': widget.profile.phoneNumber,
+        'totolBorrow': widget.profile.totolBorrow,
+        'created_at': widget.profile.createdAt?.toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
       // Lấy access token từ AuthBloc
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthAuthenticated &&
           authState.account.accessToken != null) {
-        // Sử dụng ProfileBloc để cập nhật
         context.read<ProfileBloc>().add(
-          ProfileUpdateRequested(
-            authState.account.accessToken!,
-            updatedProfile.toJson(),
-          ),
+          ProfileUpdateRequested(authState.account.accessToken!, profileData),
         );
       } else {
         throw Exception('Không có token xác thực');
@@ -408,6 +485,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         SnackBar(
           content: Text('Lỗi: ${e.toString()}'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
       setState(() {

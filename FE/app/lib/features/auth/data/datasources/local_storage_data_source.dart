@@ -91,7 +91,6 @@ class LocalStorageDataSourceImpl implements LocalStorageDataSource {
     final isLoggedInFlag = prefs.getBool(_isLoggedInKey) ?? false;
     final result =
         accessToken != null && accessToken.isNotEmpty && isLoggedInFlag;
-    print('🔐 Is logged in: $result');
     return result;
   }
 
@@ -132,7 +131,6 @@ class LocalStorageDataSourceImpl implements LocalStorageDataSource {
       final expirationTime = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
       return DateTime.now().isAfter(expirationTime);
     } catch (e) {
-      print('❌ Error checking token expiration: $e');
       return true;
     }
   }

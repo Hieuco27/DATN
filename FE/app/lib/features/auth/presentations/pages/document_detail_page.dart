@@ -9,6 +9,8 @@ import '../bloc/auth_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/data/models/document_response_model.dart';
+import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
+import 'package:book_tech/features/auth/data/models/cart_item_model.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -505,35 +507,71 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           //   'Thể loại con',
           //   _document!.genres.map((g) => g['name'] ?? '').join(', '),
           // ),
-          const SizedBox(height: 16),
-          // Nút đăng ký mượn trước
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _document!.availableCopies > 0
-                  ? _registerBorrow
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _document!.availableCopies > 0
-                    ? Colors.orange
-                    : Colors.grey,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+          if (_document!.availableCopies > 0) ...[
+            const Text(
+              'Số lượng mượn:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
               ),
-              child: Text(
-                _document!.availableCopies > 0
-                    ? 'Đăng ký mượn trước'
-                    : 'Hết sách',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: _quantity > 1
+                      ? () => setState(() => _quantity--)
+                      : null,
+                  color: Colors.red,
+                ),
+                Container(
+                  width: 60,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$_quantity',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: _quantity < _document!.availableCopies
+                      ? () => setState(() => _quantity++)
+                      : null,
+                  color: Colors.green,
+                ),
+                const Spacer(),
+                Text(
+                  'Còn lại: ${_document!.availableCopies}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Nút đăng ký mượn trước
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _document!.availableCopies > 0 ? _addToCart : null,
+                icon: const Icon(Icons.shopping_cart_outlined),
+                label: const Text('Thêm vào giỏ hàng'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _document!.availableCopies > 0
+                      ? Colors.orange
+                      : Colors.grey,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -598,13 +636,35 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  void _registerBorrow() {
-    // TODO: Implement borrow registration
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng đăng ký mượn đang được phát triển'),
+  // Thêm state variable
+  int _quantity = 1;
+
+  void _addToCart() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    cartProvider.addItem(
+      CartItemModel(
+        documentId: _document!.documentId,
+        title: _document!.title,
+        coverPhoto: _document!.coverPhoto,
+        quantity: _quantity,
       ),
     );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã thêm $_quantity sách vào giỏ hàng'),
+        backgroundColor: Colors.green,
+        action: SnackBarAction(
+          label: 'Xem giỏ',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.pushNamed(context, '/cart');
+          },
+        ),
+      ),
+    );
+
+    setState(() => _quantity = 1);
   }
 }
 

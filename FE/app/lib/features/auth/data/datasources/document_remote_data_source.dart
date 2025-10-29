@@ -47,6 +47,10 @@ abstract class DocumentRemoteDataSource {
     int page = 1,
     int limit = 10,
   });
+  Future<Map<String, dynamic>> reserveBooks({
+    required String accessToken,
+    required List<Map<String, dynamic>> items,
+  });
 }
 
 class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
@@ -77,10 +81,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         '$baseUrl/api/documents/reader',
       ).replace(queryParameters: queryParams);
 
-      print('🌐 Fetching documents from: $uri');
-      print('📋 Query params: $queryParams');
-      print('📋 Document type filter: $documentType');
-
       final response = await http.get(
         uri,
         headers: {
@@ -89,21 +89,15 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
           'Authorization': 'Bearer $accessToken',
         },
       );
-
-      print('📡 Response status: ${response.statusCode}');
-      print('📡 Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
         // Thêm log để debug
         if (responseData is Map<String, dynamic>) {
-          print('📊 Response structure: ${responseData.keys}');
           if (responseData.containsKey('filter')) {
             print('🔍 API Filter: ${responseData['filter']}');
           }
         }
         List<dynamic> documents;
-
         // Kiểm tra xem response có phải là Map không
         if (responseData is Map<String, dynamic>) {
           // Nếu là Map, tìm key chứa array documents
@@ -127,7 +121,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
           );
         }
         // Thêm log để debug document types
-        print('📚 Total documents returned: ${documents.length}');
         for (var doc in documents) {
           print('📄 Document: ${doc['title']} - Type: ${doc['documentType']}');
         }
@@ -140,7 +133,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         );
       }
     } catch (e) {
-      print('❌ Error fetching documents: $e');
       throw Exception('Error fetching documents: $e');
     }
   }
@@ -157,9 +149,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
           'Authorization': 'Bearer $accessToken',
         },
       );
-
-      print('📡 Genres response status: ${response.statusCode}');
-      print('📡 Genres response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -181,7 +170,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
           );
         }
 
-        print('📚 Total genres returned: ${genres.length}');
         for (var genre in genres) {
           print('🎭 Genre: ${genre['name']} - ID: ${genre['genreId']}');
         }
@@ -266,34 +254,18 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         },
       );
 
-      print('📡 Search response status: ${response.statusCode}');
-      print('📡 Search response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
 
         if (responseData is Map<String, dynamic>) {
-          print('📊 Response structure: ${responseData.keys}');
-          print('📊 Success: ${responseData['success']}');
-          print('📊 Message: ${responseData['message']}');
-          print('📊 Data length: ${responseData['data']?.length ?? 0}');
-          print('📊 Filter: ${responseData['filter']}');
-
           if (responseData['success'] == true &&
               responseData.containsKey('data')) {
             final List<dynamic> documents =
                 responseData['data'] as List<dynamic>;
 
-            print('📚 Search results: ${documents.length} documents found');
-
             if (documents.isEmpty) {
-              print('⚠️ No documents found, checking filter info...');
-              if (responseData.containsKey('filter')) {
-                print('🔍 Filter info: ${responseData['filter']}');
-              }
-              if (responseData.containsKey('pagination')) {
-                print('📄 Pagination info: ${responseData['pagination']}');
-              }
+              if (responseData.containsKey('filter')) {}
+              if (responseData.containsKey('pagination')) {}
             }
             // Parse documents thành DocumentResponseModel
             final List<DocumentResponseModel> result = documents
@@ -308,7 +280,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
                 .cast<DocumentResponseModel>()
                 .toList();
 
-            print('✅ Successfully parsed ${result.length} documents');
             return result;
           } else {
             throw Exception(
@@ -316,18 +287,14 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
             );
           }
         } else {
-          print('❌ Response is not a Map: ${responseData.runtimeType}');
           throw Exception('Unexpected response format');
         }
       } else {
-        print('❌ Search failed with status: ${response.statusCode}');
-        print('❌ Error body: ${response.body}');
         throw Exception(
           'Failed to search documents: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
-      print('❌ Error searching documents: $e');
       throw Exception('Error searching documents: $e');
     }
   }
@@ -353,18 +320,12 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
       if (genreIds.isNotEmpty) {
         queryParams['genreIds'] = genreIds.join(',');
       }
-
       if (documentType != null && documentType.isNotEmpty) {
         queryParams['type'] = documentType;
       }
-
       final uri = Uri.parse(
         '$baseUrl/api/documents/reader/by-genre',
       ).replace(queryParameters: queryParams);
-
-      print('🌐 Fetching documents by genre from: $uri');
-      print('📋 Query params: $queryParams');
-
       final response = await http.get(
         uri,
         headers: {
@@ -373,20 +334,13 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
           'Authorization': 'Bearer $accessToken',
         },
       );
-
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
 
         if (responseData is Map<String, dynamic> &&
             responseData['success'] == true) {
           final List<dynamic> documents = responseData['data'] as List<dynamic>;
-
-          print('📚 Total documents returned: ${documents.length}');
-          for (var doc in documents) {
-            print(
-              '📄 Document: ${doc['title']} - Genre: ${doc['categoryName']}',
-            );
-          }
+          for (var doc in documents) {}
           return documents
               .map((item) => DocumentResponseModel.fromJson(item))
               .toList();
@@ -419,8 +373,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
           'Content-Type': 'application/json',
         },
       );
-      print('📖 Ebook response status: ${response.statusCode}');
-      print('📖 Ebook response body length: ${response.body.length}');
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -447,7 +399,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         );
       }
     } catch (e) {
-      print('❌ Error fetching ebook: $e');
       throw Exception('Error fetching ebook: $e');
     }
   }
@@ -481,9 +432,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         },
       );
 
-      print('📡 Similar documents response status: ${response.statusCode}');
-      print('📡 Similar documents response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
 
@@ -493,7 +441,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
             final List<dynamic> documents =
                 responseData['data'] as List<dynamic>;
 
-            print('📚 Similar documents found: ${documents.length}');
             return documents
                 .map((item) => DocumentResponseModel.fromJson(item))
                 .toList();
@@ -516,8 +463,32 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         );
       }
     } catch (e) {
-      print('❌ Error fetching similar documents: $e');
       throw Exception('Error fetching similar documents: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> reserveBooks({
+    required String accessToken,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/loans/reader/loans/reserve'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'items': items}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to reserve books: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error reserving books: $e');
     }
   }
 }

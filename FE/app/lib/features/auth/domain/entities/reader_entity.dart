@@ -7,6 +7,7 @@ class ReaderEntity {
   final DateTime? dateOfBirth;
   final String? cccd;
   final int? totolBorrow;
+  final String? gender;
   final String? note;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -19,6 +20,7 @@ class ReaderEntity {
     this.address,
     this.dateOfBirth,
     this.cccd,
+    this.gender,
     this.totolBorrow,
     this.note,
     this.createdAt,
@@ -37,6 +39,7 @@ class ReaderEntity {
         other.dateOfBirth == dateOfBirth &&
         other.cccd == cccd &&
         other.createdAt == createdAt &&
+        other.gender == gender &&
         other.updatedAt == updatedAt &&
         other.totolBorrow == totolBorrow &&
         other.note == note;
@@ -50,6 +53,7 @@ class ReaderEntity {
       fullName,
       phoneNumber,
       address,
+      gender,
       dateOfBirth,
       cccd,
       totolBorrow,
@@ -69,6 +73,7 @@ class ReaderEntity {
     DateTime? dateOfBirth,
     String? cccd,
     int? totolBorrow,
+    String? gender,
     String? note,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -81,6 +86,8 @@ class ReaderEntity {
       address: address ?? this.address,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       cccd: cccd ?? this.cccd,
+      gender: gender ?? this.gender,
+
       totolBorrow: totolBorrow ?? this.totolBorrow,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
@@ -99,6 +106,7 @@ class ReaderEntity {
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'cccd': cccd,
       'totolBorrow': totolBorrow,
+      'gender': gender,
       'note': note,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -107,6 +115,6 @@ class ReaderEntity {
 
   @override
   String toString() {
-    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, totolBorrow: $totolBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totolBorrow: $totolBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

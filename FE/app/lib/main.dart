@@ -20,6 +20,8 @@ import 'package:book_tech/features/auth/presentations/providers/search_provider.
 import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
+import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
+import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +72,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<DocumentProvider>(
           create: (ctx) => DocumentProvider(ctx.read<DocumentRepositoryImpl>()),
         ),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
       ],
       child: MaterialApp(
         title: 'Book Tech',
@@ -94,6 +97,7 @@ class MyApp extends StatelessWidget {
             }
             throw Exception('Document and ebookUrl are required');
           },
+          '/cart': (context) => const CartPage(),
         },
       ),
     );

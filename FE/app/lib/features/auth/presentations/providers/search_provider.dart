@@ -65,8 +65,6 @@ class SearchProvider with ChangeNotifier {
       }
     } catch (e) {
       _error = e.toString();
-      print('❌ Search error: $e');
-      print('❌ Error type: ${e.runtimeType}');
     } finally {
       _isLoading = false;
       notifyListeners();

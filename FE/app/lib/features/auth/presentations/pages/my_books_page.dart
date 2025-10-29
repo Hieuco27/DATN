@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
+import 'package:provider/provider.dart';
+import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 
 class MyBooksPage extends StatefulWidget {
   const MyBooksPage({super.key});
@@ -16,54 +18,46 @@ class _MyBooksPageState extends State<MyBooksPage> {
         title: const Text('Sách của tôi'),
         backgroundColor: AppPalette.gradient1,
         automaticallyImplyLeading: false,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Tab bar for different categories
-            DefaultTabController(
-              length: 3,
-              child: Column(
-                children: [
-                  TabBar(
-                    labelColor: AppPalette.gradient1,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: AppPalette.gradient1,
-                    tabs: const [
-                      Tab(text: 'Đang đọc'),
-                      Tab(text: 'Yêu thích'),
-                      Tab(text: 'Đã đọc'),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    child: TabBarView(
-                      children: [
-                        // Đang đọc
-                        _buildEmptyState(
-                          'Chưa có sách đang đọc',
-                          Icons.menu_book,
+        actions: [
+          Consumer<CartProvider>(
+            builder: (context, cart, _) {
+              final count = cart.totalItems;
+              return IconButton(
+                onPressed: () => Navigator.pushNamed(context, '/cart'),
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.shopping_cart_outlined, size: 26),
+                    if (count > 0)
+                      Positioned(
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        // Yêu thích
-                        _buildEmptyState(
-                          'Chưa có sách yêu thích',
-                          Icons.favorite,
-                        ),
-                        // Đã đọc
-                        _buildEmptyState(
-                          'Chưa có sách đã đọc',
-                          Icons.check_circle,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+                      ),
+                  ],
+                ),
+                tooltip: 'Giỏ hàng',
+              );
+            },
+          ),
+        ],
       ),
     );
   }

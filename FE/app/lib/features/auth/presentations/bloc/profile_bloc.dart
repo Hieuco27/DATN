@@ -3,6 +3,9 @@ import 'package:equatable/equatable.dart';
 import '../../domain/core/failure.dart';
 import '../../domain/entities/reader_entity.dart';
 import '../../domain/entities/profile_usecase.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_state.dart';
 
 // Events
 abstract class ProfileEvent extends Equatable {
@@ -13,10 +16,9 @@ abstract class ProfileEvent extends Equatable {
 }
 
 class ProfileLoadRequested extends ProfileEvent {
-  final String accessToken;
-  const ProfileLoadRequested(this.accessToken);
+  const ProfileLoadRequested();
   @override
-  List<Object?> get props => [accessToken];
+  List<Object?> get props => [];
 }
 
 class ProfileUpdateRequested extends ProfileEvent {
@@ -70,20 +72,27 @@ class ProfileError extends ProfileState {
 }
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
+  final AuthenticationRepository _authRepository;
   final GetProfileUseCase _getProfileUseCase;
   final UpdateProfileUseCase _updateProfileUseCase;
+  final AuthBloc _authBloc;
 
   ProfileBloc({
+    required AuthenticationRepository authRepository,
     required GetProfileUseCase getProfileUseCase,
     required UpdateProfileUseCase updateProfileUseCase,
-  }) : _getProfileUseCase = getProfileUseCase,
+    required AuthBloc authBloc,
+  }) : _authRepository = authRepository,
+       _getProfileUseCase = getProfileUseCase,
        _updateProfileUseCase = updateProfileUseCase,
+       _authBloc = authBloc,
        super(ProfileInitial()) {
     on<ProfileLoadRequested>(_onProfileLoadRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfileClearError>(_onProfileClearError);
   }
 
+  // Trong ProfileBloc, thay đổi:
   Future<void> _onProfileLoadRequested(
     ProfileLoadRequested event,
     Emitter<ProfileState> emit,
@@ -92,25 +101,25 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(ProfileLoading());
       print('🔄 ProfileBloc: Loading profile...');
 
-      final result = await _getProfileUseCase(event.accessToken);
-      if (result.isSuccess && result.value != null) {
-        print('✅ ProfileBloc: Profile loaded successfully');
-        print('🔍 Profile data: ${result.value}');
-        print('🔍 Full name: ${result.value!.fullName}');
-        emit(ProfileLoaded(result.value!));
+      // Lấy token từ AuthBloc
+      final authState = _authBloc.state;
+      if (authState is AuthAuthenticated &&
+          authState.account.accessToken != null) {
+        // Sử dụng ProfileUseCase với token
+        final result = await _getProfileUseCase(authState.account.accessToken!);
+        if (result.isSuccess && result.value != null) {
+          print('✅ ProfileBloc: Profile loaded successfully');
+          emit(ProfileLoaded(result.value!));
+        } else {
+          final err = result.error;
+          final message = err is Failure ? err.message : err.toString();
+          emit(ProfileError(message));
+        }
       } else {
-        final err = result.error;
-        final message = err is Failure ? err.message : err.toString();
-        print('❌ ProfileBloc: Profile load failed - $message');
-        emit(ProfileError(message));
+        emit(ProfileError('Chưa đăng nhập'));
       }
     } catch (e) {
-      print('❌ ProfileBloc: Unexpected error loading profile - $e');
-      emit(
-        ProfileError(
-          'Lỗi không xác định khi tải thông tin profile: ${e.toString()}',
-        ),
-      );
+      emit(ProfileError('Lỗi lấy profile: ${e.toString()}'));
     }
   }
 
@@ -120,7 +129,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     try {
       emit(ProfileLoading());
-      print('🔄 ProfileBloc: Updating profile with data: ${event.profileData}');
 
       DateTime? _parseDate(dynamic v) {
         if (v == null) return null;
@@ -129,12 +137,20 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         return null;
       }
 
+      // Kiểm tra nếu có đầy đủ dữ liệu từ event
+      if (event.profileData['readerId'] == null ||
+          event.profileData['accountId'] == null) {
+        throw Exception('Thiếu thông tin readerId hoặc accountId');
+      }
+
+      // Tạo ReaderEntity từ dữ liệu event (không cần lấy từ state)
       final readerEntity = ReaderEntity(
         readerId: event.profileData['readerId'],
         accountId: event.profileData['accountId'],
         fullName: event.profileData['fullName'],
         phoneNumber: event.profileData['phoneNumber'],
         address: event.profileData['address'],
+        gender: event.profileData['gender'],
         dateOfBirth: _parseDate(event.profileData['dateOfBirth']),
         cccd: event.profileData['cccd'],
         totolBorrow: event.profileData['totolBorrow'],
@@ -148,16 +164,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         readerEntity,
       );
       if (result.isSuccess && result.value != null) {
-        print('✅ ProfileBloc: Profile updated successfully');
         emit(ProfileUpdated(result.value!));
       } else {
         final err = result.error;
         final message = err is Failure ? err.message : err.toString();
-        print('❌ ProfileBloc: Profile update failed - $message');
         emit(ProfileError(message, previousState: state));
       }
     } catch (e) {
-      print('❌ ProfileBloc: Unexpected error updating profile - $e');
       emit(
         ProfileError(
           'Lỗi không xác định khi cập nhật profile: ${e.toString()}',

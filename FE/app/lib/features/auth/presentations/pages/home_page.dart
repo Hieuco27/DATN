@@ -6,6 +6,7 @@ import 'package:book_tech/features/auth/presentations/pages/main_home_page.dart'
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/my_books_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/profile_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,7 +20,7 @@ class _HomePageState extends State<HomePage> {
 
   final List<Widget> _pages = [
     const MainHomePage(),
-    const SearchPage(),
+    const GenresListPage(),
     const MyBooksPage(),
     const ProfilePage(),
   ];

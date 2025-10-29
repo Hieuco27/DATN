@@ -78,7 +78,7 @@ class _MainHomePageState extends State<MainHomePage> {
       SnackBar(
         content: Text('Tìm kiếm: "$query"'),
         duration: const Duration(seconds: 2),
-        backgroundColor: const Color.fromARGB(255, 34, 133, 225),
+        backgroundColor: const Color.fromARGB(255, 106, 106, 106),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),

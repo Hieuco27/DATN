@@ -40,12 +40,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final result = await _loginUseCase(
         LoginParams(email: event.email.trim(), password: event.password),
       );
-
       if (result.isSuccess && result.value != null) {
         final response = result.value!;
         if (response.success && response.data != null) {
-          emit(AuthAuthenticated(account: response.data!));
+          // ✅ KIỂM TRA ROLEID TRƯỚC KHI XỬ LÝ
+          if (response.data!.roleId == 3) {
+            print(
+              '✅ [AuthBloc] RoleId check passed, user is a reader. Allowing login.',
+            );
+            emit(AuthAuthenticated(account: response.data!));
+          } else {
+            print(
+              '❌ [AuthBloc] RoleId check failed (roleId=${response.data!.roleId}). User is not a reader. Blocking login.',
+            );
+            emit(AuthError(message: "Ứng dụng này chỉ dành cho độc giả"));
+          }
         } else {
+          print('❌ [AuthBloc] Response failed or data is null');
           emit(AuthError(message: response.message));
         }
       } else {
@@ -102,7 +113,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       print('Logout error: $e');
     }
-
     // Luôn chuyển về unauthenticated ngay
     emit(const AuthUnauthenticated());
   }
@@ -116,7 +126,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await _authRepository.refreshToken();
 
       if (response != null && response.success && response.data != null) {
-        emit(AuthAuthenticated(account: response.data!));
+        // ✅ KIỂM TRA ROLEID KHI REFRESH TOKEN
+        if (response.data!.roleId == 3) {
+          emit(AuthAuthenticated(account: response.data!));
+        } else {
+          print(
+            '❌ [AuthBloc] Token refresh for non-reader (roleId=${response.data!.roleId}). Clearing data.',
+          );
+          await _authRepository.logout();
+          emit(const AuthUnauthenticated());
+        }
       } else {
         emit(const AuthUnauthenticated());
       }
@@ -136,7 +155,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (isLoggedIn) {
         final account = await _authRepository.getCurrentUser();
         if (account != null) {
-          emit(AuthAuthenticated(account: account));
+          // ✅ KIỂM TRA ROLEID KHI CHECK LOGIN STATUS
+          if (account.roleId == 3) {
+            emit(AuthAuthenticated(account: account));
+          } else {
+            print(
+              '❌ [AuthBloc] Saved user is not a reader (roleId=${account.roleId}). Clearing data.',
+            );
+            await _authRepository.logout(); // Clear data của non-reader
+            emit(const AuthUnauthenticated());
+          }
         } else {
           emit(const AuthUnauthenticated());
         }

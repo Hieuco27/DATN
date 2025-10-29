@@ -92,7 +92,12 @@ class _SearchPageState extends State<SearchPage> {
                       vertical: 12,
                     ),
                   ),
-                  style: const TextStyle(fontSize: 16),
+
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black,
+                  ), // màu chữ nhập
+                  cursorColor: Colors.black, // màu con trỏ (tùy chọn)
                 ),
               ),
             ),
@@ -120,11 +125,18 @@ class _SearchPageState extends State<SearchPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: const Color.fromARGB(255, 0, 0, 0),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Lỗi tìm kiếm',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: const Color.fromARGB(255, 0, 0, 0),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
