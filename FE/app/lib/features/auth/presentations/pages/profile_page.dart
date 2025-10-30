@@ -15,6 +15,7 @@ import 'package:book_tech/features/auth/domain/repositories/auth_repository.dart
 import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
 import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
+import 'package:book_tech/features/auth/presentations/pages/borrow_history_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -132,7 +133,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             appBar: AppBar(
               title: const Text(
                 'Tài khoản',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: Colors.black,
+                ),
               ),
               backgroundColor: Colors.white,
               elevation: 0.5,
@@ -150,7 +155,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     const SizedBox(height: 16),
                     // Menu Items
                     _buildMenuItems(),
-                    const SizedBox(height: 16), // Thêm padding bottom
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -356,7 +361,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
-  // Thay thế dòng 339-416
   Widget _buildMenuItems() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -384,6 +388,12 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                 title: 'Chỉnh sửa thông tin',
                 isFirst: true,
                 onTap: _navigateToEditProfile,
+              ),
+              _buildMenuItem(
+                icon: Icons.history_rounded,
+                title: 'Lịch sử mượn sách',
+                isFirst: true,
+                onTap: _navigateToBorrowHistory,
               ),
               _buildDivider(),
               _buildMenuItem(
@@ -685,5 +695,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         ),
       );
     });
+  }
+
+  void _navigateToBorrowHistory() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const BorrowHistoryPage()));
   }
 }

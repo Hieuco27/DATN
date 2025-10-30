@@ -488,6 +488,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ),
           _buildDetailRow('Thể loại', _document!.category['name'] ?? ''),
           _buildDetailRow('Ngôn ngữ', _document!.language ?? ''),
+          if (_document!.minDeposit != null && _document!.maxDeposit != null)
+            _buildDetailRow(
+              'Tiền cọc',
+              '${_formatCurrency(_document!.minDeposit!)} - ${_formatCurrency(_document!.maxDeposit!)}',
+            ),
           // _buildDetailRow(
           //   'Giá bìa',
           //   '${_document!.coverPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VNĐ',
@@ -647,6 +652,8 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         title: _document!.title,
         coverPhoto: _document!.coverPhoto,
         quantity: _quantity,
+        minDeposit: _document!.minDeposit,
+        maxDeposit: _document!.maxDeposit,
       ),
     );
 
@@ -666,6 +673,10 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
     setState(() => _quantity = 1);
   }
+}
+
+String _formatCurrency(int amount) {
+  return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} đ';
 }
 
 extension on Map<String, dynamic> {

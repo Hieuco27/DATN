@@ -11,12 +11,23 @@ class MyBooksPage extends StatefulWidget {
 }
 
 class _MyBooksPageState extends State<MyBooksPage> {
+  int _selectedTabIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Sách của tôi'),
-        backgroundColor: AppPalette.gradient1,
+        title: const Text(
+          'Thư viện',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         automaticallyImplyLeading: false,
         actions: [
           Consumer<CartProvider>(
@@ -56,6 +67,88 @@ class _MyBooksPageState extends State<MyBooksPage> {
                 tooltip: 'Giỏ hàng',
               );
             },
+          ),
+        ],
+      ),
+      body: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: _selectedTabIndex == 0
+                    ? Colors.red
+                    : const Color.fromARGB(0, 0, 0, 0),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Text(
+                'Đang đọc',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _selectedTabIndex == 0
+                      ? Colors.white
+                      : const Color.fromARGB(255, 0, 0, 0),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTabIndex = 1;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _selectedTabIndex == 1
+                      ? Colors.red
+                      : const Color.fromARGB(0, 0, 0, 0),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  'Muốn đọc',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _selectedTabIndex == 1
+                        ? Colors.white
+                        : const Color.fromARGB(255, 0, 0, 0),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTabIndex = 2;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _selectedTabIndex == 2
+                      ? Colors.red
+                      : const Color.fromARGB(0, 0, 0, 0),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  'Đã đọc',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _selectedTabIndex == 2
+                        ? Colors.white
+                        : const Color.fromARGB(255, 0, 0, 0),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -9,13 +9,12 @@ class DocumentDetailModel {
   final int publicationYear;
   final int coverPrice;
   final String description;
+  final String? shelfLocation;
   final String coverPhoto;
   final String? ebookUrl;
   final int numberOfCopy;
-  final int totalCopies;
-  final int availableCopies;
 
-  // Simplified fields to avoid circular dependency
+  // đối tượng map
   final Map<String, dynamic> category;
   final Map<String, dynamic> publisher;
   final Map<String, dynamic>? book;
@@ -24,6 +23,14 @@ class DocumentDetailModel {
   final List<Map<String, dynamic>> authors;
   final List<Map<String, dynamic>> genres;
   final List<Map<String, dynamic>> copies;
+
+  final int totalCopies;
+  final int availableCopies;
+  final int availableCopiesEffective;
+
+  // deposit (flatten)
+  final int? minDeposit;
+  final int? maxDeposit;
 
   DocumentDetailModel({
     required this.documentId,
@@ -46,30 +53,47 @@ class DocumentDetailModel {
     required this.copies,
     required this.totalCopies,
     required this.availableCopies,
+    required this.availableCopiesEffective,
+    this.minDeposit,
+    this.maxDeposit,
+    this.shelfLocation,
   });
 
   factory DocumentDetailModel.fromJson(Map<String, dynamic> json) {
+    final deposit = json['deposit'] as Map<String, dynamic>?;
+
     return DocumentDetailModel(
-      documentId: json['documentId'],
-      documentType: json['documentType'],
-      title: json['title'],
-      language: json['language'],
-      publicationYear: json['publicationYear'],
-      coverPrice: json['coverPrice'],
-      description: json['description'],
-      coverPhoto: json['coverPhoto'],
-      ebookUrl: json['ebookUrl'],
-      numberOfCopy: json['numberOfCopy'],
-      category: json['category'] as Map<String, dynamic>,
-      publisher: json['publisher'] as Map<String, dynamic>,
+      documentId: json['documentId'] as int,
+      documentType: json['documentType'] as String,
+      title: json['title'] as String,
+      language: json['language'] as String,
+      publicationYear: json['publicationYear'] as int,
+      coverPrice: (json['coverPrice'] ?? 0) as int,
+      description: json['description'] as String,
+      coverPhoto: json['coverPhoto'] as String,
+      ebookUrl: json['ebookUrl'] as String?,
+      shelfLocation: json['shelfLocation'] as String?,
+      numberOfCopy: (json['numberOfCopy'] ?? json['totalCopies']) as int,
+      category: (json['category'] ?? const {}) as Map<String, dynamic>,
+      publisher: (json['publisher'] ?? const {}) as Map<String, dynamic>,
       book: json['book'] as Map<String, dynamic>?,
       magazine: json['magazine'] as Map<String, dynamic>?,
       newspaper: json['newspaper'] as Map<String, dynamic>?,
-      authors: (json['authors'] as List).cast<Map<String, dynamic>>(),
-      genres: (json['genres'] as List).cast<Map<String, dynamic>>(),
-      copies: (json['copies'] as List).cast<Map<String, dynamic>>(),
-      totalCopies: json['totalCopies'],
-      availableCopies: json['availableCopies'],
+      authors: ((json['authors'] as List?) ?? const [])
+          .map((e) => (e as Map).cast<String, dynamic>())
+          .toList(),
+      genres: ((json['genres'] as List?) ?? const [])
+          .map((e) => (e as Map).cast<String, dynamic>())
+          .toList(),
+      copies: ((json['copies'] as List?) ?? const [])
+          .map((e) => (e as Map).cast<String, dynamic>())
+          .toList(),
+      totalCopies: json['totalCopies'] as int,
+      availableCopies: json['availableCopies'] as int,
+      availableCopiesEffective:
+          (json['availableCopiesEffective'] ?? json['availableCopies']) as int,
+      minDeposit: deposit?['minDeposit'] as int?,
+      maxDeposit: deposit?['maxDeposit'] as int?,
     );
   }
 

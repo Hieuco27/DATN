@@ -46,8 +46,8 @@ class _HomePageState extends State<HomePage> {
             title: 'Thư viện',
           ), // Thay đổi icon và title
           TabItem(
-            icon: Icons.settings,
-            title: 'Cài đặt',
+            icon: Icons.person,
+            title: 'Tài khoản',
           ), // Thay đổi icon và title
         ],
         initialActiveIndex: 0,
