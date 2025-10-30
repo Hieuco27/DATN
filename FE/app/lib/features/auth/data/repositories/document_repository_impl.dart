@@ -15,7 +15,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
   // get all documents for reader
   @override
   Future<List<DocumentEntity>> getDocumentsForReader({
-    required String accessToken, // Thêm parameter này
+    required String accessToken, 
     int page = 1,
     int limit = 20,
     String? categoryName,
@@ -23,7 +23,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }) async {
     try {
       final documents = await remoteDataSource.getDocumentsForReader(
-        accessToken: accessToken, // Truyền token
+        accessToken: accessToken,   
         page: page,
         limit: limit,
         categoryName: categoryName,
@@ -39,12 +39,12 @@ class DocumentRepositoryImpl implements DocumentRepository {
   // get documents by category
   @override
   Future<Map<GenreEntity, List<DocumentEntity>>> getDocumentsByCategory({
-    required String accessToken, // Thêm parameter này
+    required String accessToken, 
   }) async {
     try {
       // Lấy tất cả documents
       final documents = await remoteDataSource.getDocumentsForReader(
-        accessToken: accessToken, // Truyền token
+        accessToken: accessToken, 
         limit: 100,
       );
 

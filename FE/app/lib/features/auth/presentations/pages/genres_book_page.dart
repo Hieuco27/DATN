@@ -52,7 +52,6 @@ class _GenreBooksPageState extends State<GenreBooksPage> {
         limit: 100,
       );
 
-      // Thành:
       if (widget.genreId != null) {
         _documents = await documentProvider.getDocumentsByGenre(
           accessToken: accessToken,
@@ -60,7 +59,6 @@ class _GenreBooksPageState extends State<GenreBooksPage> {
           limit: 100,
         );
       } else {
-        // Nếu là "Tất cả", lấy tất cả documents
         _documents = await documentProvider.getDocumentsForReader(
           accessToken: accessToken,
           limit: 100,

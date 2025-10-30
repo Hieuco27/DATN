@@ -16,6 +16,7 @@ import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.d
 import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
 import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
 import 'package:book_tech/features/auth/presentations/pages/borrow_history_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/profile_detail_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -143,6 +144,25 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               elevation: 0.5,
               automaticallyImplyLeading: false,
               centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.notifications_none_rounded,
+                    color: Colors.black87,
+                  ),
+                  tooltip: 'Thông báo',
+                  onPressed: _openNotifications,
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.settings_outlined,
+                    color: Colors.black87,
+                  ),
+                  tooltip: 'Cài đặt',
+                  onPressed: _openSettings,
+                ),
+                const SizedBox(width: 4),
+              ],
             ),
             // Thay thế dòng 137-149
             body: SafeArea(
@@ -255,16 +275,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             userName = authState.account.fullName ?? userName;
             userPhoneNumber = authState.account.phoneNumber;
           }
-
           if (state is ProfileLoaded) {
             userName = state.profile.fullName?.isNotEmpty == true
                 ? state.profile.fullName!
                 : (state.profile.phoneNumber?.isNotEmpty == true
                       ? 'User ${state.profile.phoneNumber}'
                       : 'Người dùng');
-            userEmail = state.profile.phoneNumber?.isNotEmpty == true
-                ? state.profile.phoneNumber!
-                : userEmail;
+            // userEmail = state.profile.phoneNumber?.isNotEmpty == true
+            //     ? state.profile.phoneNumber!
+            //     : userEmail;
             // userPhoneNumber = state.profile.phoneNumber ?? userPhoneNumber;
           } else if (state is ProfileUpdated) {
             userName = state.profile.fullName?.isNotEmpty == true
@@ -277,84 +296,109 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                 : userEmail;
             userPhoneNumber = state.profile.phoneNumber ?? userPhoneNumber;
           }
-          // Thay thế dòng 266-333
-          return Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppPalette.gradient1, AppPalette.gradient2],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          // Navigate to profile detail page
+          return InkWell(
+            onTap: () {
+              if (state is ProfileLoaded) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProfileDetailPage(profile: state.profile),
                   ),
-                  borderRadius: BorderRadius.circular(35),
+                );
+              } else if (state is ProfileUpdated) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProfileDetailPage(profile: state.profile),
+                  ),
+                );
+              }
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppPalette.gradient1, AppPalette.gradient2],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(35),
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    size: 32,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.person_rounded,
-                  size: 32,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                // Đảm bảo có Expanded
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                const SizedBox(width: 16),
+                Expanded(
+                  // Đảm bảo có Expanded
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis, // Đã có
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis, // Đã có
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      userEmail,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis, // Đã có
-                    ),
-                    Text(
-                      userPhoneNumber,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis, // Đã có
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppPalette.gradient1.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Độc giả',
+                      const SizedBox(height: 8),
+                      Text(
+                        'Xem hồ sơ >',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: AppPalette.gradient1,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          color: const Color.fromARGB(255, 120, 120, 120),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                  ],
+
+                      // Text(
+                      //   userEmail,
+                      //   style: TextStyle(
+                      //     fontSize: 14,
+                      //     color: Colors.grey.shade600,
+                      //   ),
+                      //   maxLines: 1,
+                      //   overflow: TextOverflow.ellipsis, // Đã có
+                      // ),
+                      // Text(
+                      //   userPhoneNumber,
+                      //   style: TextStyle(
+                      //     fontSize: 14,
+                      //     color: Colors.grey.shade600,
+                      //   ),
+                      //   maxLines: 1,
+                      //   overflow: TextOverflow.ellipsis, // Đã có
+                      // ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        // decoration: BoxDecoration(
+                        //   color: AppPalette.gradient1.withOpacity(0.1),
+                        //   borderRadius: BorderRadius.circular(12),
+                        // ),
+                        // child: Text(
+                        //   'Độc giả',
+                        //   style: TextStyle(
+                        //     fontSize: 12,
+                        //     color: AppPalette.gradient1,
+                        //     fontWeight: FontWeight.w500,
+                        //   ),
+                        // ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -550,6 +594,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -701,5 +746,25 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const BorrowHistoryPage()));
+  }
+
+  void _openNotifications() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Tính năng Thông báo đang phát triển'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  void _openSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Tính năng Cài đặt đang phát triển'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 }

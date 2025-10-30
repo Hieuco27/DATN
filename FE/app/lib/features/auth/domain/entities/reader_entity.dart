@@ -9,6 +9,7 @@ class ReaderEntity {
   final int? totolBorrow;
   final String? gender;
   final String? note;
+  final String? email;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -18,6 +19,7 @@ class ReaderEntity {
     this.fullName,
     this.phoneNumber,
     this.address,
+    this.email,
     this.dateOfBirth,
     this.cccd,
     this.gender,
@@ -42,7 +44,8 @@ class ReaderEntity {
         other.gender == gender &&
         other.updatedAt == updatedAt &&
         other.totolBorrow == totolBorrow &&
-        other.note == note;
+        other.note == note &&
+        other.email == email;
   }
 
   @override
@@ -60,6 +63,7 @@ class ReaderEntity {
       note,
       createdAt,
       updatedAt,
+      email,
     );
   }
 
@@ -77,6 +81,7 @@ class ReaderEntity {
     String? note,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? email,
   }) {
     return ReaderEntity(
       readerId: readerId ?? this.readerId,
@@ -92,6 +97,7 @@ class ReaderEntity {
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      email: email ?? this.email,
     );
   }
 
@@ -110,11 +116,12 @@ class ReaderEntity {
       'note': note,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'email': email,
     };
   }
 
   @override
   String toString() {
-    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totolBorrow: $totolBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totolBorrow: $totolBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt, email: $email)';
   }
 }

@@ -1,4 +1,5 @@
 import '../../domain/entities/reader_entity.dart';
+import 'account_model.dart';
 
 class ReaderModel extends ReaderEntity {
   const ReaderModel({
@@ -14,6 +15,7 @@ class ReaderModel extends ReaderEntity {
     super.note,
     super.createdAt,
     super.updatedAt,
+    super.email,
   });
 
   // factory ReaderModel.fromJson(Map<String, dynamic> json) {
@@ -39,8 +41,6 @@ class ReaderModel extends ReaderEntity {
   //   );
   // }
   factory ReaderModel.fromJson(Map<String, dynamic> json) {
-    print('🔍 ReaderModel.fromJson input: $json');
-
     // json ở đây chính là data['reader'] từ API
     final reader = json; // json chính là reader data
     final account = json['account'] as Map<String, dynamic>? ?? {};
@@ -67,6 +67,7 @@ class ReaderModel extends ReaderEntity {
       updatedAt: reader['updated_at'] != null
           ? DateTime.tryParse(reader['updated_at'])
           : null,
+      email: account['email'] as String?,
     );
   }
 

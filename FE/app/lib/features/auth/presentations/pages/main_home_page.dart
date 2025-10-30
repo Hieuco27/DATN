@@ -5,7 +5,6 @@ import 'package:book_tech/features/auth/presentations/pages/genres_book_page.dar
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
-import 'package:book_tech/features/auth/data/models/appbanner.dart';
 import 'package:book_tech/features/auth/presentations/widgets/home/page_indicator.dart';
 import 'package:book_tech/features/auth/presentations/widgets/home/new_navigation.dart'
     as new_navigation;
@@ -14,6 +13,7 @@ import '../providers/document_provider.dart';
 import '../pages/search_page.dart';
 import '../widgets/document/genre_section.dart';
 import '../bloc/auth_bloc.dart';
+import '../widgets/home/book_quote_box.dart';
 
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
@@ -40,7 +40,6 @@ class _MainHomePageState extends State<MainHomePage> {
   void initState() {
     super.initState();
     _bannerPageController = PageController(viewportFraction: 0.8);
-    _startAutoScroll();
 
     // Listen to focus changes
     _searchFocusNode.addListener(() {
@@ -53,20 +52,6 @@ class _MainHomePageState extends State<MainHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final docProvider = Provider.of<DocumentProvider>(context, listen: false);
       docProvider.loadGenres(context); // Load genres trước
-    });
-  }
-
-  void _startAutoScroll() {
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_bannerPageController.hasClients) {
-        int nextPage =
-            (_currentBannerIndex + 1) % AppBanner.appBannerList.length;
-        _bannerPageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
     });
   }
 
@@ -285,8 +270,6 @@ class _MainHomePageState extends State<MainHomePage> {
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  const SizedBox(height: 30),
-
                   // Thay thế phần Consumer<DocumentProvider> bằng:
                   Consumer<DocumentProvider>(
                     builder: (context, documentProvider, child) {
@@ -296,6 +279,7 @@ class _MainHomePageState extends State<MainHomePage> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          BookQuoteBox(),
                           // Hiển thị từng genre với danh sách sách
                           ...documentProvider.genres.map((genre) {
                             return GenreSectionWidget(

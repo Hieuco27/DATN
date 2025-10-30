@@ -19,6 +19,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }) : _client = client,
        _baseUrl = baseUrl;
 
+  // Lấy thông tin của độc giả
   @override
   Future<ReaderEntity> getProfile(String accessToken) async {
     final res = await _client.get(
@@ -49,12 +50,13 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
         throw Exception('Invalid response format');
       }
 
-      return ReaderModel.fromJson(profileData); // ✅ Return thay vì throw
+      return ReaderModel.fromJson(profileData);
     }
 
     throw Exception('Lỗi lấy profile: HTTP ${res.statusCode}');
   }
 
+  // Cap nhat 1 số thong tin của độc giảgiả
   @override
   Future<ReaderEntity> updateProfile(
     String accessToken,

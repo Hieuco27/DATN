@@ -30,7 +30,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: ConvexAppBar(
-        backgroundColor: Colors.white, // Nền trắng
+        backgroundColor: Colors.white,
         color: Colors.grey, // Màu xám cho tab không active
         activeColor: Colors.red, // Màu đỏ cho tab active
         style: TabStyle.react,
@@ -45,10 +45,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.library_books,
             title: 'Thư viện',
           ), // Thay đổi icon và title
-          TabItem(
-            icon: Icons.person,
-            title: 'Tài khoản',
-          ), // Thay đổi icon và title
+          TabItem(icon: Icons.person, title: 'Tôi'), // Thay đổi icon và title
         ],
         initialActiveIndex: 0,
         onTap: (int index) {

@@ -241,10 +241,7 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         '$baseUrl/api/documents/reader/search',
       ).replace(queryParameters: queryParams);
 
-      print('🔍 Searching documents: $uri');
-      print('📋 Original query: "$query"');
-      print('📋 Encoded query: "$encodedQuery"');
-
+    
       final response = await http.get(
         uri,
         headers: {

@@ -40,6 +40,7 @@ class CategoryModel extends CategoryEntity {
     super.updatedAt,
   });
 
+
   factory CategoryModel.fromJson(Map<String, dynamic> json) => CategoryModel(
         categoryId: _toInt(json['categoryId']) ?? 0,
         name: json['name'] ?? '',
