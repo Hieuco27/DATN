@@ -11,12 +11,12 @@ import 'package:book_tech/features/auth/presentations/pages/edit_profile_page.da
 import 'package:book_tech/features/auth/domain/entities/profile_usecase.dart';
 import 'package:book_tech/features/auth/data/repositories/profile_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/profile_remote_datasource.dart';
-import 'package:book_tech/features/auth/domain/repositories/auth_repository.dart';
 import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
 import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
 import 'package:book_tech/features/auth/presentations/pages/borrow_history_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/profile_detail_page.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -69,30 +69,9 @@ class _ProfilePageState extends State<ProfilePage> {
       child: BlocListener<ProfileBloc, ProfileState>(
         listener: (context, state) {
           if (state is ProfileError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Lỗi: ${state.message}'),
-                backgroundColor: Colors.red,
-                action: SnackBarAction(
-                  label: 'Thử lại',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    final authState = context.read<AuthBloc>().state;
-                    if (authState is AuthAuthenticated &&
-                        authState.account.accessToken != null &&
-                        authState.account.accessToken!.isNotEmpty) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (context.read<ProfileBloc>().state
-                            is ProfileInitial) {
-                          context.read<ProfileBloc>().add(
-                            ProfileLoadRequested(),
-                          );
-                        }
-                      });
-                    }
-                  },
-                ),
-              ),
+            NotificationService.showError(
+              context,
+              message: 'Lỗi: ${state.message}',
             );
           }
         },
@@ -578,13 +557,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             }
           });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Vui lòng đợi tải thông tin profile'),
-          backgroundColor: Colors.orange.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      NotificationService.showInfo(
+        context,
+        message: 'Vui lòng đợi tải thông tin profile',
       );
     }
   }
@@ -731,13 +706,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         Navigator.of(context, rootNavigator: true).pop();
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Đăng xuất thành công!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      NotificationService.showSuccess(
+        context,
+        message: 'Đăng xuất thành công!',
       );
     });
   }
@@ -749,22 +720,16 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   }
 
   void _openNotifications() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tính năng Thông báo đang phát triển'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+    NotificationService.showInfo(
+      context,
+      message: 'Tính năng Thông báo đang phát triển',
     );
   }
 
   void _openSettings() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tính năng Cài đặt đang phát triển'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+    NotificationService.showInfo(
+      context,
+      message: 'Tính năng Cài đặt đang phát triển',
     );
   }
 }

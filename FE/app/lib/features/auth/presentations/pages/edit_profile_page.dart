@@ -5,6 +5,7 @@ import '../bloc/auth_state.dart';
 import '../bloc/auth_bloc.dart';
 import '../../domain/entities/reader_entity.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class EditProfilePage extends StatefulWidget {
   final ReaderEntity profile;
@@ -69,9 +70,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           // Hiển thị lỗi sau 1 frame, tránh setState/context trên widget đã unmount
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Lỗi: ${state.message}')));
+              NotificationService.showError(context, message: 'Lỗi: ${state.message}');
             }
           });
         }
@@ -485,14 +484,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         throw Exception('Không có token xác thực');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+      NotificationService.showError(context, message: 'Lỗi: ${e.toString()}');
       setState(() {
         _isLoading = false;
       });

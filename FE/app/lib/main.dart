@@ -11,7 +11,7 @@ import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
 import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
 import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:book_tech/features/auth/presentations/pages/main_home_page.dart';
+//
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/data/datasources/document_remote_data_source.dart';
 import 'package:book_tech/features/auth/data/repositories/document_repository_impl.dart';
@@ -22,6 +22,8 @@ import 'package:book_tech/features/auth/presentations/pages/document_detail_page
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
+import 'package:book_tech/core/navigation/detail_route.dart';
+import 'package:animations/animations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,29 +77,49 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'Book Tech',
         theme: AppTheme.darkThemeMode,
         home: const AuthWrapper(),
-        routes: {
-          '/document-detail': (context) {
-            final args = ModalRoute.of(context)!.settings.arguments;
-            if (args is int) {
-              return DocumentDetailPage(documentId: args);
-            }
-            throw Exception('Document ID is required');
-          },
-          '/search': (context) => const SearchPage(),
-          '/ebook-reader': (context) {
-            final args = ModalRoute.of(context)!.settings.arguments;
-            if (args is Map<String, dynamic>) {
-              return EbookReaderPage(
-                document: args['document'],
-                ebookUrl: args['ebookUrl'],
+        onGenerateRoute: (settings) {
+          switch (settings.name) {
+            case '/document-detail':
+              {
+                final args = settings.arguments;
+                if (args is int) {
+                  return buildSharedAxisDetailRoute(
+                    page: DocumentDetailPage(documentId: args),
+                    type: SharedAxisTransitionType.horizontal,
+                  );
+                }
+                throw Exception('Document ID is required');
+              }
+            case '/search':
+              return buildSharedAxisDetailRoute(
+                page: const SearchPage(),
+                type: SharedAxisTransitionType.scaled,
               );
-            }
-            throw Exception('Document and ebookUrl are required');
-          },
-          '/cart': (context) => const CartPage(),
+            case '/ebook-reader':
+              {
+                final args = settings.arguments;
+                if (args is Map<String, dynamic>) {
+                  return buildSharedAxisDetailRoute(
+                    page: EbookReaderPage(
+                      document: args['document'],
+                      ebookUrl: args['ebookUrl'],
+                    ),
+                    type: SharedAxisTransitionType.vertical,
+                  );
+                }
+                throw Exception('Document and ebookUrl are required');
+              }
+            case '/cart':
+              return buildSharedAxisDetailRoute(
+                page: const CartPage(),
+                type: SharedAxisTransitionType.scaled,
+              );
+          }
+          return null;
         },
       ),
     );

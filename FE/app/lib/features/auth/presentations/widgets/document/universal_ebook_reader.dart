@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-// import 'package:pdfx/pdfx.dart'; // ❌ Xóa import này
-import 'package:flutter_html/flutter_html.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:book_tech/core/services/ebook_reader_service.dart';
 import 'package:book_tech/features/auth/data/models/ebook_model.dart';
@@ -35,6 +33,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   String? _localFilePath;
   // ✅ Sử dụng PdfViewerController từ Syncfusion
   PdfViewerController? _pdfController;
+  // ✅ Thêm WebViewController để tránh reload
+  WebViewController? _webViewController;
 
   // New state variables
   EbookSettings _settings = EbookSettings();
@@ -109,12 +109,13 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           _pdfController = PdfViewerController();
           break;
         case EbookFormat.html:
-          // HTML sẽ được load trực tiếp trong WebView
-          break;
         case EbookFormat.epub:
         case EbookFormat.mobi:
         case EbookFormat.txt:
-          // Fallback to WebView for unsupported formats
+          // ✅ Khởi tạo WebViewController một lần
+          _webViewController = WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..loadRequest(Uri.parse(widget.ebookUrl));
           break;
         default:
           throw Exception('Unsupported format: $_detectedFormat');
@@ -183,19 +184,18 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildReaderWidget() {
-    if (_showTableOfContents) {
-      return _buildTableOfContents();
-    }
-
-    if (_showHighlights) {
-      return _buildHighlightsPanel();
-    }
-
-    return _buildMainReader();
+    return Stack(
+      children: [
+        _buildMainReader(),
+        if (_showTableOfContents) _buildTableOfContentsOverlay(),
+        if (_showHighlights) _buildHighlightsOverlay(),
+      ],
+    );
   }
 
-  Widget _buildTableOfContents() {
+  Widget _buildTableOfContentsOverlay() {
     return Scaffold(
+      backgroundColor: Colors.black54,
       appBar: AppBar(
         title: const Text('Mục lục'),
         leading: IconButton(
@@ -207,14 +207,16 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
         chapters: _chapters,
         currentPage: _currentPage,
         onChapterSelected: (chapter) {
+          setState(() => _showTableOfContents = false);
           _navigateToPage(chapter.pageNumber);
         },
       ),
     );
   }
 
-  Widget _buildHighlightsPanel() {
+  Widget _buildHighlightsOverlay() {
     return Scaffold(
+      backgroundColor: Colors.black54,
       appBar: AppBar(
         title: const Text('Đánh dấu'),
         leading: IconButton(
@@ -225,6 +227,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       body: EbookHighlightsPanel(
         highlights: _highlights,
         onHighlightTap: (highlight) {
+          setState(() => _showHighlights = false);
           _navigateToPage(highlight.pageNumber);
         },
         onDeleteHighlight: (highlightId) async {
@@ -278,22 +281,18 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   Widget _buildHtmlReader() {
     return Container(
       color: _getBackgroundColor(),
-      child: WebViewWidget(
-        controller: WebViewController()
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..loadRequest(Uri.parse(widget.ebookUrl)),
-      ),
+      child: _webViewController != null
+          ? WebViewWidget(controller: _webViewController!)
+          : const SizedBox.shrink(),
     );
   }
 
   Widget _buildWebViewReader() {
     return Container(
       color: _getBackgroundColor(),
-      child: WebViewWidget(
-        controller: WebViewController()
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..loadRequest(Uri.parse(widget.ebookUrl)),
-      ),
+      child: _webViewController != null
+          ? WebViewWidget(controller: _webViewController!)
+          : const SizedBox.shrink(),
     );
   }
 
@@ -305,17 +304,6 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       case 'light':
       default:
         return Colors.white;
-    }
-  }
-
-  // ✅ Thêm method để lấy màu text theo theme
-  Color _getTextColor() {
-    switch (_settings.theme) {
-      case 'dark':
-        return Colors.white;
-      case 'light':
-      default:
-        return Colors.black;
     }
   }
 
@@ -414,20 +402,6 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     }
     setState(() {
       _currentPage = pageNumber;
-    });
-  }
-
-  void _addHighlight(String text, int pageNumber) {
-    final highlight = EbookHighlight(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      text: text,
-      pageNumber: pageNumber,
-      createdAt: DateTime.now(),
-    );
-
-    EbookSettingsService.saveHighlight(widget.title, highlight);
-    setState(() {
-      _highlights.add(highlight);
     });
   }
 }

@@ -4,7 +4,8 @@ import '../providers/cart_provider.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 import '../../domain/repositories/document_repository.dart';
-import '../../data/models/cart_item_model.dart';
+// removed unused model import
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -25,17 +26,11 @@ class _CartPageState extends State<CartPage> {
         .toList();
 
     if (selected.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn sách (tối đa 3) để đăng ký.'),
-        ),
-      );
+      NotificationService.showInfo(context, message: 'Vui lòng chọn sách (tối đa 3) để đăng ký.');
       return;
     }
     if (selected.length > 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chỉ được chọn tối đa 3 sách.')),
-      );
+      NotificationService.showInfo(context, message: 'Chỉ được chọn tối đa 3 sách.');
       return;
     }
 
@@ -67,23 +62,15 @@ class _CartPageState extends State<CartPage> {
       _selectedItems.clear();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Đăng ký mượn thành công!'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
+        NotificationService.showSuccess(
+          context,
+          message: result['message'] ?? 'Đăng ký mượn thành công!'
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        NotificationService.showError(context, message: 'Lỗi: ${e.toString()}');
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -223,14 +210,9 @@ class _CartPageState extends State<CartPage> {
                                 setState(() {
                                   if (v == true) {
                                     if (_selectedItems.length >= 3) {
-                                      ScaffoldMessenger.of(
+                                      NotificationService.showInfo(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Bạn chỉ được mượn tối đa 3 quyển sách.',
-                                          ),
-                                        ),
+                                        message: 'Bạn chỉ được mượn tối đa 3 quyển sách.',
                                       );
                                     } else {
                                       _selectedItems.add(item.documentId);

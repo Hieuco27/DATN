@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
-import 'package:book_tech/core/theme/theme.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/features/auth/presentations/widgets/auth_field.dart';
 import 'package:book_tech/features/auth/presentations/widgets/auth_gradient_button.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_event.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
-import 'package:book_tech/features/auth/domain/entities/account_entity.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -224,12 +223,7 @@ class _SignUpPageState extends State<SignUpPage> {
   void _handleAuthState(BuildContext context, AuthState state) {
     if (state is AuthAuthenticated) {
       // Đăng ký và đăng nhập thành công
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng ký thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      NotificationService.showSuccess(context, message: 'Đăng ký thành công!');
       // Tự động đăng nhập sau khi đăng ký thành công
 
       // Điều hướng đến trang chủ
@@ -238,12 +232,7 @@ class _SignUpPageState extends State<SignUpPage> {
       ).pushNamedAndRemoveUntil('/home_page', (route) => false);
     } else if (state is AuthRegisterSuccess) {
       // Chỉ đăng ký thành công (nếu không auto-login)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng ký thành công! Vui lòng đăng nhập.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      NotificationService.showSuccess(context, message: 'Đăng ký thành công! Vui lòng đăng nhập.');
 
       // Quay lại trang đăng nhập
       Navigator.pushReplacement(
@@ -252,13 +241,7 @@ class _SignUpPageState extends State<SignUpPage> {
       );
     } else if (state is AuthError) {
       // Hiển thị lỗi
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.message),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      NotificationService.showError(context, message: state.message);
     }
   }
 }

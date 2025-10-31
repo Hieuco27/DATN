@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:book_tech/features/auth/data/models/document_detail_model.dart';
 import 'package:book_tech/features/auth/presentations/widgets/document/universal_ebook_reader.dart';
 import 'package:book_tech/core/services/ebook_reader_service.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class EbookReaderPage extends StatefulWidget {
   final DocumentDetailModel document;
@@ -142,6 +143,7 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
 
   Widget _buildBody() {
     return UniversalEbookReader(
+      key: ValueKey('${widget.ebookUrl}_${widget.document.title}'),
       ebookUrl: widget.ebookUrl,
       title: widget.document.title,
       format: _detectedFormat,
@@ -191,14 +193,16 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
   }
 
   void _addBookmark() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã thêm vào danh sách đánh dấu')),
+    NotificationService.showSuccess(
+      context,
+      message: 'Đã thêm vào danh sách đánh dấu',
     );
   }
 
   void _shareBook() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng chia sẻ đang được phát triển')),
+    NotificationService.showInfo(
+      context,
+      message: 'Tính năng chia sẻ đang được phát triển',
     );
   }
 

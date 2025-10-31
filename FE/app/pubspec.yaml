@@ -56,11 +56,19 @@ dependencies:
   flutter_html: ^3.0.0-beta.2 # Hiển thị HTML content
   path_provider: ^2.1.1 # Quản lý file paths
   flutter_svg: ^2.0.17
-  carousel_slider: ^4.2.1
+  carousel_slider: ^5.0.0
+  google_nav_bar: ^5.0.6
+  flutter_animate: ^4.5.0
+  google_fonts: ^6.2.1
+  shimmer: ^3.0.0
+  glassmorphism: ^3.0.0
+  animations: ^2.0.11
 
   # file_picker: ^6.1.1 # Chọn file từ thiết bị
   # permission_handler: ^11.0.1 # Quản lý quyền truy cập
-  # cached_network_image: ^3.3.0 # Cache hình ảnh
+  cached_network_image: ^3.3.0 # Cache hình ảnh
+  another_flushbar: ^1.12.30 # Snackbar thay thế, đẹp hơn
+  chips_choice: ^3.0.0
 
 dev_dependencies:
   flutter_test:

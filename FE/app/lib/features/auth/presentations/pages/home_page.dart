@@ -1,9 +1,7 @@
 // lib/features/auth/presentations/pages/home_page.dart
 import 'package:flutter/material.dart';
-import 'package:book_tech/core/theme/app_palette.dart';
-import 'package:convex_bottom_bar/convex_bottom_bar.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:book_tech/features/auth/presentations/pages/main_home_page.dart';
-import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/my_books_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/profile_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
@@ -29,30 +27,51 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_currentIndex],
-      bottomNavigationBar: ConvexAppBar(
-        backgroundColor: Colors.white,
-        color: Colors.grey, // Màu xám cho tab không active
-        activeColor: Colors.red, // Màu đỏ cho tab active
-        style: TabStyle.react,
-        curveSize: 80,
-        items: const [
-          TabItem(icon: Icons.home, title: 'Trang chủ'),
-          TabItem(
-            icon: Icons.grid_view,
-            title: 'Thể loại',
-          ), // Thay đổi icon và title
-          TabItem(
-            icon: Icons.library_books,
-            title: 'Thư viện',
-          ), // Thay đổi icon và title
-          TabItem(icon: Icons.person, title: 'Tôi'), // Thay đổi icon và title
-        ],
-        initialActiveIndex: 0,
-        onTap: (int index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+      bottomNavigationBar: Container(
+        color: Colors.white, // Ensure full-width white background
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x1F000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: GNav(
+                gap: 8,
+                rippleColor: const Color(0x22FF1744),
+                hoverColor: const Color(0x11FF1744),
+                tabBackgroundColor: const Color(0x1AFF1744),
+                color: Colors.black54,
+                activeColor: const Color(0xFFFF1744),
+                iconSize: 22,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                selectedIndex: _currentIndex,
+                onTabChange: (index) {
+                  setState(() => _currentIndex = index);
+                },
+                tabs: const [
+                  GButton(icon: Icons.home_rounded, text: 'Trang chủ'),
+                  GButton(icon: Icons.grid_view_rounded, text: 'Thể loại'),
+                  GButton(icon: Icons.library_books_rounded, text: 'Thư viện'),
+                  GButton(icon: Icons.person_rounded, text: 'Tôi'),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

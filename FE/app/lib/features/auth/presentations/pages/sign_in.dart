@@ -1,7 +1,5 @@
-import 'package:book_tech/features/auth/presentations/pages/main_home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:book_tech/core/theme/theme.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
 import 'package:book_tech/features/auth/presentations/widgets/auth_field.dart';
@@ -10,6 +8,7 @@ import 'package:book_tech/features/auth/presentations/pages/sign_up.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_event.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -171,46 +170,10 @@ void _handleAuthState(BuildContext context, AuthState state) {
       MaterialPageRoute(builder: (context) => const HomePage()),
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đăng nhập thành công!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    NotificationService.showSuccess(context, message: 'Đăng nhập thành công!');
   } else if (state is AuthError) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-    );
+    NotificationService.showError(context, message: state.message);
   }
 }
 
-// Helper methods để lấy controllers (trong thực tế nên dùng TextEditingController riêng)
-TextEditingController _getEmailController(BuildContext context) {
-  // Trong thực tế, bạn nên quản lý controllers trong state
-  return TextEditingController();
-}
-
-TextEditingController _getPasswordController(BuildContext context) {
-  // Trong thực tế, bạn nên quản lý controllers trong state
-  return TextEditingController();
-}
-
-String? _getEmailError(AuthState state) {
-  if (state is AuthError) {
-    final error = state.message.toLowerCase();
-    if (error.contains('email')) {
-      return state.message;
-    }
-  }
-  return null;
-}
-
-String? _getPasswordError(AuthState state) {
-  if (state is AuthError) {
-    final error = state.message.toLowerCase();
-    if (error.contains('mật khẩu') || error.contains('password')) {
-      return state.message;
-    }
-  }
-  return null;
-}
+// removed unused helpers

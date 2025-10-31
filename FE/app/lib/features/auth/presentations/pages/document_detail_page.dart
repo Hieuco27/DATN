@@ -11,6 +11,7 @@ import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/data/models/document_response_model.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/features/auth/data/models/cart_item_model.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -102,7 +103,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             minDeposit: 0,
             maxDeposit: 0,
             coverPrice: entity.coverPrice ?? 0,
-            categoryName: '', // Có thể cần lấy từ API khác
+            categoryName: '',
             depositRate: 0.0,
             totalCopies: entity.numberOfCopy,
             availableCopies: entity.numberOfCopy, // Giả định tất cả đều có sẵn
@@ -149,11 +150,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               setState(() {
                 _isBookmarked = !_isBookmarked;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isBookmarked ? 'Đã đánh dấu' : 'Bỏ đánh dấu'),
-                  backgroundColor: _isBookmarked ? Colors.green : Colors.grey,
-                ),
+              NotificationService.showInfo(
+                context,
+                message: _isBookmarked ? 'Đã đánh dấu' : 'Bỏ đánh dấu',
               );
             },
           ),
@@ -612,20 +611,13 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   void _downloadEbook() {
     // TODO: Implement download functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng tải xuống đang được phát triển')),
-    );
+    NotificationService.showInfo(context, message: 'Tính năng tải xuống đang được phát triển');
   }
 
   // Thay thế method _readNow hiện tại
   void _readNow() {
     if (_document?.ebookUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tài liệu này không có phiên bản điện tử'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      NotificationService.showInfo(context, message: 'Tài liệu này không có phiên bản điện tử');
       return;
     }
 
@@ -657,18 +649,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       ),
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã thêm $_quantity sách vào giỏ hàng'),
-        backgroundColor: Colors.green,
-        action: SnackBarAction(
-          label: 'Xem giỏ',
-          textColor: Colors.white,
-          onPressed: () {
-            Navigator.pushNamed(context, '/cart');
-          },
-        ),
-      ),
+    NotificationService.showSuccess(
+      context,
+      message: 'Đã thêm $_quantity sách vào giỏ hàng',
     );
 
     setState(() => _quantity = 1);
@@ -679,14 +662,4 @@ String _formatCurrency(int amount) {
   return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} đ';
 }
 
-extension on Map<String, dynamic> {
-  get fullName => null;
-
-  get isbn => null;
-
-  get edition => null;
-
-  String? get name => null;
-
-  get pageCount => null;
-}
+// removed unused extension helpers

@@ -1,19 +1,23 @@
 // lib/features/auth/presentations/pages/main_home_page.dart
-import 'dart:async';
-import 'package:book_tech/features/auth/data/models/genre_model.dart';
-import 'package:book_tech/features/auth/presentations/pages/genres_book_page.dart';
+//
+// removed unused imports for cleaner build
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:book_tech/core/theme/app_palette.dart';
-import 'package:book_tech/features/auth/presentations/widgets/home/page_indicator.dart';
+import 'package:book_tech/core/ui/app_top_bar.dart';
+//
 import 'package:book_tech/features/auth/presentations/widgets/home/new_navigation.dart'
     as new_navigation;
-import 'package:book_tech/features/auth/presentations/widgets/document/document.dart';
+//
 import '../providers/document_provider.dart';
 import '../pages/search_page.dart';
 import '../widgets/document/genre_section.dart';
-import '../bloc/auth_bloc.dart';
+//
 import '../widgets/home/book_quote_box.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+// removed: carousel slider (replaced by promo pills)
+import 'package:shimmer/shimmer.dart';
+import 'package:book_tech/features/auth/data/models/genre_model.dart';
+import 'package:chips_choice/chips_choice.dart';
 
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
@@ -22,60 +26,26 @@ class MainHomePage extends StatefulWidget {
 }
 
 class _MainHomePageState extends State<MainHomePage> {
-  int _currentBannerIndex = 0;
-  late PageController _bannerPageController;
-  late Timer _timer;
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
-  String _searchQuery = '';
-  bool _isSearchFocused = false;
-  final List<GenreModel> _genres = [];
-  bool _isLoadingGenres = false;
-  String _accessToken = '';
-
-  // Thêm state cho segmented control
-  int _selectedTabIndex = 0;
+  // Segmented control state
+  int? _selectedGenreId; // null means show default sections
 
   @override
   void initState() {
     super.initState();
-    _bannerPageController = PageController(viewportFraction: 0.8);
-
-    // Listen to focus changes
-    _searchFocusNode.addListener(() {
-      setState(() {
-        _isSearchFocused = _searchFocusNode.hasFocus;
-      });
-    });
-
-    // Thay thế phần initState() từ dòng 54-60:
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final docProvider = Provider.of<DocumentProvider>(context, listen: false);
       docProvider.loadGenres(context); // Load genres trước
     });
   }
 
-  void _performSearch(String query) {
-    if (query.trim().isEmpty) return;
-
-    // Hiện tại chỉ hiển thị snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Tìm kiếm: "$query"'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: const Color.fromARGB(255, 106, 106, 106),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
+  // Removed unused search helper to keep the widget lean
 
   void _showNavigationModal(BuildContext context) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: const Color.fromARGB(255, 255, 255, 255),
+      barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
         return Align(
@@ -114,213 +84,316 @@ class _MainHomePageState extends State<MainHomePage> {
 
   @override
   void dispose() {
-    _timer.cancel();
-    _bannerPageController.dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black, size: 24),
-          onPressed: () {
-            _showNavigationModal(context);
-          },
-        ),
-        title: const Text(
-          'Trang chủ',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
+      backgroundColor: const Color(0xFFF7F7F7),
+      appBar: AppTopBar(
+        title: 'Trang chủ',
+        leadingType: AppTopBarLeading.menu,
+        onLeadingTap: () => _showNavigationModal(context),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.red, size: 24),
-            onPressed: () {
+          AppTopBarAction.search(
+            onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => SearchPage()),
+                MaterialPageRoute(builder: (context) => const SearchPage()),
               );
             },
           ),
-          const SizedBox(width: 8),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Segmented Control
+          // Background gradient + subtle overlay
           Container(
-            margin: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red, width: 1),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedTabIndex = 0;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _selectedTabIndex == 0
-                            ? Colors.red
-                            : const Color.fromARGB(0, 0, 0, 0),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        'Khám phá',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _selectedTabIndex == 0
-                              ? Colors.white
-                              : const Color.fromARGB(255, 0, 0, 0),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedTabIndex = 1;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _selectedTabIndex == 1
-                            ? Colors.red
-                            : const Color.fromARGB(0, 0, 0, 0),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        'Phổ biến',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _selectedTabIndex == 1
-                              ? Colors.white
-                              : const Color.fromARGB(255, 0, 0, 0),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedTabIndex = 2;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _selectedTabIndex == 2
-                            ? Colors.red
-                            : const Color.fromARGB(0, 0, 0, 0),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        'Mới nhất',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _selectedTabIndex == 2
-                              ? Colors.white
-                              : const Color.fromARGB(255, 0, 0, 0),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Content based on selected tab
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Welcome Section
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 16.0),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  // Thay thế phần Consumer<DocumentProvider> bằng:
-                  Consumer<DocumentProvider>(
-                    builder: (context, documentProvider, child) {
-                      if (documentProvider.isLoadingGenres) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          BookQuoteBox(),
-                          // Hiển thị từng genre với danh sách sách
-                          ...documentProvider.genres.map((genre) {
-                            return GenreSectionWidget(
-                              genre: genre,
-                              documentProvider: documentProvider,
-                            );
-                          }).toList(),
-
-                          // Nếu có nhiều hơn 2 genres, hiển thị nút "Xem thêm"
-                          // if (documentProvider.genres.length > 2)
-                          //   Center(
-                          //     child: TextButton(
-                          //       onPressed: () {
-                          //         Navigator.push(
-                          //           context,
-                          //           MaterialPageRoute(
-                          //             builder: (context) => GenreBooksPage(
-                          //               genreName: 'Tất cả thể loại',
-                          //               genreId: null,
-                          //             ),
-                          //           ),
-                          //         );
-                          //       },
-                          //       child: const Text(
-                          //         'Xem thêm thể loại',
-                          //         style: TextStyle(
-                          //           color: Colors.red,
-                          //           fontWeight: FontWeight.w600,
-                          //         ),
-                          //       ),
-                          //     ),
-                          //   ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFF1F2), Color(0xFFFFFFFF)],
               ),
             ),
           ),
+          SafeArea(
+            child: Column(
+              children: [
+                // Quote slider moved up
+                const _QuoteSliderBar(),
+                // removed top filter (will place near books)
+
+                // Quick actions
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _QuickAction(
+                        icon: Icons.grid_view_rounded,
+                        label: 'Thể loại',
+                        color: const Color(0xFFFF1744),
+                        onTap: () {
+                          // Navigate to Genres tab
+                          // Suggest using bottom nav index change if available
+                          Navigator.of(context).pushNamed('/genres');
+                        },
+                      ),
+                      _QuickAction(
+                        icon: Icons.library_books_rounded,
+                        label: 'Thư viện',
+                        color: const Color(0xFF2979FF),
+                        onTap: () {
+                          Navigator.of(context).pushNamed('/my-books');
+                        },
+                      ),
+                      _QuickAction(
+                        icon: Icons.favorite_rounded,
+                        label: 'Yêu thích',
+                        color: const Color(0xFFFF6D00),
+                        onTap: () {},
+                      ),
+                      _QuickAction(
+                        icon: Icons.upload_file_rounded,
+                        label: 'Tải lên',
+                        color: const Color(0xFF00C853),
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Fixed filter bar (stays while books scroll)
+                Consumer<DocumentProvider>(
+                  builder: (context, provider, _) {
+                    final List<GenreModel> chips = provider.genres;
+                    final List<String> labels = [
+                      'Tất cả',
+                      ...chips.map((g) => g.name),
+                    ];
+                    final List<int?> values = [
+                      null,
+                      ...chips.map((g) => g.genreId),
+                    ];
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: ChipsChoice<int?>.single(
+                        value: _selectedGenreId,
+                        onChanged: (val) =>
+                            setState(() => _selectedGenreId = val),
+                        choiceItems: C2Choice.listFrom<int?, String>(
+                          source: labels,
+                          value: (i, v) => values[i],
+                          label: (i, v) => v,
+                        ),
+                        choiceStyle: C2ChipStyle.filled(
+                          color: const Color(0xFFF1F1F1),
+                          selectedStyle: C2ChipStyle.filled(
+                            color: Color(0xFFFFCDD2),
+                          ),
+                        ),
+                        wrapped: false,
+                        scrollPhysics: const BouncingScrollPhysics(),
+                      ),
+                    );
+                  },
+                ),
+
+                // Content based on selected tab
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Consumer<DocumentProvider>(
+                          builder: (context, documentProvider, child) {
+                            if (documentProvider.isLoadingGenres) {
+                              return _LoadingBooksRow();
+                            }
+                            // Filtered sections: show selected genre only, else default 2
+                            final selectedId = _selectedGenreId;
+                            if (selectedId != null) {
+                              final genre = documentProvider.genres.firstWhere(
+                                (g) => g.genreId == selectedId,
+                                orElse: () => documentProvider.genres.isNotEmpty
+                                    ? documentProvider.genres.first
+                                    : GenreModel(genreId: -1, name: 'Không có'),
+                              );
+                              if (genre.genreId == -1) {
+                                return const SizedBox.shrink();
+                              }
+                              return GenreSectionWidget(
+                                    key: ValueKey<int>(genre.genreId),
+                                    genre: genre,
+                                    documentProvider: documentProvider,
+                                  )
+                                  .animate()
+                                  .fadeIn(duration: 250.ms)
+                                  .move(
+                                    begin: const Offset(0, 12),
+                                    end: Offset.zero,
+                                  );
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: documentProvider.genres.map((genre) {
+                                return GenreSectionWidget(
+                                      key: ValueKey<int>(genre.genreId),
+                                      genre: genre,
+                                      documentProvider: documentProvider,
+                                    )
+                                    .animate()
+                                    .fadeIn(duration: 250.ms)
+                                    .move(
+                                      begin: const Offset(0, 12),
+                                      end: Offset.zero,
+                                    );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Removed tiny 4 buttons grid per request
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// removed: old banner card (replaced by promo pills)
+
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    Key? key,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E1E1E),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingBooksRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: SizedBox(
+        height: 180,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: 3,
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (context, index) {
+            return Shimmer.fromColors(
+              baseColor: Colors.grey.shade300,
+              highlightColor: Colors.grey.shade100,
+              child: Container(
+                width: 124,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _QuoteSliderBar extends StatefulWidget {
+  const _QuoteSliderBar();
+
+  @override
+  State<_QuoteSliderBar> createState() => _QuoteSliderBarState();
+}
+
+class _QuoteSliderBarState extends State<_QuoteSliderBar> {
+  late final PageController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(viewportFraction: 0.95);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 230,
+      child: PageView.builder(
+        controller: _controller,
+        padEnds: false,
+        itemCount: 5,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 8,
+              top: 8,
+              bottom: 8,
+            ),
+            child: BookQuoteBox(),
+          );
+        },
       ),
     );
   }
