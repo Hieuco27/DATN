@@ -70,7 +70,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
           // Hiển thị lỗi sau 1 frame, tránh setState/context trên widget đã unmount
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              NotificationService.showError(context, message: 'Lỗi: ${state.message}');
+              NotificationService.showError(
+                context,
+                message: 'Lỗi: ${state.message}',
+              );
             }
           });
         }
