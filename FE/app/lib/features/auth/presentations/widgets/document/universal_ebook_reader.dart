@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -8,6 +9,8 @@ import 'package:book_tech/core/services/ebook_settings_service.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_settings_dialog.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_table_of_contents.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_highlights_panel.dart';
+import 'package:epub_view/epub_view.dart';
+import 'package:http/http.dart' as http;
 
 class UniversalEbookReader extends StatefulWidget {
   final String ebookUrl;
@@ -35,6 +38,12 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   PdfViewerController? _pdfController;
   // ✅ Thêm WebViewController để tránh reload
   WebViewController? _webViewController;
+  // ✅ EPUB controller
+  EpubController? _epubController;
+  String? _epubInitError;
+  Uint8List? _epubBytes;
+  // EPUB fallback WebView controller
+  WebViewController? _epubFallbackController;
 
   // New state variables
   EbookSettings _settings = EbookSettings();
@@ -55,6 +64,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   @override
   void dispose() {
     _tabController.dispose();
+    _epubController?.dispose();
     super.dispose();
   }
 
@@ -70,8 +80,21 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           widget.format ??
           await EbookReaderService.detectFormat(widget.ebookUrl);
 
-      // Download file if needed
-      if (_detectedFormat != EbookFormat.html) {
+      // Chuẩn bị dữ liệu theo định dạng
+      if (_detectedFormat == EbookFormat.epub) {
+        // Tải bytes trực tiếp để hiển thị (không ép lưu file)
+        print('📥 Downloading EPUB from: ${widget.ebookUrl}');
+        final resp = await http.get(Uri.parse(widget.ebookUrl));
+        if (resp.statusCode != 200) {
+          throw Exception('Không thể tải EPUB: HTTP ${resp.statusCode}');
+        }
+        print('✅ Downloaded EPUB: ${resp.bodyBytes.length} bytes');
+        // Chuẩn hóa EPUB bị lệch chuẩn (../) trước khi render
+        print('🔧 Sanitizing EPUB...');
+        _epubBytes = EbookReaderService.sanitizeEpubBytes(resp.bodyBytes);
+        print('✅ EPUB sanitization completed');
+      } else if (_detectedFormat != EbookFormat.html) {
+        // PDF và định dạng khác: tải về file tạm để viewer sử dụng
         _localFilePath = await EbookReaderService.downloadFile(widget.ebookUrl);
       }
 
@@ -109,13 +132,16 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           _pdfController = PdfViewerController();
           break;
         case EbookFormat.html:
-        case EbookFormat.epub:
+        // HTML hiển thị bằng WebView
         case EbookFormat.mobi:
         case EbookFormat.txt:
           // ✅ Khởi tạo WebViewController một lần
           _webViewController = WebViewController()
             ..setJavaScriptMode(JavaScriptMode.unrestricted)
             ..loadRequest(Uri.parse(widget.ebookUrl));
+          break;
+        case EbookFormat.epub:
+          // EPUB: khởi tạo controller ở _buildEpubReader khi có _localFilePath
           break;
         default:
           throw Exception('Unsupported format: $_detectedFormat');
@@ -248,6 +274,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     switch (_detectedFormat) {
       case EbookFormat.pdf:
         return _buildPdfReader();
+      case EbookFormat.epub:
+        return _buildEpubReader();
       case EbookFormat.html:
         return _buildHtmlReader();
       default:
@@ -255,26 +283,28 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     }
   }
 
-  // ✅ Sửa lại _buildPdfReader với Syncfusion
+  // ✅ PDF reader với Syncfusion
   Widget _buildPdfReader() {
     return Container(
       color: _getBackgroundColor(),
-      child: SfPdfViewer.file(
-        File(_localFilePath!),
-        controller: _pdfController,
-        enableDoubleTapZooming: true,
-        enableTextSelection: true,
-        onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-          setState(() {
-            _error = 'Không thể tải PDF: ${details.error}';
-          });
-        },
-        onPageChanged: (PdfPageChangedDetails details) {
-          setState(() {
-            _currentPage = details.newPageNumber;
-          });
-        },
-      ),
+      child: _localFilePath == null
+          ? const SizedBox.shrink()
+          : SfPdfViewer.file(
+              File(_localFilePath!),
+              controller: _pdfController,
+              enableDoubleTapZooming: true,
+              enableTextSelection: true,
+              onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+                setState(() {
+                  _error = 'Không thể tải PDF: ${details.error}';
+                });
+              },
+              onPageChanged: (PdfPageChangedDetails details) {
+                setState(() {
+                  _currentPage = details.newPageNumber;
+                });
+              },
+            ),
     );
   }
 
@@ -370,7 +400,84 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     );
   }
 
-  // ✅ Thêm method để toggle theme nhanh
+  Widget _buildEpubReader() {
+    return Container(
+      color: _getBackgroundColor(),
+      child: (_epubBytes == null && _localFilePath == null)
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Đang tải EPUB...'),
+                ],
+              ),
+            )
+          : _buildEpubContent(),
+    );
+  }
+
+  Widget _buildEpubContent() {
+    // Nếu đã có lỗi khởi tạo, hiển thị fallback
+    if (_epubInitError != null) {
+      _epubFallbackController ??= WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..loadRequest(Uri.parse(widget.ebookUrl));
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.orange.withOpacity(0.2),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.orange),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Không thể hiển thị EPUB, đang mở dạng WebView',
+                    style: TextStyle(color: Colors.orange[900], fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: WebViewWidget(controller: _epubFallbackController!)),
+        ],
+      );
+    }
+
+    // Khởi tạo controller một lần duy nhất
+    if (_epubController == null) {
+      try {
+        print('🎯 Initializing EpubController...');
+        _epubController = EpubController(
+          document: _epubBytes != null
+              ? EpubDocument.openData(_epubBytes!)
+              : EpubDocument.openFile(File(_localFilePath!)),
+        );
+        print('✅ EpubController initialized successfully');
+      } catch (e, stackTrace) {
+        print('❌ EPUB parsing error: $e');
+        print('Stack trace: $stackTrace');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          setState(() {
+            _epubInitError = e.toString();
+          });
+        });
+        return const Center(child: CircularProgressIndicator());
+      }
+    }
+
+    return EpubView(
+      controller: _epubController!,
+      onDocumentLoaded: (_) {
+        print('✅ EPUB document loaded in viewer');
+      },
+      onChapterChanged: (value) {},
+    );
+  }
+
   void _toggleTheme() async {
     final newTheme = _settings.theme == 'dark' ? 'light' : 'dark';
     final newSettings = _settings.copyWith(theme: newTheme);

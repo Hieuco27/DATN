@@ -1,6 +1,8 @@
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
 import 'package:book_tech/features/auth/presentations/widgets/document/similar_book.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/features/auth/data/models/document_detail_model.dart';
@@ -12,6 +14,8 @@ import 'package:book_tech/features/auth/data/models/document_response_model.dart
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/features/auth/data/models/cart_item_model.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
+import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
+import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -54,10 +58,22 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         documentId: widget.documentId,
       );
 
+      // Debug log để kiểm tra ebookUrl
+      print('📚 Document ID: ${document.documentId}');
+      print('📚 Title: ${document.title}');
+      print('📚 Category: ${document.category['name'] ?? 'N/A'}');
+      print('📚 ebookUrl: ${document.ebookUrl ?? 'NULL'}');
+      print(
+        '📚 Has ebook: ${document.ebookUrl != null && document.ebookUrl!.isNotEmpty}',
+      );
+
       setState(() {
         _document = document;
         _isLoading = false;
       });
+      // Sync bookmark state from wishlist
+      final wishlist = Provider.of<WishlistProvider>(context, listen: false);
+      _isBookmarked = wishlist.contains(document.documentId);
       _loadSimilarBooks();
     } catch (e) {
       setState(() {
@@ -126,7 +142,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
@@ -141,18 +157,47 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ),
         ),
         actions: [
+          if (_document?.ebookUrl != null)
+            IconButton(
+              tooltip: 'Tải ebook',
+              icon: const Icon(
+                Icons.download_for_offline_outlined,
+                color: Colors.black87,
+              ),
+              onPressed: _downloadEbook,
+            ),
+          IconButton(
+            tooltip: 'Chia sẻ',
+            icon: const Icon(Icons.ios_share, color: Colors.black87),
+            onPressed: _shareDocument,
+          ),
           IconButton(
             icon: Icon(
               _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               color: _isBookmarked ? Colors.red : Colors.grey,
             ),
             onPressed: () {
+              if (_document == null) return;
+              final wishlist = Provider.of<WishlistProvider>(
+                context,
+                listen: false,
+              );
+              wishlist.toggle(
+                WishlistItem(
+                  documentId: _document!.documentId,
+                  title: _document!.title,
+                  coverPhoto: _document!.coverPhoto,
+                ),
+              );
+              final nowBookmarked = wishlist.contains(_document!.documentId);
               setState(() {
-                _isBookmarked = !_isBookmarked;
+                _isBookmarked = nowBookmarked;
               });
               NotificationService.showInfo(
                 context,
-                message: _isBookmarked ? 'Đã đánh dấu' : 'Bỏ đánh dấu',
+                message: nowBookmarked
+                    ? 'Đã thêm vào muốn đọc'
+                    : 'Đã bỏ khỏi muốn đọc',
               );
             },
           ),
@@ -228,22 +273,21 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hình ảnh sách
           Container(
             width: 120,
-            height: 160,
+            height: 168,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: Image.network(
                 _document!.coverPhoto,
                 fit: BoxFit.cover,
@@ -257,24 +301,64 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
           ),
           const SizedBox(width: 16),
-          // Thông tin cơ bản - Sử dụng Flexible thay vì Expanded
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Thêm dòng này
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _document!.title,
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                     color: Colors.black87,
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-                // Tác giả
+                // Debug: Hiển thị trạng thái ebook (có thể ẩn sau khi debug xong)
+                // if (_document!.ebookUrl == null || _document!.ebookUrl!.isEmpty)
+                //   Container(
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 8,
+                //       vertical: 4,
+                //     ),
+                //     decoration: BoxDecoration(
+                //       color: Colors.orange.withOpacity(0.1),
+                //       borderRadius: BorderRadius.circular(6),
+                //       border: Border.all(color: Colors.orange, width: 1),
+                //     ),
+                //     child: const Text(
+                //       '⚠️ Không có phiên bản điện tử',
+                //       style: TextStyle(
+                //         fontSize: 11,
+                //         color: Colors.orange,
+                //         fontWeight: FontWeight.w500,
+                //       ),
+                //     ),
+                //   )
+                // else
+                //   Container(
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 8,
+                //       vertical: 4,
+                //     ),
+                //     decoration: BoxDecoration(
+                //       color: Colors.green.withOpacity(0.1),
+                //       borderRadius: BorderRadius.circular(6),
+                //       border: Border.all(color: Colors.green, width: 1),
+                //     ),
+                //     child: Text(
+                //       '✓ Có ebook: ${_document!.ebookUrl!.substring(0, _document!.ebookUrl!.length > 40 ? 40 : _document!.ebookUrl!.length)}${_document!.ebookUrl!.length > 40 ? '...' : ''}',
+                //       style: const TextStyle(
+                //         fontSize: 11,
+                //         color: Colors.green,
+                //         fontWeight: FontWeight.w500,
+                //       ),
+                //     ),
+                //   ),
+                // const SizedBox(height: 8),
                 Text(
                   _document!.authors
                           .where((author) => author['role'] == 'main')
@@ -285,22 +369,44 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 60), // Thay vì dùng Spacer()
-                ElevatedButton.icon(
-                  onPressed: _document!.ebookUrl != null ? _readNow : null,
-                  icon: const Icon(Icons.play_arrow, size: 1),
-                  label: const Text('ĐỌC NGAY'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 211, 48, 22),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 5,
-                      horizontal: 16,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _document!.ebookUrl != null ? _readNow : null,
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: const Text('ĐỌC NGAY'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD33016),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                    const SizedBox(width: 10),
+                    if (_document!.ebookUrl != null)
+                      OutlinedButton.icon(
+                        onPressed: _downloadEbook,
+                        icon: const Icon(Icons.download_outlined, size: 18),
+                        label: const Text('TẢI EBOOK'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.black87,
+                          side: const BorderSide(color: Colors.black12),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -333,37 +439,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             child: _buildInfoItem(
               'Đang cho mượn',
               '${_document!.totalCopies - _document!.availableCopies}',
-            ),
-          ),
-          Container(width: 1, height: 40, color: Colors.grey[300]),
-          Expanded(
-            child: Center(
-              child: GestureDetector(
-                onTap: _document!.ebookUrl != null ? _downloadEbook : null,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.download,
-                      color: _document!.ebookUrl != null
-                          ? Colors.blue[600]
-                          : Colors.grey[400],
-                      size: 28,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tải xuống',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _document!.ebookUrl != null
-                            ? Colors.grey[600]
-                            : Colors.grey[400],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ],
@@ -486,7 +561,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             _document!.publicationYear.toString(),
           ),
           _buildDetailRow('Thể loại', _document!.category['name'] ?? ''),
-          _buildDetailRow('Ngôn ngữ', _document!.language ?? ''),
+          _buildDetailRow('Ngôn ngữ', _document!.language),
           if (_document!.minDeposit != null && _document!.maxDeposit != null)
             _buildDetailRow(
               'Tiền cọc',
@@ -512,61 +587,14 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           //   _document!.genres.map((g) => g['name'] ?? '').join(', '),
           // ),
           if (_document!.availableCopies > 0) ...[
-            const Text(
-              'Số lượng mượn:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: _quantity > 1
-                      ? () => setState(() => _quantity--)
-                      : null,
-                  color: Colors.red,
-                ),
-                Container(
-                  width: 60,
-                  alignment: Alignment.center,
-                  child: Text(
-                    '$_quantity',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: _quantity < _document!.availableCopies
-                      ? () => setState(() => _quantity++)
-                      : null,
-                  color: Colors.green,
-                ),
-                const Spacer(),
-                Text(
-                  'Còn lại: ${_document!.availableCopies}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Nút đăng ký mượn trước
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _document!.availableCopies > 0 ? _addToCart : null,
+                onPressed: _addToCart,
                 icon: const Icon(Icons.shopping_cart_outlined),
                 label: const Text('Thêm vào giỏ hàng'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _document!.availableCopies > 0
-                      ? Colors.orange
-                      : Colors.grey,
+                  backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -609,17 +637,54 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  void _downloadEbook() {
-    // TODO: Implement download functionality
-    NotificationService.showInfo(context, message: 'Tính năng tải xuống đang được phát triển');
+  Future<void> _downloadEbook() async {
+    if (_document?.ebookUrl == null) return;
+    final uri = Uri.tryParse(_document!.ebookUrl!);
+    if (uri == null) return;
+    final can = await canLaunchUrl(uri);
+    if (can) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      NotificationService.showInfo(
+        context,
+        message: 'Không mở được liên kết tải xuống',
+      );
+    }
+  }
+
+  void _shareDocument() async {
+    final title = _document?.title ?? '';
+    final link = _document?.ebookUrl ?? '';
+    final shareText = link.isNotEmpty ? '$title\n$link' : title;
+    await Clipboard.setData(ClipboardData(text: shareText));
+    if (!mounted) return;
+    NotificationService.showSuccess(context, message: 'Đã sao chép để chia sẻ');
   }
 
   // Thay thế method _readNow hiện tại
   void _readNow() {
     if (_document?.ebookUrl == null) {
-      NotificationService.showInfo(context, message: 'Tài liệu này không có phiên bản điện tử');
+      NotificationService.showInfo(
+        context,
+        message: 'Tài liệu này không có phiên bản điện tử',
+      );
       return;
     }
+
+    // Lưu vào danh sách đang đọc
+    final readingProvider = Provider.of<ReadingProvider>(
+      context,
+      listen: false,
+    );
+    readingProvider.addOrUpdate(
+      ReadingItem(
+        documentId: _document!.documentId,
+        title: _document!.title,
+        coverPhoto: _document!.coverPhoto,
+        ebookUrl: _document!.ebookUrl!,
+        startedAt: DateTime.now(),
+      ),
+    );
 
     // Navigate trực tiếp đến EbookReaderPage
     Navigator.push(

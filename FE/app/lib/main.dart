@@ -1,5 +1,6 @@
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,6 +22,8 @@ import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
+import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
+import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
 import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
@@ -75,6 +78,8 @@ class MyApp extends StatelessWidget {
           create: (ctx) => DocumentProvider(ctx.read<DocumentRepositoryImpl>()),
         ),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => WishlistProvider()),
+        ChangeNotifierProvider(create: (_) => ReadingProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -116,6 +121,11 @@ class MyApp extends StatelessWidget {
             case '/cart':
               return buildSharedAxisDetailRoute(
                 page: const CartPage(),
+                type: SharedAxisTransitionType.scaled,
+              );
+            case '/genre':
+              return buildSharedAxisDetailRoute(
+                page: const GenresListPage(),
                 type: SharedAxisTransitionType.scaled,
               );
           }

@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/document_provider.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_book_page.dart';
 import 'package:book_tech/features/auth/data/models/genre_model.dart';
+import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 
 class GenresListPage extends StatefulWidget {
   const GenresListPage({super.key});
-
   @override
   State<GenresListPage> createState() => _GenresListPageState();
 }
@@ -73,10 +73,19 @@ class _GenresListPageState extends State<GenresListPage> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(Icons.search, color: Colors.red),
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.search, color: Colors.red),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              },
+              tooltip: 'Tìm kiếm',
+            ),
           ),
         ],
       ),

@@ -1,8 +1,8 @@
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/document/search_suggest_item.dart';
-import '../../data/models/document_response_model.dart';
 import '../providers/search_provider.dart';
 
 class SearchPage extends StatefulWidget {
@@ -15,6 +15,7 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -29,12 +30,20 @@ class _SearchPageState extends State<SearchPage> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
   void _performSearch(String query) {
     final searchProvider = Provider.of<SearchProvider>(context, listen: false);
     searchProvider.searchDocuments(query, context);
+  }
+
+  void _onQueryChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      _performSearch(query);
+    });
   }
 
   @override
@@ -58,7 +67,7 @@ class _SearchPageState extends State<SearchPage> {
                 child: TextField(
                   controller: _searchController,
                   focusNode: _searchFocusNode,
-                  onChanged: _performSearch,
+                  onChanged: _onQueryChanged,
                   decoration: InputDecoration(
                     hintText: 'Tìm kiếm sách, tác giả...',
                     hintStyle: TextStyle(

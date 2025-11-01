@@ -181,7 +181,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         );
       }
     } catch (e) {
-      print('❌ Error fetching genres: $e');
       throw Exception('Error fetching genres: $e');
     }
   }
@@ -204,7 +203,9 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         if (jsonData['success'] == true) {
-          return DocumentDetailModel.fromJson(jsonData['data']);
+          final document = DocumentDetailModel.fromJson(jsonData['data']);
+
+          return document;
         } else {
           throw Exception(
             jsonData['message'] ?? 'Failed to fetch document detail',
@@ -241,7 +242,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         '$baseUrl/api/documents/reader/search',
       ).replace(queryParameters: queryParams);
 
-    
       final response = await http.get(
         uri,
         headers: {

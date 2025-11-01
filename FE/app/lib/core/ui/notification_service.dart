@@ -2,99 +2,147 @@ import 'package:flutter/material.dart';
 import 'package:another_flushbar/flushbar.dart';
 
 class NotificationService {
-  static Future<void> showSuccess(
+  static void showSuccess(
     BuildContext context, {
     required String message,
-    String? title,
-  }) async {
-    final overlayContext =
-        Navigator.of(context, rootNavigator: true).overlay?.context ?? context;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Flushbar(
-        title: title,
-        message: message,
-        icon: const Icon(Icons.check_circle_rounded, color: Colors.white),
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(12),
-        borderRadius: BorderRadius.circular(12),
-        backgroundGradient: const LinearGradient(
-          colors: [Color(0xFF00C853), Color(0xFF64DD17)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    const color = Colors.green;
+    Flushbar(
+      message: message,
+      icon: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(color: color, shape: BoxShape.circle),
+        child: const Icon(Icons.check, size: 20, color: Colors.white),
+      ),
+      margin: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(12),
+      duration: duration,
+      flushbarPosition: FlushbarPosition.TOP,
+      backgroundColor: Colors.white,
+      messageColor: Colors.black87,
+      messageSize: 14,
+      boxShadows: [
+        BoxShadow(
+          color: color.withOpacity(0.3),
+          offset: const Offset(0, 4),
+          blurRadius: 12,
         ),
-        boxShadows: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            offset: Offset(0, 6),
-            blurRadius: 12,
-          ),
-        ],
-        flushbarPosition: FlushbarPosition.TOP,
-      ).show(overlayContext);
-    });
+      ],
+      borderColor: color,
+      borderWidth: 1,
+      isDismissible: true,
+      dismissDirection: FlushbarDismissDirection.HORIZONTAL,
+      forwardAnimationCurve: Curves.easeOutBack,
+    ).show(context);
   }
 
-  static Future<void> showError(
+  static void showError(
     BuildContext context, {
     required String message,
-    String? title,
-  }) async {
-    final overlayContext =
-        Navigator.of(context, rootNavigator: true).overlay?.context ?? context;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Flushbar(
-        title: title,
-        message: message,
-        icon: const Icon(Icons.error_rounded, color: Colors.white),
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(12),
-        borderRadius: BorderRadius.circular(12),
-        backgroundGradient: const LinearGradient(
-          colors: [Color(0xFFFF1744), Color(0xFFFF5252)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    const color = Colors.red;
+    Flushbar(
+      message: message,
+      icon: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(color: color, shape: BoxShape.circle),
+        child: const Icon(Icons.close, size: 20, color: Colors.white),
+      ),
+      margin: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(12),
+      duration: duration,
+      flushbarPosition: FlushbarPosition.TOP,
+      backgroundColor: Colors.white,
+      messageColor: Colors.black87,
+      messageSize: 14,
+      boxShadows: [
+        BoxShadow(
+          color: color.withOpacity(0.3),
+          offset: const Offset(0, 4),
+          blurRadius: 12,
         ),
-        boxShadows: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            offset: Offset(0, 6),
-            blurRadius: 12,
-          ),
-        ],
-        flushbarPosition: FlushbarPosition.TOP,
-      ).show(overlayContext);
-    });
+      ],
+      borderColor: color,
+      borderWidth: 1,
+      isDismissible: true,
+      dismissDirection: FlushbarDismissDirection.HORIZONTAL,
+      forwardAnimationCurve: Curves.easeOutBack,
+    ).show(context);
   }
 
-  static Future<void> showInfo(
+  static void showInfo(
     BuildContext context, {
     required String message,
-    String? title,
-  }) async {
-    final overlayContext =
-        Navigator.of(context, rootNavigator: true).overlay?.context ?? context;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Flushbar(
-        title: title,
-        message: message,
-        icon: const Icon(Icons.info_rounded, color: Colors.white),
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(12),
-        borderRadius: BorderRadius.circular(12),
-        backgroundGradient: const LinearGradient(
-          colors: [Color(0xFF2979FF), Color(0xFF00B0FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    const color = Colors.blue;
+    Flushbar(
+      message: message,
+      icon: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(color: color, shape: BoxShape.circle),
+        child: const Icon(Icons.info, size: 20, color: Colors.white),
+      ),
+      margin: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(12),
+      duration: duration,
+      flushbarPosition: FlushbarPosition.TOP,
+      backgroundColor: Colors.white,
+      messageColor: Colors.black87,
+      messageSize: 14,
+      boxShadows: [
+        BoxShadow(
+          color: color.withOpacity(0.3),
+          offset: const Offset(0, 4),
+          blurRadius: 12,
         ),
-        boxShadows: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            offset: Offset(0, 6),
-            blurRadius: 12,
-          ),
-        ],
-        flushbarPosition: FlushbarPosition.TOP,
-      ).show(overlayContext);
-    });
+      ],
+      borderColor: color,
+      borderWidth: 1,
+      isDismissible: true,
+      dismissDirection: FlushbarDismissDirection.HORIZONTAL,
+      forwardAnimationCurve: Curves.easeOutBack,
+    ).show(context);
+  }
+
+  static void showWarning(
+    BuildContext context, {
+    required String message,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    const color = Colors.orange;
+    Flushbar(
+      message: message,
+      icon: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(color: color, shape: BoxShape.circle),
+        child: const Icon(Icons.warning, size: 20, color: Colors.white),
+      ),
+      margin: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(12),
+      duration: duration,
+      flushbarPosition: FlushbarPosition.TOP,
+      backgroundColor: Colors.white,
+      messageColor: Colors.black87,
+      messageSize: 14,
+      boxShadows: [
+        BoxShadow(
+          color: color.withOpacity(0.3),
+          offset: const Offset(0, 4),
+          blurRadius: 12,
+        ),
+      ],
+      borderColor: color,
+      borderWidth: 1,
+      isDismissible: true,
+      dismissDirection: FlushbarDismissDirection.HORIZONTAL,
+      forwardAnimationCurve: Curves.easeOutBack,
+    ).show(context);
   }
 }

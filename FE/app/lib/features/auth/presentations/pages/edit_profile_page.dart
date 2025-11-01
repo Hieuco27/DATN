@@ -356,26 +356,53 @@ class _EditProfilePageState extends State<EditProfilePage> {
             color: Colors.white,
           ),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedGender.isEmpty ? null : _selectedGender,
-              hint: const Text('Chọn giới tính'),
-              isExpanded: true,
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                color: AppPalette.gradient1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white, // nền sáng
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              style: const TextStyle(fontSize: 16, color: Colors.black87),
-              items: _genderOptions.map((String gender) {
-                return DropdownMenuItem<String>(
-                  value: gender,
-                  child: Text(gender),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedGender = newValue ?? '';
-                });
-              },
+              child: DropdownButton<String>(
+                value: _selectedGender.isEmpty ? null : _selectedGender,
+                hint: const Text(
+                  'Chọn giới tính',
+                  style: TextStyle(color: Colors.black54),
+                ),
+                isExpanded: true,
+                icon: Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppPalette.gradient1,
+                ),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87, // chữ tối
+                ),
+                dropdownColor: Colors.white, // menu nền sáng
+                borderRadius: BorderRadius.circular(12),
+                menuMaxHeight: 320,
+                items: _genderOptions.map((String gender) {
+                  return DropdownMenuItem<String>(
+                    value: gender,
+                    child: Text(
+                      gender,
+                      style: const TextStyle(color: Colors.black87),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedGender = newValue ?? '';
+                  });
+                },
+              ),
             ),
           ),
         ),

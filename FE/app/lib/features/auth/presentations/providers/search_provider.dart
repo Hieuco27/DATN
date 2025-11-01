@@ -40,16 +40,39 @@ class SearchProvider with ChangeNotifier {
         throw Exception('User not authenticated');
       }
 
-      print('🔍 Starting search for: "$query"');
-      print('🔑 Token: ${authState.account.accessToken!.substring(0, 20)}...');
+      // Gọi API với từ đầu tiên đã bỏ dấu để server trả phạm vi rộng
+      final normalizedFull = _normalizeText(query);
+      final firstToken = normalizedFull.split(' ').first;
+      if (firstToken.isEmpty) {
+        clearSearch();
+        return;
+      }
+      List<DocumentResponseModel> fetchedResults = await repository
+          .searchDocuments(
+            accessToken: authState.account.accessToken!,
+            query: firstToken,
+            page: 1,
+            limit: 20,
+          );
 
-      // Gọi API search thực tế
-      _searchResults = await repository.searchDocuments(
-        accessToken: authState.account.accessToken!,
-        query: query,
-        page: 1,
-        limit: 20,
-      );
+      // Lọc theo tiêu đề (accent-insensitive, case-insensitive) và ưu tiên bắt đầu bằng từ khóa
+      final normalizedQuery = _normalizeText(_currentQuery);
+      final filtered = fetchedResults
+          .where((doc) => _normalizeText(doc.title).contains(normalizedQuery))
+          .toList();
+
+      filtered.sort((a, b) {
+        final aTitle = _normalizeText(a.title);
+        final bTitle = _normalizeText(b.title);
+        final aStarts = aTitle.startsWith(normalizedQuery);
+        final bStarts = bTitle.startsWith(normalizedQuery);
+        if (aStarts == bStarts) {
+          return aTitle.compareTo(bTitle);
+        }
+        return bStarts ? 1 : -1; // true trước false
+      });
+
+      _searchResults = filtered;
 
       // Thêm vào lịch sử tìm kiếm
       _addToSearchHistory(query);
@@ -90,5 +113,28 @@ class SearchProvider with ChangeNotifier {
   void clearHistory() {
     _searchHistory.clear();
     notifyListeners();
+  }
+
+  String _normalizeText(String input) {
+    String s = input.toLowerCase().trim();
+    // Chuẩn hóa khoảng trắng
+    s = s.replaceAll(RegExp(r"\s+"), ' ');
+    // Loại bỏ dấu tiếng Việt phổ biến
+    const Map<String, String> map = {
+      'a': 'àáạảãâầấậẩẫăằắặẳẵ',
+      'e': 'èéẹẻẽêềếệểễ',
+      'i': 'ìíịỉĩ',
+      'o': 'òóọỏõôồốộổỗơờớợởỡ',
+      'u': 'ùúụủũưừứựửữ',
+      'y': 'ỳýỵỷỹ',
+      'd': 'đ',
+    };
+    map.forEach((non, accented) {
+      s = s.replaceAll(
+        RegExp('[' + accented + accented.toUpperCase() + ']'),
+        non,
+      );
+    });
+    return s;
   }
 }

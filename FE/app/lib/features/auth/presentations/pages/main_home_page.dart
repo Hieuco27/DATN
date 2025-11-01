@@ -38,8 +38,6 @@ class _MainHomePageState extends State<MainHomePage> {
     });
   }
 
-  // Removed unused search helper to keep the widget lean
-
   void _showNavigationModal(BuildContext context) {
     showGeneralDialog(
       context: context,
@@ -122,8 +120,7 @@ class _MainHomePageState extends State<MainHomePage> {
             child: Column(
               children: [
                 // Quote slider moved up
-                const _QuoteSliderBar(),
-                // removed top filter (will place near books)
+                //const _QuoteSliderBar(),
 
                 // Quick actions
                 Padding(
@@ -139,14 +136,12 @@ class _MainHomePageState extends State<MainHomePage> {
                         label: 'Thể loại',
                         color: const Color(0xFFFF1744),
                         onTap: () {
-                          // Navigate to Genres tab
-                          // Suggest using bottom nav index change if available
-                          Navigator.of(context).pushNamed('/genres');
+                          Navigator.of(context).pushNamed('/genre');
                         },
                       ),
                       _QuickAction(
                         icon: Icons.library_books_rounded,
-                        label: 'Thư viện',
+                        label: 'Phổ biến',
                         color: const Color(0xFF2979FF),
                         onTap: () {
                           Navigator.of(context).pushNamed('/my-books');
@@ -154,7 +149,7 @@ class _MainHomePageState extends State<MainHomePage> {
                       ),
                       _QuickAction(
                         icon: Icons.favorite_rounded,
-                        label: 'Yêu thích',
+                        label: 'Mới nhất',
                         color: const Color(0xFFFF6D00),
                         onTap: () {},
                       ),
@@ -386,7 +381,7 @@ class _QuoteSliderBarState extends State<_QuoteSliderBar> {
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.only(
-              left: 16,
+              left: 14,
               right: 8,
               top: 8,
               bottom: 8,

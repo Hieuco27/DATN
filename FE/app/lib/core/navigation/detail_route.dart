@@ -19,5 +19,3 @@ Route<T> buildSharedAxisDetailRoute<T>({
     },
   );
 }
-
-

@@ -1,13 +1,62 @@
 import 'package:flutter/material.dart';
 
-enum AppTopBarLeading { none, back, menu }
+enum AppTopBarLeading {
+  back,
+  menu,
+  none,
+}
+
+class AppTopBarAction {
+  final Widget icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  const AppTopBarAction({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  factory AppTopBarAction.search({required VoidCallback onTap}) {
+    return AppTopBarAction(
+      icon: const Icon(Icons.search, color: Colors.red),
+      onTap: onTap,
+      tooltip: 'Tìm kiếm',
+    );
+  }
+
+  factory AppTopBarAction.more({
+    required VoidCallback onTap,
+    String? tooltip,
+  }) {
+    return AppTopBarAction(
+      icon: const Icon(Icons.more_vert, color: Colors.black),
+      onTap: onTap,
+      tooltip: tooltip ?? 'Thêm',
+    );
+  }
+
+  factory AppTopBarAction.custom({
+    required Widget icon,
+    required VoidCallback onTap,
+    String? tooltip,
+  }) {
+    return AppTopBarAction(
+      icon: icon,
+      onTap: onTap,
+      tooltip: tooltip,
+    );
+  }
+}
 
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final AppTopBarLeading leadingType;
   final VoidCallback? onLeadingTap;
-  final List<Widget>? actions;
-  final List<Color> gradientColors;
+  final List<AppTopBarAction>? actions;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final bool centerTitle;
 
   const AppTopBar({
     super.key,
@@ -15,98 +64,75 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
     this.leadingType = AppTopBarLeading.back,
     this.onLeadingTap,
     this.actions,
-    this.gradientColors = const [Color(0xFFFF1744), Color(0xFFFF5252)],
+    this.backgroundColor,
+    this.foregroundColor,
+    this.centerTitle = true,
   });
-
-  @override
-  Size get preferredSize => const Size.fromHeight(64);
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      elevation: 0,
-      shadowColor: Colors.transparent,
-      toolbarHeight: preferredSize.height,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-      ),
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: gradientColors,
-          ),
-        ),
-      ),
-      leading: _buildLeading(context),
-      centerTitle: true,
       title: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
+        style: TextStyle(
+          color: foregroundColor ?? Colors.black,
+          fontSize: 22,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
         ),
       ),
-      actions: actions,
+      backgroundColor: backgroundColor ?? Colors.white,
+      elevation: 0,
+      centerTitle: centerTitle,
+      leading: _buildLeading(context),
+      leadingWidth: leadingType == AppTopBarLeading.none ? 0 : null,
+      actions: _buildActions(),
     );
   }
 
   Widget? _buildLeading(BuildContext context) {
     switch (leadingType) {
-      case AppTopBarLeading.none:
-        return null;
-      case AppTopBarLeading.menu:
-        return IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white, size: 24),
-          onPressed: onLeadingTap,
-        );
       case AppTopBarLeading.back:
         return IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 20,
+          icon: Icon(
+            Icons.arrow_back,
+            color: foregroundColor ?? Colors.black,
           ),
-          onPressed: onLeadingTap ?? () => Navigator.of(context).maybePop(),
+          onPressed: onLeadingTap ?? () => Navigator.of(context).pop(),
         );
+      case AppTopBarLeading.menu:
+        return IconButton(
+          icon: Icon(
+            Icons.menu,
+            color: foregroundColor ?? Colors.black,
+          ),
+          onPressed: onLeadingTap,
+        );
+      case AppTopBarLeading.none:
+        return null;
     }
   }
+
+  List<Widget>? _buildActions() {
+    if (actions == null || actions!.isEmpty) return null;
+
+    return actions!.map((action) {
+      if (action.tooltip != null) {
+        return Tooltip(
+          message: action.tooltip!,
+          child: IconButton(
+            icon: action.icon,
+            onPressed: action.onTap,
+          ),
+        );
+      }
+      return IconButton(
+        icon: action.icon,
+        onPressed: action.onTap,
+      );
+    }).toList();
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-class AppTopBarAction {
-  static Widget search({required VoidCallback onTap}) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.search, color: Colors.white, size: 20),
-              SizedBox(width: 6),
-              Text(
-                'Tìm kiếm',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
