@@ -64,12 +64,20 @@ dependencies:
   glassmorphism: ^3.0.0
   animations: ^2.0.11
   archive: ^3.4.10
+  image: ^3.3.0
+  e_book_reader: ^0.0.12
 
   # file_picker: ^6.1.1 # Chọn file từ thiết bị
   # permission_handler: ^11.0.1 # Quản lý quyền truy cập
   cached_network_image: ^3.3.0 # Cache hình ảnh
   another_flushbar: ^1.12.30 # Snackbar thay thế, đẹp hơn
   chips_choice: ^3.0.0
+  cosmos_epub: ^0.0.1+4
+
+  # Override dependencies để fix compatibility issues
+dependency_overrides:
+  flutter_widget_from_html_core: ^0.17.0
+  fading_edge_scrollview: ^4.1.1
 
 dev_dependencies:
   flutter_test:
@@ -93,6 +101,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/image/genres/
+    - test/previewtest/test_pdf.pdf
+    - test/previewtest/test_epub.epub
 
   # To add assets to your application, add an assets section, like this:
   # assets:

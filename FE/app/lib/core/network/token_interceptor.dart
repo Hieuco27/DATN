@@ -18,24 +18,16 @@ class TokenInterceptor extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
     }
 
-    print('🚀 [API Request] ${options.method} ${options.path}');
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print(
-      '✅ [API Response] ${response.statusCode} ${response.requestOptions.path}',
-    );
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    print(
-      '❌ [API Error] ${err.type} ${err.response?.statusCode} ${err.requestOptions.path}',
-    );
-
     // Nếu lỗi 401 (Unauthorized), thử refresh token
     if (err.response?.statusCode == 401) {
       try {
@@ -47,9 +39,7 @@ class TokenInterceptor extends Interceptor {
           handler.resolve(response);
           return;
         }
-      } catch (e) {
-        print('💥 Token refresh failed: $e');
-      }
+      } catch (e) {}
     }
 
     handler.next(err);
@@ -75,9 +65,7 @@ class TokenInterceptor extends Interceptor {
 
         return newAccessToken;
       }
-    } catch (e) {
-      print('Refresh token error: $e');
-    }
+    } catch (e) {}
     return null;
   }
 

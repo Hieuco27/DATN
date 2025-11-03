@@ -1,5 +1,6 @@
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:async';
+import 'dart:io' if (dart.library.html) 'io_stub.dart' as io;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -9,8 +10,7 @@ import 'package:book_tech/core/services/ebook_settings_service.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_settings_dialog.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_table_of_contents.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_highlights_panel.dart';
-import 'package:epub_view/epub_view.dart';
-import 'package:http/http.dart' as http;
+import 'package:cosmos_epub/cosmos_epub.dart';
 
 class UniversalEbookReader extends StatefulWidget {
   final String ebookUrl;
@@ -38,12 +38,6 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   PdfViewerController? _pdfController;
   // ✅ Thêm WebViewController để tránh reload
   WebViewController? _webViewController;
-  // ✅ EPUB controller
-  EpubController? _epubController;
-  String? _epubInitError;
-  Uint8List? _epubBytes;
-  // EPUB fallback WebView controller
-  WebViewController? _epubFallbackController;
 
   // New state variables
   EbookSettings _settings = EbookSettings();
@@ -64,7 +58,6 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   @override
   void dispose() {
     _tabController.dispose();
-    _epubController?.dispose();
     super.dispose();
   }
 
@@ -82,17 +75,69 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
 
       // Chuẩn bị dữ liệu theo định dạng
       if (_detectedFormat == EbookFormat.epub) {
-        // Tải bytes trực tiếp để hiển thị (không ép lưu file)
+        // Với cosmos_epub: cần tải về file local để sử dụng
         print('📥 Downloading EPUB from: ${widget.ebookUrl}');
-        final resp = await http.get(Uri.parse(widget.ebookUrl));
-        if (resp.statusCode != 200) {
-          throw Exception('Không thể tải EPUB: HTTP ${resp.statusCode}');
+        _localFilePath = await EbookReaderService.downloadFile(widget.ebookUrl);
+        print('✅ EPUB downloaded to: $_localFilePath');
+
+        // 🔧 Sanitize EPUB file để sửa các lỗi path như OEBPS/../gt.html
+        // Nếu sanitize gây lỗi, sẽ tự động dùng file gốc
+        // Set to false để bỏ qua sanitize hoàn toàn nếu cần
+        const bool enableSanitization = true;
+
+        if (_localFilePath != null && !kIsWeb && enableSanitization) {
+          try {
+            print('🔧 Sanitizing EPUB file...');
+            final file = io.File(_localFilePath!);
+            final originalBytes = await file.readAsBytes();
+
+            // Lưu backup trước khi sanitize
+            final backupPath = '${_localFilePath!}.backup';
+            final backupFile = io.File(backupPath);
+            await backupFile.writeAsBytes(originalBytes);
+
+            try {
+              final sanitizedBytes = EbookReaderService.sanitizeEpubBytes(
+                originalBytes,
+              );
+
+              // Kiểm tra xem sanitized bytes có hợp lệ không
+              if (sanitizedBytes.isEmpty || sanitizedBytes.length < 100) {
+                throw Exception('Sanitized EPUB is too small or empty');
+              }
+
+              // Kiểm tra thêm: sanitized bytes phải có cấu trúc ZIP hợp lệ
+              if (sanitizedBytes.length < 4 ||
+                  (sanitizedBytes[0] != 0x50 || sanitizedBytes[1] != 0x4B)) {
+                // PK signature không đúng, có thể file bị hỏng
+                throw Exception(
+                  'Sanitized EPUB does not have valid ZIP signature',
+                );
+              }
+
+              await file.writeAsBytes(sanitizedBytes);
+              print('✅ EPUB file sanitized successfully');
+
+              // Xóa backup nếu thành công
+              try {
+                await backupFile.delete();
+              } catch (_) {}
+            } catch (sanitizeError) {
+              print('⚠️ Warning: Sanitization failed: $sanitizeError');
+              print('   🔄 Restoring original file from backup...');
+              // Restore từ backup
+              final backupBytes = await backupFile.readAsBytes();
+              await file.writeAsBytes(backupBytes);
+              await backupFile.delete();
+              print('   ✅ Restored original EPUB file (sanitization skipped)');
+              print('   📖 Will try to open original EPUB file instead');
+            }
+          } catch (e) {
+            print('⚠️ Error during EPUB sanitization process: $e');
+            print('   📖 Will attempt to open original EPUB file...');
+            // Tiếp tục với file gốc nếu sanitize thất bại hoàn toàn
+          }
         }
-        print('✅ Downloaded EPUB: ${resp.bodyBytes.length} bytes');
-        // Chuẩn hóa EPUB bị lệch chuẩn (../) trước khi render
-        print('🔧 Sanitizing EPUB...');
-        _epubBytes = EbookReaderService.sanitizeEpubBytes(resp.bodyBytes);
-        print('✅ EPUB sanitization completed');
       } else if (_detectedFormat != EbookFormat.html) {
         // PDF và định dạng khác: tải về file tạm để viewer sử dụng
         _localFilePath = await EbookReaderService.downloadFile(widget.ebookUrl);
@@ -141,7 +186,9 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             ..loadRequest(Uri.parse(widget.ebookUrl));
           break;
         case EbookFormat.epub:
-          // EPUB: khởi tạo controller ở _buildEpubReader khi có _localFilePath
+          // EPUB: Không cần khởi tạo controller cho cosmos_epub
+          // cosmos_epub sẽ tự mở fullscreen khi được gọi
+          print('✅ EPUB format detected - will use CosmosEpub');
           break;
         default:
           throw Exception('Unsupported format: $_detectedFormat');
@@ -155,6 +202,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       });
     }
   }
+
+  // Removed: _initializeEpubController - using cosmos_epub instead
 
   @override
   Widget build(BuildContext context) {
@@ -289,23 +338,80 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       color: _getBackgroundColor(),
       child: _localFilePath == null
           ? const SizedBox.shrink()
-          : SfPdfViewer.file(
-              File(_localFilePath!),
-              controller: _pdfController,
-              enableDoubleTapZooming: true,
-              enableTextSelection: true,
-              onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-                setState(() {
-                  _error = 'Không thể tải PDF: ${details.error}';
-                });
-              },
-              onPageChanged: (PdfPageChangedDetails details) {
-                setState(() {
-                  _currentPage = details.newPageNumber;
-                });
-              },
-            ),
+          : _buildPdfViewer(),
     );
+  }
+
+  Widget _buildPdfViewer() {
+    // Trên web hoặc không có local file, dùng network URL
+    if (kIsWeb || _localFilePath == null) {
+      return _buildNetworkPdfViewer();
+    }
+
+    // Trên desktop, dùng local file - chỉ compile khi không phải web
+    return _buildFilePdfViewer();
+  }
+
+  Widget _buildNetworkPdfViewer() {
+    return SfPdfViewer.network(
+      widget.ebookUrl,
+      controller: _pdfController,
+      enableDoubleTapZooming: true,
+      enableTextSelection: true,
+      onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+        setState(() {
+          _error = 'Không thể tải PDF: ${details.error}';
+        });
+      },
+      onPageChanged: (PdfPageChangedDetails details) {
+        setState(() {
+          _currentPage = details.newPageNumber;
+        });
+      },
+    );
+  }
+
+  Widget _buildFilePdfViewer() {
+    if (kIsWeb) {
+      // Không bao giờ đến đây trên web, nhưng để type checker happy
+      return _buildNetworkPdfViewer();
+    }
+
+    try {
+      // Chỉ sử dụng io.File trên desktop - dùng dynamic để tránh compile error trên web
+      final file = _createFile(_localFilePath!);
+      if (file == null) {
+        return _buildNetworkPdfViewer();
+      }
+      return SfPdfViewer.file(
+        file as dynamic,
+        controller: _pdfController,
+        enableDoubleTapZooming: true,
+        enableTextSelection: true,
+        onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+          setState(() {
+            _error = 'Không thể tải PDF: ${details.error}';
+          });
+        },
+        onPageChanged: (PdfPageChangedDetails details) {
+          setState(() {
+            _currentPage = details.newPageNumber;
+          });
+        },
+      );
+    } catch (e) {
+      // Fallback to network if file access fails
+      return _buildNetworkPdfViewer();
+    }
+  }
+
+  // Helper function để tạo File - chỉ hoạt động trên desktop
+  // Sử dụng conditional compilation để tránh lỗi trên web
+  dynamic _createFile(String path) {
+    if (kIsWeb) return null;
+    // ignore: avoid_web_libraries_in_flutter
+    // Trên desktop, dart:io.File có sẵn, trên web dùng stub
+    return io.File(path);
   }
 
   Widget _buildHtmlReader() {
@@ -326,7 +432,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     );
   }
 
-  // ✅ Thêm method để lấy màu nền theo theme
+  //  Thêm method để lấy màu nền theo theme
   Color _getBackgroundColor() {
     switch (_settings.theme) {
       case 'dark':
@@ -401,9 +507,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildEpubReader() {
+    // Sử dụng cosmos_epub thay vì epub_view
     return Container(
       color: _getBackgroundColor(),
-      child: (_epubBytes == null && _localFilePath == null)
+      child: _localFilePath == null
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -414,68 +521,85 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
                 ],
               ),
             )
-          : _buildEpubContent(),
+          : _buildCosmosEpubContent(),
     );
   }
 
-  Widget _buildEpubContent() {
-    // Nếu đã có lỗi khởi tạo, hiển thị fallback
-    if (_epubInitError != null) {
-      _epubFallbackController ??= WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadRequest(Uri.parse(widget.ebookUrl));
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            color: Colors.orange.withOpacity(0.2),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.orange),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Không thể hiển thị EPUB, đang mở dạng WebView',
-                    style: TextStyle(color: Colors.orange[900], fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(child: WebViewWidget(controller: _epubFallbackController!)),
-        ],
+  // Removed: _buildEpubContent - using cosmos_epub instead
+
+  Widget _buildCosmosEpubContent() {
+    // cosmos_epub hiển thị fullscreen, cần gọi nó sau khi file đã sẵn sàng
+    if (_localFilePath == null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Đang chuẩn bị EPUB...'),
+          ],
+        ),
       );
     }
 
-    // Khởi tạo controller một lần duy nhất
-    if (_epubController == null) {
-      try {
-        print('🎯 Initializing EpubController...');
-        _epubController = EpubController(
-          document: _epubBytes != null
-              ? EpubDocument.openData(_epubBytes!)
-              : EpubDocument.openFile(File(_localFilePath!)),
-        );
-        print('✅ EpubController initialized successfully');
-      } catch (e, stackTrace) {
-        print('❌ EPUB parsing error: $e');
-        print('Stack trace: $stackTrace');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          setState(() {
-            _epubInitError = e.toString();
-          });
-        });
-        return const Center(child: CircularProgressIndicator());
-      }
+    // Gọi cosmos_epub để mở fullscreen reader
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openCosmosEpub();
+    });
+
+    // Hiển thị thông báo đang mở
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text('Đang mở sách: ${widget.title}'),
+          const SizedBox(height: 8),
+          const Text(
+            'Đang mở Cosmos EPUB Reader...',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openCosmosEpub() async {
+    if (_localFilePath == null || kIsWeb) {
+      print('❌ Cannot open cosmos_epub: web platform or no file');
+      return;
     }
 
-    return EpubView(
-      controller: _epubController!,
-      onDocumentLoaded: (_) {
-        print('✅ EPUB document loaded in viewer');
-      },
-      onChapterChanged: (value) {},
-    );
+    try {
+      print('📖 Opening EPUB with CosmosEpub: $_localFilePath');
+
+      // cosmos_epub mở fullscreen reader tự động
+      await CosmosEpub.openLocalBook(
+        localPath: _localFilePath!,
+        context: context,
+        bookId: widget.title, // Sử dụng title làm bookId
+        onPageFlip: (int currentPage, int totalPages) {
+          print('📄 Page flipped: $currentPage / $totalPages');
+          // Có thể update progress nếu cần
+        },
+        onLastPage: (int lastPageIndex) {
+          print('🏁 Reached last page: $lastPageIndex');
+          // Có thể show completion message
+        },
+      );
+    } catch (e) {
+      print('❌ Error opening cosmos_epub: $e');
+      // cosmos_epub failed - show error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể mở EPUB: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _toggleTheme() async {

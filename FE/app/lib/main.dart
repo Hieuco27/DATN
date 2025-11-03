@@ -27,10 +27,17 @@ import 'package:book_tech/features/auth/presentations/providers/reading_provider
 import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
+import 'package:cosmos_epub/cosmos_epub.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Khởi tạo CosmosEpub
+  final cosmosInitialized = await CosmosEpub.initialize();
+  if (!cosmosInitialized) {
+    print('⚠️ Failed to initialize CosmosEpub');
+  }
 
   // Khởi tạo các dependencies
   final remoteDataSource = AuthenticationRemoteDataSourceImpl();

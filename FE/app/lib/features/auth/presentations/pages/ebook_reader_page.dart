@@ -143,7 +143,7 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
 
   Widget _buildBody() {
     return UniversalEbookReader(
-      key: ValueKey('${widget.ebookUrl}_${widget.document.title}'),
+      // key: ValueKey('${widget.ebookUrl}_${widget.document.title}'),
       ebookUrl: widget.ebookUrl,
       title: widget.document.title,
       format: _detectedFormat,

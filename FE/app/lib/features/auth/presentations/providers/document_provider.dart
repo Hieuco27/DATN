@@ -178,7 +178,6 @@ class DocumentProvider with ChangeNotifier {
             .toList();
         _isLoadingGenres = false;
         notifyListeners();
-        print('✅ Genres loaded from cache');
       }
 
       // 2. Load từ server

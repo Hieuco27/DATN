@@ -39,10 +39,8 @@ class CacheService {
 
           if (now.difference(cacheTime) < _defaultCacheDuration) {
             final List<dynamic> genresList = json.decode(genresJson);
-            print('📦 Genres loaded from cache: ${genresList.length} items');
             return genresList.cast<Map<String, dynamic>>();
           } else {
-            print('⏰ Genres cache expired');
             await prefs.remove(_genresKey);
             await prefs.remove('${_cacheTimestampPrefix}genres');
           }
@@ -50,7 +48,6 @@ class CacheService {
       }
       return null;
     } catch (e) {
-      print('❌ Error loading cached genres: $e');
       return null;
     }
   }
@@ -68,12 +65,7 @@ class CacheService {
         '${_cacheTimestampPrefix}docs_$genreId',
         DateTime.now().millisecondsSinceEpoch,
       );
-      print(
-        '💾 Documents cached for genre $genreId: ${documents.length} items',
-      );
-    } catch (e) {
-      print('❌ Error caching documents: $e');
-    }
+    } catch (e) {}
   }
 
   /// Lấy documents theo genre từ cache
@@ -93,12 +85,8 @@ class CacheService {
 
           if (now.difference(cacheTime) < _defaultCacheDuration) {
             final List<dynamic> docsList = json.decode(docsJson);
-            print(
-              '📦 Documents loaded from cache for genre $genreId: ${docsList.length} items',
-            );
             return docsList.cast<Map<String, dynamic>>();
           } else {
-            print('⏰ Documents cache expired for genre $genreId');
             await prefs.remove('$_documentsByGenrePrefix$genreId');
             await prefs.remove('${_cacheTimestampPrefix}docs_$genreId');
           }
@@ -106,7 +94,6 @@ class CacheService {
       }
       return null;
     } catch (e) {
-      print('❌ Error loading cached documents: $e');
       return null;
     }
   }
@@ -117,10 +104,7 @@ class CacheService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('$_documentsByGenrePrefix$genreId');
       await prefs.remove('${_cacheTimestampPrefix}docs_$genreId');
-      print('🗑️ Cache cleared for genre $genreId');
-    } catch (e) {
-      print('❌ Error clearing cache: $e');
-    }
+    } catch (e) {}
   }
 
   /// Xóa tất cả cache
@@ -140,10 +124,7 @@ class CacheService {
       for (final key in keysToRemove) {
         await prefs.remove(key);
       }
-      print('🗑️ All cache cleared: ${keysToRemove.length} keys');
-    } catch (e) {
-      print('❌ Error clearing all cache: $e');
-    }
+    } catch (e) {}
   }
 
   /// Kiểm tra xem cache có tồn tại và còn hạn không
