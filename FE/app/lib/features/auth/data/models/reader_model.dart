@@ -1,5 +1,4 @@
 import '../../domain/entities/reader_entity.dart';
-import 'account_model.dart';
 
 class ReaderModel extends ReaderEntity {
   const ReaderModel({

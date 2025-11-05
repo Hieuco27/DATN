@@ -15,7 +15,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
   // get all documents for reader
   @override
   Future<List<DocumentEntity>> getDocumentsForReader({
-    required String accessToken, 
+    required String accessToken,
     int page = 1,
     int limit = 20,
     String? categoryName,
@@ -23,7 +23,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }) async {
     try {
       final documents = await remoteDataSource.getDocumentsForReader(
-        accessToken: accessToken,   
+        accessToken: accessToken,
         page: page,
         limit: limit,
         categoryName: categoryName,
@@ -39,12 +39,12 @@ class DocumentRepositoryImpl implements DocumentRepository {
   // get documents by category
   @override
   Future<Map<GenreEntity, List<DocumentEntity>>> getDocumentsByCategory({
-    required String accessToken, 
+    required String accessToken,
   }) async {
     try {
       // Lấy tất cả documents
       final documents = await remoteDataSource.getDocumentsForReader(
-        accessToken: accessToken, 
+        accessToken: accessToken,
         limit: 100,
       );
 
@@ -75,16 +75,17 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
   // get documents by type
   @override
-  Future<List<DocumentResponseModel>> getDocumentsByType({
+  Future<List<DocumentEntity>> getDocumentsByType({
     required String accessToken, // Thêm parameter này
     required String documentType,
   }) async {
     try {
-      return await remoteDataSource.getDocumentsForReader(
+      final documents = await remoteDataSource.getDocumentsForReader(
         accessToken: accessToken, // Truyền token
         documentType: documentType,
         limit: 50,
       );
+      return documents.map((doc) => doc.toEntity()).toList();
     } catch (e) {
       throw Exception('Failed to fetch documents by type: $e');
     }
@@ -148,7 +149,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
   // Thêm method này vào DocumentRepositoryImpl class
   @override
-  Future<List<DocumentResponseModel>> searchDocuments({
+  Future<List<DocumentEntity>> searchDocuments({
     required String accessToken,
     required String query,
     int page = 1,
@@ -162,7 +163,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
         limit: limit,
       );
 
-      return documents;
+      return documents.map((doc) => doc.toEntity()).toList();
     } catch (e) {
       throw Exception('Failed to search documents: $e');
     }
@@ -240,5 +241,47 @@ class DocumentRepositoryImpl implements DocumentRepository {
       accessToken: accessToken,
       items: items,
     );
+  }
+
+  // hien thi danh sach tai lieu moi nhat
+  @override
+  Future<List<DocumentEntity>> getNewDocuments({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? documentType,
+  }) async {
+    try {
+      final documents = await remoteDataSource.getNewDocuments(
+        accessToken: accessToken,
+        page: page,
+        limit: limit,
+        documentType: documentType,
+      );
+      return documents.map((doc) => doc.toEntity()).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch new documents: $e');
+    }
+  }
+
+  // hien thi danh sach tai lieu duoc muon nhieu nhat
+  @override
+  Future<List<DocumentEntity>> getMostBorrowedDocuments({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? documentType,
+  }) async {
+    try {
+      final documents = await remoteDataSource.getMostBorrowedDocuments(
+        accessToken: accessToken,
+        page: page,
+        limit: limit,
+        documentType: documentType,
+      );
+      return documents.map((doc) => doc.toEntity()).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch most borrowed documents: $e');
+    }
   }
 }

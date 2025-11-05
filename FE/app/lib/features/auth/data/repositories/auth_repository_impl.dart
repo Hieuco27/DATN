@@ -246,11 +246,11 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
 
         return response.toEntity();
       } else {
-        await localStorageDataSource.clearAllData();
+        // Refresh thất bại nhưng không xoá dữ liệu ở đây; để caller quyết định
         return null;
       }
     } catch (e) {
-      await localStorageDataSource.clearAllData();
+      // Không xoá dữ liệu ở đây để tránh trùng lặp clear
       return null;
     }
   }

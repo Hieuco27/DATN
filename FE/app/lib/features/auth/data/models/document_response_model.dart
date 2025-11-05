@@ -13,7 +13,7 @@ class DocumentResponseModel {
   final int totalCopies;
   final int availableCopies;
   final String documentType;
-
+  final int borrowCount; // hoặc totalBorrows
   DocumentResponseModel({
     required this.documentId,
     required this.title,
@@ -26,6 +26,7 @@ class DocumentResponseModel {
     required this.totalCopies,
     required this.availableCopies,
     required this.documentType,
+    required this.borrowCount,
   });
 
   factory DocumentResponseModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +42,7 @@ class DocumentResponseModel {
       totalCopies: json['totalCopies'] ?? 0,
       availableCopies: json['availableCopies'] ?? 0,
       documentType: json['documentType'] ?? 'book',
+      borrowCount: json['totalBorrow'] ?? 0, // API trả về totalBorrow
     );
   }
 
@@ -53,6 +55,8 @@ class DocumentResponseModel {
       coverPhoto: coverPhoto,
       coverPrice: coverPrice,
       numberOfCopy: totalCopies,
+      borrowCount: borrowCount,
+      // Truyền borrowCount vào Entity
     );
   }
 
@@ -69,6 +73,7 @@ class DocumentResponseModel {
       'totalCopies': totalCopies,
       'availableCopies': availableCopies,
       'documentType': documentType,
+      'borrowCount': borrowCount,
     };
   }
 
@@ -82,6 +87,7 @@ class DocumentResponseModel {
     int totalCopies = 0,
     int availableCopies = 0,
     String documentType = 'book',
+    int borrowCount = 0,
   }) {
     return DocumentResponseModel(
       documentId: entity.documentId,
@@ -97,6 +103,7 @@ class DocumentResponseModel {
           ? availableCopies
           : entity.numberOfCopy,
       documentType: documentType,
+      borrowCount: borrowCount,
     );
   }
 }

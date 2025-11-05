@@ -1,4 +1,3 @@
-// lib/features/auth/data/datasources/document_remote_data_source.dart
 import 'dart:convert';
 import 'package:book_tech/features/auth/data/models/genre_model.dart';
 import 'package:book_tech/features/auth/domain/entities/genre_entity.dart';
@@ -50,6 +49,18 @@ abstract class DocumentRemoteDataSource {
   Future<Map<String, dynamic>> reserveBooks({
     required String accessToken,
     required List<Map<String, dynamic>> items,
+  });
+  Future<List<DocumentResponseModel>> getNewDocuments({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? documentType,
+  });
+  Future<List<DocumentResponseModel>> getMostBorrowedDocuments({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? documentType,
   });
 }
 
@@ -486,6 +497,124 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
       }
     } catch (e) {
       throw Exception('Error reserving books: $e');
+    }
+  }
+
+  // hien thi danh sach tai lieu moi nhat
+  @override
+  Future<List<DocumentResponseModel>> getNewDocuments({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? documentType,
+  }) async {
+    try {
+      final Map<String, String> queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      if (documentType != null && documentType.isNotEmpty) {
+        queryParams['type'] = documentType;
+      }
+      final uri = Uri.parse(
+        '$baseUrl/api/documents/reader/latest',
+      ).replace(queryParameters: queryParams);
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+        List<dynamic> documents;
+        // Kiểm tra xem response có phải là Map không
+        if (responseData is Map<String, dynamic>) {
+          // Nếu là Map, tìm key chứa array documents
+          if (responseData.containsKey('data')) {
+            documents = responseData['data'] as List<dynamic>;
+          } else {
+            throw Exception(
+              'Cannot find data array in response: ${responseData.keys}',
+            );
+          }
+        } else if (responseData is List<dynamic>) {
+          // Nếu response là array trực tiếp
+          documents = responseData;
+        } else {
+          throw Exception(
+            'Unexpected response format: ${responseData.runtimeType}',
+          );
+        }
+        // Convert từ List<dynamic> sang List<DocumentResponseModel>
+        return documents
+            .map((item) => DocumentResponseModel.fromJson(item))
+            .toList();
+      } else {
+        throw Exception(
+          'Failed to load new documents: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching new documents: $e');
+    }
+  }
+
+  // hien thi danh sach tai lieu duoc muon nhieu nhat
+  @override
+  Future<List<DocumentResponseModel>> getMostBorrowedDocuments({
+    required String accessToken,
+    int page = 1,
+    int limit = 20,
+    String? documentType,
+  }) async {
+    try {
+      final Map<String, String> queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      if (documentType != null && documentType.isNotEmpty) {
+        queryParams['type'] = documentType;
+      }
+      final uri = Uri.parse(
+        '$baseUrl/api/documents/reader/popular',
+      ).replace(queryParameters: queryParams);
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+        List<dynamic> documents;
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            documents = responseData['data'] as List<dynamic>;
+          } else {
+            throw Exception(
+              'Cannot find data array in response: ${responseData.keys}',
+            );
+          }
+        } else if (responseData is List<dynamic>) {
+          documents = responseData;
+        } else {
+          throw Exception(
+            'Unexpected response format: ${responseData.runtimeType}',
+          );
+        }
+        return documents
+            .map((item) => DocumentResponseModel.fromJson(item))
+            .toList();
+      } else {
+        throw Exception(
+          'Failed to load most borrowed documents: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching most borrowed documents: $e');
     }
   }
 }

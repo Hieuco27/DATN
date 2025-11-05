@@ -1,11 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../domain/core/failure.dart';
 import '../../domain/entities/reader_entity.dart';
 import '../../domain/entities/profile_usecase.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../bloc/auth_bloc.dart';
-import '../bloc/auth_state.dart';
 
 // Events
 abstract class ProfileEvent extends Equatable {
@@ -73,6 +71,7 @@ class ProfileError extends ProfileState {
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final AuthenticationRepository _authRepository;
+  // Unused now (kept for constructor compatibility); consider removing wiring later
   final GetProfileUseCase _getProfileUseCase;
   final UpdateProfileUseCase _updateProfileUseCase;
   final AuthBloc _authBloc;
@@ -101,23 +100,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(ProfileLoading());
       print('🔄 ProfileBloc: Loading profile...');
 
-      // Lấy token từ AuthBloc
-      final authState = _authBloc.state;
-      if (authState is AuthAuthenticated &&
-          authState.account.accessToken != null) {
-        // Sử dụng ProfileUseCase với token
-        final result = await _getProfileUseCase(authState.account.accessToken!);
-        if (result.isSuccess && result.value != null) {
-          print('✅ ProfileBloc: Profile loaded successfully');
-          emit(ProfileLoaded(result.value!));
-        } else {
-          final err = result.error;
-          final message = err is Failure ? err.message : err.toString();
-          emit(ProfileError(message));
-        }
-      } else {
-        emit(ProfileError('Chưa đăng nhập'));
-      }
+      // Gọi qua AuthenticationRepository để có auto refresh token
+      final profile = await _authRepository.getProfile();
+      print('✅ ProfileBloc: Profile loaded successfully');
+      emit(ProfileLoaded(profile));
     } catch (e) {
       emit(ProfileError('Lỗi lấy profile: ${e.toString()}'));
     }
@@ -130,12 +116,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       emit(ProfileLoading());
 
-      DateTime? _parseDate(dynamic v) {
-        if (v == null) return null;
-        if (v is DateTime) return v;
-        if (v is String && v.isNotEmpty) return DateTime.tryParse(v);
-        return null;
-      }
+      // (no-op)
 
       // Kiểm tra nếu có đầy đủ dữ liệu từ event
       if (event.profileData['readerId'] == null ||
@@ -143,33 +124,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         throw Exception('Thiếu thông tin readerId hoặc accountId');
       }
 
-      // Tạo ReaderEntity từ dữ liệu event (không cần lấy từ state)
-      final readerEntity = ReaderEntity(
-        readerId: event.profileData['readerId'],
-        accountId: event.profileData['accountId'],
-        fullName: event.profileData['fullName'],
-        phoneNumber: event.profileData['phoneNumber'],
-        address: event.profileData['address'],
-        gender: event.profileData['gender'],
-        dateOfBirth: _parseDate(event.profileData['dateOfBirth']),
-        cccd: event.profileData['cccd'],
-        totolBorrow: event.profileData['totolBorrow'],
-        note: event.profileData['note'],
-        createdAt: _parseDate(event.profileData['created_at']),
-        updatedAt: _parseDate(event.profileData['updated_at']),
-      );
+      // Chuẩn hoá dữ liệu đầu vào nếu cần (không cần tạo entity ở đây)
 
-      final result = await _updateProfileUseCase(
-        event.accessToken,
-        readerEntity,
-      );
-      if (result.isSuccess && result.value != null) {
-        emit(ProfileUpdated(result.value!));
-      } else {
-        final err = result.error;
-        final message = err is Failure ? err.message : err.toString();
-        emit(ProfileError(message, previousState: state));
-      }
+      // Dùng AuthenticationRepository để được tự refresh khi 401
+      final updated = await _authRepository.updateProfile(event.profileData);
+      emit(ProfileUpdated(updated));
     } catch (e) {
       emit(
         ProfileError(

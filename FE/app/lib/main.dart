@@ -68,8 +68,8 @@ class MyApp extends StatelessWidget {
           create: (_) => DocumentRemoteDataSourceImpl(),
         ),
         Provider<DocumentRepositoryImpl>(
-          create: (ctx) => DocumentRepositoryImpl(
-            remoteDataSource: ctx.read<DocumentRemoteDataSource>(),
+          create: (context) => DocumentRepositoryImpl(
+            remoteDataSource: context.read<DocumentRemoteDataSource>(),
           ),
         ),
         Provider<DocumentRepository>(

@@ -92,7 +92,6 @@ class ReaderEntity {
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       cccd: cccd ?? this.cccd,
       gender: gender ?? this.gender,
-
       totolBorrow: totolBorrow ?? this.totolBorrow,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,

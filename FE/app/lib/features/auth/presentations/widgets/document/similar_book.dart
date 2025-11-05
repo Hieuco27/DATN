@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:book_tech/features/auth/data/models/document_response_model.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
 
-class SimilarBooksWidget extends StatelessWidget {
+class SimilarBooksModelWidget extends StatelessWidget {
   final List<DocumentResponseModel> similarBooks;
   final bool isLoading;
 
-  const SimilarBooksWidget({
+  const SimilarBooksModelWidget({
     super.key,
     required this.similarBooks,
     this.isLoading = false,

@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:http/http.dart' as http;
 import '../models/login_response_model.dart';
 import '../models/register_response_model.dart';
 import '../models/reader_model.dart';
-import 'package:book_tech/core/network_exception.dart';
 
 abstract class AuthenticationRemoteDataSource {
   Future<LoginResponseModel> login(String email, String password);
@@ -153,7 +150,7 @@ class AuthenticationRemoteDataSourceImpl
   Future<ReaderModel> getProfile(String accessToken) async {
     try {
       final response = await dio.get(
-        '/auth/profile',
+        '/profile/me',
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
@@ -171,61 +168,52 @@ class AuthenticationRemoteDataSourceImpl
           );
         }
 
-        // Tìm user data trong các cấu trúc khác nhau
-        Map<String, dynamic>? userData;
-
+        // Chuẩn hoá dữ liệu theo dạng mà ReaderModel.fromJson mong đợi
+        // Ưu tiên các khoá thông dụng: reader -> profile -> data -> chính response
+        Map<String, dynamic>? profileData;
         if (responseData is Map<String, dynamic>) {
-          if (responseData['user'] != null) {
-            userData = responseData['user'];
-          } else if (responseData['data'] != null) {
-            userData = responseData['data'];
-          } else if (responseData['account'] != null) {
-            userData = responseData['account'];
-          } else if (responseData.containsKey('email')) {
-            // Nếu responseData chính là user data
-            userData = responseData;
+          if (responseData['reader'] is Map<String, dynamic>) {
+            profileData = Map<String, dynamic>.from(responseData['reader']);
+          } else if (responseData['profile'] is Map<String, dynamic>) {
+            profileData = Map<String, dynamic>.from(responseData['profile']);
+          } else if (responseData['data'] is Map<String, dynamic>) {
+            profileData = Map<String, dynamic>.from(responseData['data']);
+          } else {
+            profileData = Map<String, dynamic>.from(responseData);
           }
         }
 
-        if (userData == null) {
-          if (responseData is Map<String, dynamic>) {}
+        if (profileData == null) {
           throw Exception(
-            'Dữ liệu user không tồn tại trong response. Response type: ${responseData.runtimeType}',
+            'Dữ liệu profile không tồn tại trong response. Response type: ${responseData.runtimeType}',
           );
         }
 
-        // Tạo fallback data nếu thiếu thông tin cần thiết
-        final fallbackUserData = {
-          'accountId':
-              userData['accountId']?.toString() ??
-              userData['id']?.toString() ??
-              'unknown',
-          'email': userData['email']?.toString() ?? 'unknown@example.com',
-          'roleName':
-              userData['roleName']?.toString() ??
-              userData['role']?.toString() ??
-              'reader',
-          'fullName':
-              userData['fullName']?.toString() ??
-              userData['name']?.toString() ??
-              '',
-          'phoneNumber':
-              userData['phoneNumber']?.toString() ??
-              userData['phone']?.toString() ??
-              '',
-          'address': userData['address']?.toString() ?? '',
-          'dateOfBirth':
-              userData['dateOfBirth']?.toString() ??
-              userData['birthday']?.toString() ??
-              '',
-          'cccd': userData['cccd']?.toString() ?? '',
-          'totolBorrow': userData['totolBorrow'] is int
-              ? userData['totolBorrow']
-              : int.tryParse(userData['totolBorrow']?.toString() ?? '0') ?? 0,
-        };
+        // Đảm bảo có cấu trúc account lồng nếu backend trả email/phone ở cấp cao hơn
+        final hasAccount = profileData['account'] is Map<String, dynamic>;
+        if (!hasAccount) {
+          final inferredAccount = <String, dynamic>{};
+          // Lấy từ response cấp trên nếu có
+          if (responseData is Map<String, dynamic>) {
+            final topAccount = responseData['account'];
+            if (topAccount is Map<String, dynamic>) {
+              inferredAccount.addAll(topAccount);
+            }
+          }
+          // Fallback: lấy ngay trên profileData nếu tồn tại
+          if (profileData.containsKey('email')) {
+            inferredAccount['email'] = profileData['email'];
+          }
+          if (profileData.containsKey('phoneNumber')) {
+            inferredAccount['phoneNumber'] = profileData['phoneNumber'];
+          }
+          if (inferredAccount.isNotEmpty) {
+            profileData['account'] = inferredAccount;
+          }
+        }
 
         try {
-          return ReaderModel.fromJson(fallbackUserData);
+          return ReaderModel.fromJson(profileData);
         } catch (parseError) {
           throw Exception('Lỗi xử lý dữ liệu profile: $parseError');
         }

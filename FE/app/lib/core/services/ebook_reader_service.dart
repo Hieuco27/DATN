@@ -802,12 +802,13 @@ class EbookReaderService {
 
           final data = file.content as List<int>;
 
-          // Xử lý các file text cần normalize (OPF, NCX, HTML, XML)
+          // Xử lý các file text cần normalize (OPF, NCX, HTML, XML, CSS)
           if (name.endsWith('.opf') ||
               name.endsWith('.ncx') ||
               name.endsWith('.xhtml') ||
               name.endsWith('.html') ||
-              name.endsWith('.xml')) {
+              name.endsWith('.xml') ||
+              name.endsWith('.css')) {
             // Try decode với UTF-8, cho phép malformed bytes để tránh crash
             String content;
             try {
@@ -1129,6 +1130,25 @@ class EbookReaderService {
 
               return '$attr="$normalizedPath"';
             });
+
+            // Nếu là CSS, normalize thêm tất cả url(...) bên trong CSS
+            if (name.endsWith('.css')) {
+              final cssUrlRegex = RegExp(
+                'url\\(\\s*[\\\'\\\"]?([^\\) \\\'\\\"]+)[\\\'\\\"]?\\s*\\)',
+                caseSensitive: false,
+              );
+              normalized = normalized.replaceAllMapped(cssUrlRegex, (match) {
+                final rawPath = match.group(1);
+                if (rawPath == null) return match.group(0)!;
+
+                final normalizedCssPath = normalizeFilePath(
+                  rawPath,
+                  isInOEBPS: isInOEBPS,
+                );
+
+                return match.group(0)!.replaceFirst(rawPath, normalizedCssPath);
+              });
+            }
 
             // Tạo duplicate files cho các paths có typo
             if (typoPathsToFix.isNotEmpty) {

@@ -10,6 +10,7 @@ import 'package:book_tech/features/auth/presentations/widgets/home/new_navigatio
 //
 import '../providers/document_provider.dart';
 import '../pages/search_page.dart';
+import '../pages/latest_documents_page.dart';
 import '../widgets/document/genre_section.dart';
 //
 import '../widgets/home/book_quote_box.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:book_tech/features/auth/data/models/genre_model.dart';
 import 'package:chips_choice/chips_choice.dart';
+import 'package:book_tech/features/auth/presentations/pages/most_borrowed_documents_page.dart';
 
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
@@ -144,21 +146,34 @@ class _MainHomePageState extends State<MainHomePage> {
                         label: 'Phổ biến',
                         color: const Color(0xFF2979FF),
                         onTap: () {
-                          Navigator.of(context).pushNamed('/my-books');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const MostBorrowedDocumentsPage(),
+                            ),
+                          );
                         },
                       ),
                       _QuickAction(
                         icon: Icons.favorite_rounded,
                         label: 'Mới nhất',
                         color: const Color(0xFFFF6D00),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LatestDocumentsPage(),
+                            ),
+                          );
+                        },
                       ),
-                      _QuickAction(
-                        icon: Icons.upload_file_rounded,
-                        label: 'Tải lên',
-                        color: const Color(0xFF00C853),
-                        onTap: () {},
-                      ),
+                      // _QuickAction(
+                      //   icon: Icons.upload_file_rounded,
+                      //   label: 'Tải lên',
+                      //   color: const Color(0xFF00C853),
+                      //   onTap: () {},
+                      // ),
                     ],
                   ),
                 ),

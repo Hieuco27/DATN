@@ -10,6 +10,7 @@ class DocumentEntity {
   final String? coverPhoto;
   final String? ebookUrl;
   final int numberOfCopy;
+  final int? borrowCount; // Số lượt mượn
   final bool deleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -26,6 +27,7 @@ class DocumentEntity {
     this.coverPhoto,
     this.ebookUrl,
     this.numberOfCopy = 0,
+    this.borrowCount,
     this.deleted = false,
     this.createdAt,
     this.updatedAt,

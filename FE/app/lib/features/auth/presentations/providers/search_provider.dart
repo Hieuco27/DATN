@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/repositories/document_repository.dart';
-import '../../data/models/document_response_model.dart';
+import '../../domain/entities/document_entity.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 
@@ -12,13 +12,13 @@ class SearchProvider with ChangeNotifier {
 
   bool _isLoading = false;
   String? _error;
-  List<DocumentResponseModel> _searchResults = [];
+  List<DocumentEntity> _searchResults = [];
   String _currentQuery = '';
   List<String> _searchHistory = [];
 
   bool get isLoading => _isLoading;
   String? get error => _error;
-  List<DocumentResponseModel> get searchResults => _searchResults;
+  List<DocumentEntity> get searchResults => _searchResults;
   String get currentQuery => _currentQuery;
   List<String> get searchHistory => _searchHistory;
 
@@ -47,13 +47,12 @@ class SearchProvider with ChangeNotifier {
         clearSearch();
         return;
       }
-      List<DocumentResponseModel> fetchedResults = await repository
-          .searchDocuments(
-            accessToken: authState.account.accessToken!,
-            query: firstToken,
-            page: 1,
-            limit: 20,
-          );
+      List<DocumentEntity> fetchedResults = await repository.searchDocuments(
+        accessToken: authState.account.accessToken!,
+        query: firstToken,
+        page: 1,
+        limit: 20,
+      );
 
       // Lọc theo tiêu đề (accent-insensitive, case-insensitive) và ưu tiên bắt đầu bằng từ khóa
       final normalizedQuery = _normalizeText(_currentQuery);

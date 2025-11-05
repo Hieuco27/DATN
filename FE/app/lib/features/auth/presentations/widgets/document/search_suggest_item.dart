@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:book_tech/features/auth/data/models/document_response_model.dart';
+import 'package:book_tech/features/auth/domain/entities/document_entity.dart';
 
 class SearchSuggestionItem extends StatelessWidget {
-  final DocumentResponseModel document;
+  final DocumentEntity document;
   final VoidCallback onTap;
 
   const SearchSuggestionItem({

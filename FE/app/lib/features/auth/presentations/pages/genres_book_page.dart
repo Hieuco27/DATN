@@ -129,6 +129,7 @@ class _GenreBooksPageState extends State<GenreBooksPage> {
                   totalCopies: document.numberOfCopy,
                   availableCopies: document.numberOfCopy,
                   documentType: 'book', // Default value
+                  borrowCount: 0, // Default value
                 );
 
                 return DocumentItem.fromReader(responseModel);

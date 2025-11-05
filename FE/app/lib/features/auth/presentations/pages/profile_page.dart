@@ -248,8 +248,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           String userName = 'Người dùng';
           String userEmail = 'user@example.com';
           String userPhoneNumber = '0000000000';
+          String accountId = '0';
 
           if (authState is AuthAuthenticated) {
+            accountId = authState.account.accountId?.toString() ?? '0';
             userEmail = authState.account.email;
             userName = authState.account.fullName ?? userName;
             userPhoneNumber = authState.account.phoneNumber;
@@ -258,23 +260,21 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             userName = state.profile.fullName?.isNotEmpty == true
                 ? state.profile.fullName!
                 : (state.profile.phoneNumber?.isNotEmpty == true
-                      ? 'User ${state.profile.phoneNumber}'
+                      ? 'User ${state.profile.phoneNumber} ${accountId}'
                       : 'Người dùng');
-            // userEmail = state.profile.phoneNumber?.isNotEmpty == true
-            //     ? state.profile.phoneNumber!
-            //     : userEmail;
-            // userPhoneNumber = state.profile.phoneNumber ?? userPhoneNumber;
           } else if (state is ProfileUpdated) {
             userName = state.profile.fullName?.isNotEmpty == true
                 ? state.profile.fullName!
                 : (state.profile.phoneNumber?.isNotEmpty == true
-                      ? 'User ${state.profile.phoneNumber}'
+                      ? 'User ${state.profile.phoneNumber} ${accountId}'
                       : 'Người dùng');
-            userEmail = state.profile.phoneNumber?.isNotEmpty == true
-                ? state.profile.phoneNumber!
-                : userEmail;
-            userPhoneNumber = state.profile.phoneNumber ?? userPhoneNumber;
           }
+          // Xác định ID hiển thị từ profile (nếu có) hoặc fallback theo auth
+          final String displayId = (state is ProfileLoaded)
+              ? (state.profile.accountId?.toString() ?? accountId)
+              : (state is ProfileUpdated)
+              ? (state.profile.accountId?.toString() ?? accountId)
+              : accountId;
           // Navigate to profile detail page
           return InkWell(
             onTap: () {
@@ -328,6 +328,13 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                         overflow: TextOverflow.ellipsis, // Đã có
                       ),
                       const SizedBox(height: 8),
+                      Text(
+                        'ID: $displayId',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
                       Text(
                         'Xem hồ sơ >',
                         style: TextStyle(

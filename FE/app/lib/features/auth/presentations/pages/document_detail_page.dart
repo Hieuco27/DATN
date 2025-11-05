@@ -1,21 +1,20 @@
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
+import 'package:book_tech/features/auth/data/models/document_detail_model.dart';
 import 'package:book_tech/features/auth/presentations/widgets/document/similar_book.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
-import 'package:book_tech/features/auth/data/models/document_detail_model.dart';
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
 import '../bloc/auth_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
-import 'package:book_tech/features/auth/data/models/document_response_model.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
-import 'package:book_tech/features/auth/data/models/cart_item_model.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
 import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
+import 'package:book_tech/features/auth/presentations/providers/document_detail_view_model.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -27,18 +26,20 @@ class DocumentDetailPage extends StatefulWidget {
 }
 
 class _DocumentDetailPageState extends State<DocumentDetailPage> {
-  DocumentDetailModel? _document;
-  bool _isLoading = true;
-  String? _error;
-  List<DocumentResponseModel> _similarBooks = [];
-  bool _isLoadingSimilar = false;
-
-  bool _isBookmarked = false;
+  late final DocumentDetailViewModel _vm;
 
   @override
   void initState() {
     super.initState();
+    final repository = Provider.of<DocumentRepository>(context, listen: false);
+    _vm = DocumentDetailViewModel(repository: repository);
+    _vm.addListener(_onVmChanged);
     _loadDocumentDetail();
+  }
+
+  void _onVmChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _loadDocumentDetail() async {
@@ -48,93 +49,23 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           authState.account.accessToken?.isEmpty == true) {
         throw Exception('User not authenticated');
       }
-
-      final repository = Provider.of<DocumentRepository>(
-        context,
-        listen: false,
+      final wishlist = Provider.of<WishlistProvider>(context, listen: false);
+      await _vm.load(
+        accessToken: authState.account.accessToken!,
+        documentId: widget.documentId,
+        wishlist: wishlist,
       );
-      final document = await repository.getDocumentDetail(
+      await _vm.loadSimilar(
         accessToken: authState.account.accessToken!,
         documentId: widget.documentId,
       );
-
-      // Debug log để kiểm tra ebookUrl
-      print('📚 Document ID: ${document.documentId}');
-      print('📚 Title: ${document.title}');
-      print('📚 Category: ${document.category['name'] ?? 'N/A'}');
-      print('📚 ebookUrl: ${document.ebookUrl ?? 'NULL'}');
-      print(
-        '📚 Has ebook: ${document.ebookUrl != null && document.ebookUrl!.isNotEmpty}',
-      );
-
-      setState(() {
-        _document = document;
-        _isLoading = false;
-      });
-      // Sync bookmark state from wishlist
-      final wishlist = Provider.of<WishlistProvider>(context, listen: false);
-      _isBookmarked = wishlist.contains(document.documentId);
-      _loadSimilarBooks();
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      NotificationService.showInfo(context, message: e.toString());
     }
   }
 
   // Thêm method để load similar books
-  Future<void> _loadSimilarBooks() async {
-    if (_document == null) return;
-
-    setState(() {
-      _isLoadingSimilar = true;
-    });
-
-    try {
-      final authState = context.read<AuthBloc>().state;
-      if (authState is! AuthAuthenticated ||
-          authState.account.accessToken?.isEmpty == true) {
-        throw Exception('User not authenticated');
-      }
-
-      final repository = Provider.of<DocumentRepository>(
-        context,
-        listen: false,
-      );
-
-      final similarBooks = await repository.getSimilarDocuments(
-        accessToken: authState.account.accessToken!,
-        documentId: _document!.documentId,
-        limit: 10,
-      );
-
-      setState(() {
-        _similarBooks = similarBooks.map((entity) {
-          // Convert DocumentEntity to DocumentResponseModel
-          return DocumentResponseModel(
-            documentId: entity.documentId,
-            title: entity.title,
-            coverPhoto: entity.coverPhoto,
-            minDeposit: 0,
-            maxDeposit: 0,
-            coverPrice: entity.coverPrice ?? 0,
-            categoryName: '',
-            depositRate: 0.0,
-            totalCopies: entity.numberOfCopy,
-            availableCopies: entity.numberOfCopy, // Giả định tất cả đều có sẵn
-            documentType: 'book',
-          );
-        }).toList();
-        _isLoadingSimilar = false;
-      });
-    } catch (e) {
-      print('Error loading similar books: $e');
-      setState(() {
-        _isLoadingSimilar = false;
-      });
-    }
-  }
+  // removed: handled inside view model
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +79,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _document?.title ?? '',
+          _vm.title,
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 20,
@@ -157,7 +88,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ),
         ),
         actions: [
-          if (_document?.ebookUrl != null)
+          if (_vm.ebookUrl != null)
             IconButton(
               tooltip: 'Tải ebook',
               icon: const Icon(
@@ -173,29 +104,18 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ),
           IconButton(
             icon: Icon(
-              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _isBookmarked ? Colors.red : Colors.grey,
+              _vm.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              color: _vm.isBookmarked ? Colors.red : Colors.grey,
             ),
             onPressed: () {
-              if (_document == null) return;
               final wishlist = Provider.of<WishlistProvider>(
                 context,
                 listen: false,
               );
-              wishlist.toggle(
-                WishlistItem(
-                  documentId: _document!.documentId,
-                  title: _document!.title,
-                  coverPhoto: _document!.coverPhoto,
-                ),
-              );
-              final nowBookmarked = wishlist.contains(_document!.documentId);
-              setState(() {
-                _isBookmarked = nowBookmarked;
-              });
+              _vm.toggleWishlist(wishlist);
               NotificationService.showInfo(
                 context,
-                message: nowBookmarked
+                message: _vm.isBookmarked
                     ? 'Đã thêm vào muốn đọc'
                     : 'Đã bỏ khỏi muốn đọc',
               );
@@ -210,11 +130,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   Widget _buildBody() {
     const SizedBox(height: 30);
-    if (_isLoading) {
+    if (_vm.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    if (_vm.error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -227,7 +147,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              _error!,
+              _vm.error!,
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),
@@ -241,7 +161,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       );
     }
 
-    if (_document == null) {
+    if (_vm.title.isEmpty) {
       return const Center(child: Text('Không có dữ liệu'));
     }
 
@@ -257,9 +177,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           _buildDescription(),
           _buildDetails(),
           // Thêm widget hiển thị sách tương tự
-          SimilarBooksWidget(
-            similarBooks: _similarBooks,
-            isLoading: _isLoadingSimilar,
+          SimilarBooksModelWidget(
+            similarBooks: _vm.similarBooks,
+            isLoading: _vm.isSimilarLoading,
           ),
           const SizedBox(height: 20),
         ],
@@ -289,7 +209,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                _document!.coverPhoto,
+                _vm.coverPhoto,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
@@ -307,7 +227,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _document!.title,
+                  _vm.title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -360,7 +280,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 //   ),
                 // const SizedBox(height: 8),
                 Text(
-                  _document!.authors
+                  _vm.authors
                           .where((author) => author['role'] == 'main')
                           .map((author) => '${author['fullName'] ?? ''} ')
                           .firstOrNull ??
@@ -373,7 +293,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 Row(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _document!.ebookUrl != null ? _readNow : null,
+                      onPressed: _vm.ebookUrl != null ? _readNow : null,
                       icon: const Icon(Icons.play_arrow, size: 18),
                       label: const Text('ĐỌC NGAY'),
                       style: ElevatedButton.styleFrom(
@@ -389,7 +309,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    if (_document!.ebookUrl != null)
+                    if (_vm.ebookUrl != null)
                       OutlinedButton.icon(
                         onPressed: _downloadEbook,
                         icon: const Icon(Icons.download_outlined, size: 18),
@@ -427,18 +347,14 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildInfoItem('Tổng số', '${_document!.totalCopies}'),
-          ),
+          Expanded(child: _buildInfoItem('Tổng số', '${_vm.totalCopies}')),
           Container(width: 1, height: 40, color: Colors.grey[300]),
-          Expanded(
-            child: _buildInfoItem('Hiện có', '${_document!.availableCopies}'),
-          ),
+          Expanded(child: _buildInfoItem('Hiện có', '${_vm.availableCopies}')),
           Container(width: 1, height: 40, color: Colors.grey[300]),
           Expanded(
             child: _buildInfoItem(
               'Đang cho mượn',
-              '${_document!.totalCopies - _document!.availableCopies}',
+              '${_vm.totalCopies - _vm.availableCopies}',
             ),
           ),
         ],
@@ -527,7 +443,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
             padding: const EdgeInsets.all(12),
             child: Text(
-              _document!.description,
+              _vm.description,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[700],
@@ -555,17 +471,14 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildDetailRow('Nhà xuất bản', _document!.publisher['name'] ?? ''),
-          _buildDetailRow(
-            'Năm xuất bản',
-            _document!.publicationYear.toString(),
-          ),
-          _buildDetailRow('Thể loại', _document!.category['name'] ?? ''),
-          _buildDetailRow('Ngôn ngữ', _document!.language),
-          if (_document!.minDeposit != null && _document!.maxDeposit != null)
+          _buildDetailRow('Nhà xuất bản', _vm.publisher['name'] ?? ''),
+          _buildDetailRow('Năm xuất bản', _vm.publicationYear.toString()),
+          _buildDetailRow('Thể loại', _vm.category['name'] ?? ''),
+          _buildDetailRow('Ngôn ngữ', _vm.language),
+          if (_vm.minDeposit != null && _vm.maxDeposit != null)
             _buildDetailRow(
               'Tiền cọc',
-              '${_formatCurrency(_document!.minDeposit!)} - ${_formatCurrency(_document!.maxDeposit!)}',
+              '${_formatCurrency(_vm.minDeposit!)} - ${_formatCurrency(_vm.maxDeposit!)}',
             ),
           // _buildDetailRow(
           //   'Giá bìa',
@@ -586,7 +499,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           //   'Thể loại con',
           //   _document!.genres.map((g) => g['name'] ?? '').join(', '),
           // ),
-          if (_document!.availableCopies > 0) ...[
+          if (_vm.availableCopies > 0) ...[
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -638,8 +551,8 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   }
 
   Future<void> _downloadEbook() async {
-    if (_document?.ebookUrl == null) return;
-    final uri = Uri.tryParse(_document!.ebookUrl!);
+    if (_vm.ebookUrl == null) return;
+    final uri = Uri.tryParse(_vm.ebookUrl!);
     if (uri == null) return;
     final can = await canLaunchUrl(uri);
     if (can) {
@@ -653,8 +566,8 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   }
 
   void _shareDocument() async {
-    final title = _document?.title ?? '';
-    final link = _document?.ebookUrl ?? '';
+    final title = _vm.title;
+    final link = _vm.ebookUrl ?? '';
     final shareText = link.isNotEmpty ? '$title\n$link' : title;
     await Clipboard.setData(ClipboardData(text: shareText));
     if (!mounted) return;
@@ -663,7 +576,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   // Thay thế method _readNow hiện tại
   void _readNow() {
-    if (_document?.ebookUrl == null) {
+    if (_vm.ebookUrl == null) {
       NotificationService.showInfo(
         context,
         message: 'Tài liệu này không có phiên bản điện tử',
@@ -678,10 +591,10 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
     readingProvider.addOrUpdate(
       ReadingItem(
-        documentId: _document!.documentId,
-        title: _document!.title,
-        coverPhoto: _document!.coverPhoto,
-        ebookUrl: _document!.ebookUrl!,
+        documentId: _vm.documentId,
+        title: _vm.title,
+        coverPhoto: _vm.coverPhoto,
+        ebookUrl: _vm.ebookUrl!,
         startedAt: DateTime.now(),
       ),
     );
@@ -691,8 +604,33 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       context,
       MaterialPageRoute(
         builder: (context) => EbookReaderPage(
-          document: _document!,
-          ebookUrl: _document!.ebookUrl!,
+          document: DocumentDetailModel(
+            documentId: _vm.documentId,
+            documentType: 'book',
+            title: _vm.title,
+            language: _vm.language,
+            publicationYear: _vm.publicationYear,
+            coverPrice: 0,
+            description: _vm.description,
+            coverPhoto: _vm.coverPhoto,
+            ebookUrl: _vm.ebookUrl,
+            numberOfCopy: _vm.totalCopies,
+            category: _vm.category,
+            publisher: _vm.publisher,
+            book: null,
+            magazine: null,
+            newspaper: null,
+            authors: _vm.authors,
+            genres: const [],
+            copies: const [],
+            totalCopies: _vm.totalCopies,
+            availableCopies: _vm.availableCopies,
+            availableCopiesEffective: _vm.availableCopies,
+            minDeposit: _vm.minDeposit,
+            maxDeposit: _vm.maxDeposit,
+            shelfLocation: null,
+          ),
+          ebookUrl: _vm.ebookUrl!,
         ),
       ),
     );
@@ -703,23 +641,18 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   void _addToCart() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    cartProvider.addItem(
-      CartItemModel(
-        documentId: _document!.documentId,
-        title: _document!.title,
-        coverPhoto: _document!.coverPhoto,
-        quantity: _quantity,
-        minDeposit: _document!.minDeposit,
-        maxDeposit: _document!.maxDeposit,
-      ),
-    );
-
+    final added = _vm.addToCart(cartProvider);
+    if (!added) {
+      NotificationService.showInfo(
+        context,
+        message: 'Sách đã có trong giỏ hàng',
+      );
+      return;
+    }
     NotificationService.showSuccess(
       context,
       message: 'Đã thêm $_quantity sách vào giỏ hàng',
     );
-
-    setState(() => _quantity = 1);
   }
 }
 
