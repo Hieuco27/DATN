@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
-import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_event.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
@@ -86,7 +85,30 @@ class _ProfilePageContent extends StatefulWidget {
   State<_ProfilePageContent> createState() => _ProfilePageContentState();
 }
 
-class _ProfilePageContentState extends State<_ProfilePageContent> {
+class _ProfilePageContentState extends State<_ProfilePageContent>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
+  // Màu sắc đồng nhất với cart_page và my_books_page
+  static const Color _primaryColor = Color(0xFFFF6B35);
+  static const Color _backgroundColor = Color(0xFFF8F9FA);
+  static const Color _textColor = Color(0xFF1A202C);
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
@@ -108,39 +130,86 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             });
           }
           return Scaffold(
-            backgroundColor: Color(0xFFF8F9FA), // màu xám nhạt
-
+            backgroundColor: _backgroundColor,
             appBar: AppBar(
               title: const Text(
                 'Tài khoản',
                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: Colors.black,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 24,
+                  color: _textColor,
+                  letterSpacing: -0.5,
                 ),
               ),
               backgroundColor: Colors.white,
-              elevation: 0.5,
+              elevation: 0,
               automaticallyImplyLeading: false,
               centerTitle: true,
               actions: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.notifications_none_rounded,
-                    color: Colors.black87,
+                Container(
+                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  tooltip: 'Thông báo',
-                  onPressed: _openNotifications,
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.settings_outlined,
-                    color: Colors.black87,
+                  child: IconButton(
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(
+                          Icons.notifications_outlined,
+                          color: _textColor,
+                          size: 22,
+                        ),
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _primaryColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    tooltip: 'Thông báo',
+                    onPressed: _openNotifications,
                   ),
-                  tooltip: 'Cài đặt',
-                  onPressed: _openSettings,
                 ),
-                const SizedBox(width: 4),
+                Container(
+                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      color: _textColor,
+                      size: 22,
+                    ),
+                    tooltip: 'Cài đặt',
+                    onPressed: _openSettings,
+                  ),
+                ),
               ],
             ),
             // Thay thế dòng 137-149
@@ -167,17 +236,17 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
   Widget _buildProfileHeader() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
-            spreadRadius: 1,
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
         ],
       ),
@@ -186,8 +255,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           if (state is ProfileLoading) {
             return const Center(
               child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppPalette.gradient1),
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
               ),
             );
           }
@@ -195,28 +264,39 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           if (state is ProfileError) {
             return Column(
               children: [
-                Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.orange.shade400,
-                  size: 40,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Lỗi tải thông tin',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.error_outline_rounded,
+                    color: _primaryColor,
+                    size: 40,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 16),
+                const Text(
+                  'Lỗi tải thông tin',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   state.message,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
                 ),
-                const SizedBox(height: 12),
-                ElevatedButton(
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
                   onPressed: () {
                     final authState = context.read<AuthBloc>().state;
                     if (authState is AuthAuthenticated &&
@@ -224,19 +304,27 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                       context.read<ProfileBloc>().add(ProfileLoadRequested());
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppPalette.gradient1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text(
+                    'Thử lại',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: const Text(
-                    'Thử lại',
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    elevation: 4,
+                    shadowColor: _primaryColor.withOpacity(0.3),
                   ),
                 ),
               ],
@@ -246,34 +334,30 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           // Get user info
           final authState = context.read<AuthBloc>().state;
           String userName = 'Người dùng';
-          String userEmail = 'user@example.com';
-          String userPhoneNumber = '0000000000';
           String accountId = '0';
 
           if (authState is AuthAuthenticated) {
-            accountId = authState.account.accountId?.toString() ?? '0';
-            userEmail = authState.account.email;
+            accountId = authState.account.accountId.toString();
             userName = authState.account.fullName ?? userName;
-            userPhoneNumber = authState.account.phoneNumber;
           }
           if (state is ProfileLoaded) {
             userName = state.profile.fullName?.isNotEmpty == true
                 ? state.profile.fullName!
                 : (state.profile.phoneNumber?.isNotEmpty == true
-                      ? 'User ${state.profile.phoneNumber} ${accountId}'
+                      ? 'User ${state.profile.phoneNumber} $accountId'
                       : 'Người dùng');
           } else if (state is ProfileUpdated) {
             userName = state.profile.fullName?.isNotEmpty == true
                 ? state.profile.fullName!
                 : (state.profile.phoneNumber?.isNotEmpty == true
-                      ? 'User ${state.profile.phoneNumber} ${accountId}'
+                      ? 'User ${state.profile.phoneNumber} $accountId'
                       : 'Người dùng');
           }
           // Xác định ID hiển thị từ profile (nếu có) hoặc fallback theo auth
           final String displayId = (state is ProfileLoaded)
-              ? (state.profile.accountId?.toString() ?? accountId)
+              ? (state.profile.accountId.toString())
               : (state is ProfileUpdated)
-              ? (state.profile.accountId?.toString() ?? accountId)
+              ? (state.profile.accountId.toString())
               : accountId;
           // Navigate to profile detail page
           return InkWell(
@@ -295,53 +379,93 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             child: Row(
               children: [
                 Container(
-                  width: 70,
-                  height: 70,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppPalette.gradient1, AppPalette.gradient2],
+                    gradient: LinearGradient(
+                      colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(35),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryColor.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.person_rounded,
-                    size: 32,
+                    size: 36,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 20),
                 Expanded(
-                  // Đảm bảo có Expanded
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         userName,
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: _textColor,
+                          letterSpacing: -0.3,
                         ),
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis, // Đã có
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'ID: $displayId',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDF2F7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.badge_rounded,
+                              size: 14,
+                              color: Colors.grey[700],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'ID: $displayId',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Xem hồ sơ >',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: const Color.fromARGB(255, 120, 120, 120),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            'Xem hồ sơ',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: _primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 12,
+                            color: _primaryColor,
+                          ),
+                        ],
                       ),
 
                       // Text(
@@ -396,18 +520,18 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.06),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: SingleChildScrollView(
           // Thêm SingleChildScrollView
           child: Column(
@@ -450,20 +574,31 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                 isLast: true,
                 onTap: () {},
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               // Logout button
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.withOpacity(0.1)),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red.withOpacity(0.08),
+                        Colors.red.withOpacity(0.04),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.red.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
                   child: _buildMenuItem(
                     icon: Icons.logout_rounded,
                     title: 'Đăng xuất',
-                    textColor: Colors.red,
+                    textColor: const Color(0xFFE53E3E),
                     isFirst: true,
                     isLast: true,
                     onTap: _showLogoutDialog,
@@ -486,46 +621,52 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     bool isFirst = false,
     bool isLast = false,
   }) {
+    final itemColor = textColor ?? _primaryColor;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.vertical(
-          top: isFirst ? const Radius.circular(16) : Radius.zero,
-          bottom: isLast ? const Radius.circular(16) : Radius.zero,
+          top: isFirst ? const Radius.circular(24) : Radius.zero,
+          bottom: isLast ? const Radius.circular(24) : Radius.zero,
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: (textColor ?? AppPalette.gradient1).withOpacity(0.1),
-                  shape: BoxShape.circle,
+                  gradient: textColor == null
+                      ? LinearGradient(
+                          colors: [
+                            itemColor.withOpacity(0.15),
+                            itemColor.withOpacity(0.08),
+                          ],
+                        )
+                      : null,
+                  color: textColor != null ? itemColor.withOpacity(0.1) : null,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  icon,
-                  color: textColor ?? AppPalette.gradient1,
-                  size: 20,
-                ),
+                child: Icon(icon, color: itemColor, size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    color: textColor ?? Colors.black87,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    color: textColor ?? _textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios_rounded,
-                color: textColor ?? Colors.grey.shade400,
-                size: 16,
+                color: textColor ?? Colors.grey[400],
+                size: 14,
               ),
             ],
           ),
@@ -536,8 +677,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
   Widget _buildDivider() {
     return Padding(
-      padding: const EdgeInsets.only(left: 72),
-      child: Divider(height: 1, thickness: 0.5, color: Colors.grey.shade200),
+      padding: const EdgeInsets.only(left: 80),
+      child: Divider(height: 1, thickness: 0.5, color: Colors.grey[200]),
     );
   }
 
@@ -578,42 +719,52 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         return Dialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 70,
+                  height: 70,
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFE53E3E).withOpacity(0.15),
+                        const Color(0xFFE53E3E).withOpacity(0.08),
+                      ],
+                    ),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.logout_rounded,
-                    color: Colors.red.shade500,
-                    size: 28,
+                    color: Color(0xFFE53E3E),
+                    size: 32,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 const Text(
                   'Đăng xuất',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: _textColor,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                const SizedBox(height: 10),
+                Text(
                   'Bạn có chắc chắn muốn đăng xuất?',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[700],
+                    height: 1.4,
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 Row(
                   children: [
                     Expanded(
@@ -623,16 +774,17 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                         },
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: Colors.grey[300]!),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Hủy',
                           style: TextStyle(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -644,17 +796,20 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                           _performLogout(context);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: const Color(0xFFE53E3E),
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
                         ),
                         child: const Text(
                           'Đăng xuất',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -686,18 +841,21 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppPalette.gradient1,
-                  ),
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                  strokeWidth: 2.5,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Text(
                   'Đang đăng xuất...',
-                  style: TextStyle(fontSize: 14, color: Colors.black87),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
