@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
 import '../bloc/auth_bloc.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +25,10 @@ class DocumentDetailPage extends StatefulWidget {
 }
 
 class _DocumentDetailPageState extends State<DocumentDetailPage> {
+  // Theme colors (keep consistent with other redesigned pages)
+  static const Color _primaryColor = Color(0xFFFF6B35);
+  static const Color _backgroundColor = Color(0xFFF8F9FA);
+  static const Color _textColor = Color(0xFF1A202C);
   late final DocumentDetailViewModel _vm;
 
   @override
@@ -70,21 +73,26 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: _textColor,
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           _vm.title,
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: _textColor,
+            letterSpacing: -0.3,
           ),
         ),
         actions: [
@@ -93,19 +101,20 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               tooltip: 'Tải ebook',
               icon: const Icon(
                 Icons.download_for_offline_outlined,
-                color: Colors.black87,
+                color: _textColor,
+                size: 22,
               ),
               onPressed: _downloadEbook,
             ),
           IconButton(
             tooltip: 'Chia sẻ',
-            icon: const Icon(Icons.ios_share, color: Colors.black87),
+            icon: const Icon(Icons.ios_share, color: _textColor, size: 20),
             onPressed: _shareDocument,
           ),
           IconButton(
             icon: Icon(
               _vm.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _vm.isBookmarked ? Colors.red : Colors.grey,
+              color: _vm.isBookmarked ? _primaryColor : Colors.grey,
             ),
             onPressed: () {
               final wishlist = Provider.of<WishlistProvider>(
@@ -131,32 +140,76 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   Widget _buildBody() {
     const SizedBox(height: 30);
     if (_vm.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+          strokeWidth: 2.5,
+        ),
+      );
     }
 
     if (_vm.error != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Không thể tải thông tin tài liệu',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _vm.error!,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadDocumentDetail,
-              child: const Text('Thử lại'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 36,
+                  color: _primaryColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Không thể tải thông tin tài liệu',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _textColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _vm.error!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _loadDocumentDetail,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text(
+                  'Thử lại',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 4,
+                  shadowColor: _primaryColor.withOpacity(0.3),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -197,7 +250,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             width: 120,
             height: 168,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.12),
@@ -207,14 +260,27 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               child: Image.network(
                 _vm.coverPhoto,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.book, size: 48, color: Colors.grey),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          _primaryColor.withOpacity(0.25),
+                          _primaryColor.withOpacity(0.1),
+                        ],
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.book_rounded,
+                      size: 48,
+                      color: _primaryColor,
+                    ),
                   );
                 },
               ),
@@ -229,9 +295,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 Text(
                   _vm.title,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: _textColor,
+                    height: 1.25,
+                    letterSpacing: -0.2,
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
@@ -297,15 +365,17 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                       icon: const Icon(Icons.play_arrow, size: 18),
                       label: const Text('ĐỌC NGAY'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD33016),
+                        backgroundColor: _primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           vertical: 10,
                           horizontal: 16,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 4,
+                        shadowColor: _primaryColor.withOpacity(0.3),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -315,14 +385,17 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                         icon: const Icon(Icons.download_outlined, size: 18),
                         label: const Text('TẢI EBOOK'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black87,
-                          side: const BorderSide(color: Colors.black12),
+                          foregroundColor: _primaryColor,
+                          side: const BorderSide(
+                            color: _primaryColor,
+                            width: 1,
+                          ),
                           padding: const EdgeInsets.symmetric(
                             vertical: 10,
                             horizontal: 14,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
@@ -338,19 +411,25 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   Widget _buildInfo() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      padding: const EdgeInsets.all(5),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Expanded(child: _buildInfoItem('Tổng số', '${_vm.totalCopies}')),
-          Container(width: 1, height: 40, color: Colors.grey[300]),
+          Container(width: 1, height: 36, color: Colors.grey[200]),
           Expanded(child: _buildInfoItem('Hiện có', '${_vm.availableCopies}')),
-          Container(width: 1, height: 40, color: Colors.grey[300]),
+          Container(width: 1, height: 36, color: Colors.grey[200]),
           Expanded(
             child: _buildInfoItem(
               'Đang cho mượn',
@@ -369,19 +448,27 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           value,
           style: const TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppPalette.gradient1,
+            fontWeight: FontWeight.w800,
+            color: _primaryColor,
+            letterSpacing: -0.2,
           ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildActions() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(10),
       child: Row(
         children: [
           // Expanded(
@@ -399,7 +486,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           //     ),
           //   ),
           // ),
-          const SizedBox(width: 12),
           // Expanded(
           //   child: ElevatedButton.icon(
           //     onPressed: _document!.ebookUrl != null ? _readNow : null,
@@ -422,7 +508,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   Widget _buildDescription() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -430,24 +516,31 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             'Mô tả',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              fontWeight: FontWeight.w800,
+              color: _textColor,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 238, 238, 238),
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
               border: Border.all(color: Colors.grey[200]!),
             ),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Text(
               _vm.description,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[700],
-                height: 1.5,
+                height: 1.55,
               ),
             ),
           ),
@@ -462,12 +555,33 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_vm.availableCopies > 0) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _addToCart,
+                icon: const Icon(Icons.shopping_cart_outlined),
+                label: const Text('Thêm vào giỏ hàng'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                  shadowColor: _primaryColor.withOpacity(0.3),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
           const Text(
             'Thông tin chi tiết',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color.fromARGB(221, 27, 27, 27),
+              fontWeight: FontWeight.w800,
+              color: _textColor,
             ),
           ),
           const SizedBox(height: 16),
@@ -480,6 +594,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               'Tiền cọc',
               '${_formatCurrency(_vm.minDeposit!)} - ${_formatCurrency(_vm.maxDeposit!)}',
             ),
+
           // _buildDetailRow(
           //   'Giá bìa',
           //   '${_document!.coverPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VNĐ',
@@ -499,24 +614,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           //   'Thể loại con',
           //   _document!.genres.map((g) => g['name'] ?? '').join(', '),
           // ),
-          if (_vm.availableCopies > 0) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _addToCart,
-                icon: const Icon(Icons.shopping_cart_outlined),
-                label: const Text('Thêm vào giỏ hàng'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -542,7 +639,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: const TextStyle(
+                fontSize: 14,
+                color: _textColor,
+                height: 1.4,
+              ),
             ),
           ),
         ],

@@ -1615,7 +1615,182 @@ class EbookReaderService {
         }
       }
 
-      final encoded = ZipEncoder().encode(finalArchive);
+      // Ensure NCX file aliases exist for readers expecting specific paths
+      try {
+        // Find any NCX file present in the final archive
+        String? ncxPathInArchive;
+        for (final f in finalArchive) {
+          if (f.name.toLowerCase().endsWith('.ncx')) {
+            ncxPathInArchive = f.name;
+            break;
+          }
+        }
+        // If not found in finalArchive yet, try from earlier processed lists
+        if (ncxPathInArchive == null) {
+          for (final f in fixed) {
+            if (f.name.toLowerCase().endsWith('.ncx')) {
+              ncxPathInArchive = f.name;
+              // add to finalArchive to ensure presence
+              finalArchive.addFile(
+                ArchiveFile(
+                  f.name,
+                  f.size,
+                  Uint8List.fromList(f.content as List<int>),
+                ),
+              );
+              break;
+            }
+          }
+        }
+
+        if (ncxPathInArchive != null) {
+          // Preferred alias paths some readers may require
+          final aliasPaths = <String>{'OEBPS/oc.ncx', 'oc.ncx'};
+
+          // Collect existing file names for quick contains check
+          final existingNames = finalArchive.map((f) => f.name).toSet();
+
+          // Get source NCX bytes
+          ArchiveFile? sourceFile = finalArchive.findFile(ncxPathInArchive);
+          sourceFile ??= fixed.findFile(ncxPathInArchive);
+
+          if (sourceFile != null) {
+            for (final alias in aliasPaths) {
+              if (!existingNames.contains(alias)) {
+                finalArchive.addFile(
+                  ArchiveFile(
+                    alias,
+                    sourceFile.size,
+                    Uint8List.fromList(sourceFile.content as List<int>),
+                  ),
+                );
+                existingNames.add(alias);
+                print('   ✅ Added NCX alias: $alias -> $ncxPathInArchive');
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('⚠️ Error while ensuring NCX aliases: $e');
+      }
+
+      // Create alias duplicates for common folder typos (fonts -> onts, images -> mages)
+      try {
+        final existingNames = finalArchive.map((f) => f.name).toSet();
+        final toAdd = <ArchiveFile>[];
+
+        for (final f in finalArchive) {
+          final name = f.name;
+          final lower = name.toLowerCase();
+
+          String? aliasPath;
+          if (lower.contains('/fonts/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'[/\\]fonts[/\\]', caseSensitive: false),
+              '/onts/',
+            );
+          } else if (lower.startsWith('fonts/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'^fonts[/\\]', caseSensitive: false),
+              'onts/',
+            );
+          } else if (lower.contains('/images/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'[/\\]images[/\\]', caseSensitive: false),
+              '/mages/',
+            );
+          } else if (lower.startsWith('images/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'^images[/\\]', caseSensitive: false),
+              'mages/',
+            );
+          }
+
+          if (aliasPath != null && !existingNames.contains(aliasPath)) {
+            toAdd.add(
+              ArchiveFile(
+                aliasPath,
+                f.size,
+                Uint8List.fromList(f.content as List<int>),
+              ),
+            );
+            existingNames.add(aliasPath);
+            print('   ✅ Added typo alias: $aliasPath -> ${f.name}');
+          }
+        }
+
+        for (final nf in toAdd) {
+          finalArchive.addFile(nf);
+        }
+      } catch (e) {
+        print('⚠️ Error while creating folder typo aliases: $e');
+      }
+
+      // Reorder and enforce EPUB container rules: 'mimetype' first and uncompressed,
+      // ensure META-INF/container.xml exists pointing to detected OPF.
+      Archive orderedArchive = Archive();
+
+      // 1) Ensure 'mimetype' is present and first, uncompressed
+      const mimetypeName = 'mimetype';
+      final existingMimetype = finalArchive.findFile(mimetypeName);
+      Uint8List mimetypeBytes;
+      if (existingMimetype != null) {
+        // Use existing content as-is
+        mimetypeBytes = Uint8List.fromList(
+          existingMimetype.content as List<int>,
+        );
+      } else {
+        // Create standard mimetype content
+        mimetypeBytes = Uint8List.fromList('application/epub+zip'.codeUnits);
+      }
+      orderedArchive.addFile(
+        ArchiveFile.noCompress(
+          mimetypeName,
+          mimetypeBytes.length,
+          mimetypeBytes,
+        ),
+      );
+
+      // 2) Copy all other files except 'mimetype' into orderedArchive
+      for (final f in finalArchive) {
+        if (f.name == mimetypeName) continue;
+        orderedArchive.addFile(
+          ArchiveFile(
+            f.name,
+            f.size,
+            Uint8List.fromList(f.content as List<int>),
+          ),
+        );
+      }
+
+      // 3) Ensure META-INF/container.xml exists and references an OPF
+      const containerPath = 'META-INF/container.xml';
+      final hasContainer = orderedArchive.files.any(
+        (f) => f.name == containerPath,
+      );
+      if (!hasContainer) {
+        // Try to locate an OPF file
+        String opfPath = 'OEBPS/content.opf';
+        for (final f in orderedArchive) {
+          if (f.name.toLowerCase().endsWith('.opf')) {
+            opfPath = f.name;
+            break;
+          }
+        }
+        final containerXml =
+            '''<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="$opfPath" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>''';
+        final containerBytes = Uint8List.fromList(utf8.encode(containerXml));
+        orderedArchive.addFile(
+          ArchiveFile(containerPath, containerBytes.length, containerBytes),
+        );
+      }
+
+      final encoded = ZipEncoder().encode(orderedArchive);
       if (encoded == null || encoded.isEmpty) {
         print(
           '⚠️ WARNING: Encoded archive is null or empty, returning original',

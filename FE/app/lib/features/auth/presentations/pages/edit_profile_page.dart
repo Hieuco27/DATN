@@ -4,7 +4,6 @@ import '../bloc/profile_bloc.dart';
 import '../bloc/auth_state.dart';
 import '../bloc/auth_bloc.dart';
 import '../../domain/entities/reader_entity.dart';
-import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -24,6 +23,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   DateTime? _selectedDate;
   String _selectedGender = '';
   bool _isLoading = false;
+
+  static const Color _primaryColor = Color(0xFFFF6B35);
 
   final List<String> _genderOptions = ['Nam', 'Nữ', 'Khác'];
 
@@ -85,7 +86,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             'Chỉnh sửa thông tin',
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 18,
+              fontSize: 22,
               color: Colors.black87,
             ),
           ),
@@ -102,7 +103,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveProfile,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppPalette.gradient1,
+                  backgroundColor: _primaryColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -142,7 +143,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -153,21 +153,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                     ],
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         width: 70,
                         height: 70,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppPalette.gradient1,
-                              AppPalette.gradient2,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: _primaryColor,
                           borderRadius: BorderRadius.circular(35),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: const Icon(
                           Icons.person_rounded,
@@ -175,28 +177,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Thông tin độc giả',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'ID: ${widget.profile.readerId}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.profile.fullName ?? '',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.profile.email ?? '',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'ID: ${widget.profile.readerId}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -224,6 +230,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildSectionTitle('Thông tin cá nhân'),
+                        const SizedBox(height: 12),
                         _buildTextField(
                           controller: _fullNameController,
                           label: 'Họ và tên',
@@ -310,18 +318,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-        prefixIcon: Icon(icon, color: AppPalette.gradient1),
+        labelStyle: const TextStyle(color: Colors.black87, fontSize: 14),
+        prefixIcon: Icon(icon, color: _primaryColor),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppPalette.gradient1, width: 2),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+          borderSide: BorderSide(color: _primaryColor, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         errorStyle: const TextStyle(fontSize: 12),
@@ -329,7 +337,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 18,
+          vertical: 16,
         ),
       ),
     );
@@ -348,61 +356,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
+        DropdownButtonFormField<String>(
+          value: _selectedGender.isEmpty ? null : _selectedGender,
+          items: _genderOptions
+              .map((g) => DropdownMenuItem<String>(value: g, child: Text(g)))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedGender = value ?? '';
+            });
+          },
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: _primaryColor),
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color.fromARGB(221, 255, 255, 255),
           ),
-          child: DropdownButtonHideUnderline(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white, // nền sáng
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.black12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: DropdownButton<String>(
-                value: _selectedGender.isEmpty ? null : _selectedGender,
-                hint: const Text(
-                  'Chọn giới tính',
-                  style: TextStyle(color: Colors.black54),
-                ),
-                isExpanded: true,
-                icon: Icon(
-                  Icons.keyboard_arrow_down,
-                  color: AppPalette.gradient1,
-                ),
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87, // chữ tối
-                ),
-                dropdownColor: Colors.white, // menu nền sáng
-                borderRadius: BorderRadius.circular(12),
-                menuMaxHeight: 320,
-                items: _genderOptions.map((String gender) {
-                  return DropdownMenuItem<String>(
-                    value: gender,
-                    child: Text(
-                      gender,
-                      style: const TextStyle(color: Colors.black87),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedGender = newValue ?? '';
-                  });
-                },
-              ),
+          hint: const Text(
+            'Chọn giới tính',
+            style: TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            prefixIcon: Icon(Icons.wc_rounded, color: _primaryColor),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+              borderSide: BorderSide(color: _primaryColor, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
             ),
           ),
         ),
@@ -426,15 +417,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
         InkWell(
           onTap: _selectDate,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
               color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade300),
             ),
             child: Row(
               children: [
-                Icon(Icons.calendar_today_rounded, color: AppPalette.gradient1),
+                Icon(Icons.calendar_today_rounded, color: _primaryColor),
                 const SizedBox(width: 12),
                 Text(
                   _selectedDate != null
@@ -447,8 +438,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         : Colors.grey[600],
                   ),
                 ),
+                const Spacer(),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: Colors.grey.shade500,
+                ),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 18,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            gradient: const LinearGradient(colors: [_primaryColor]),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
           ),
         ),
       ],

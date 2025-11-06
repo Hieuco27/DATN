@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
                 hoverColor: const Color(0x11FF1744),
                 tabBackgroundColor: const Color(0x1AFF1744),
                 color: Colors.black54,
-                activeColor: const Color(0xFFFF1744),
+                activeColor: const Color.fromARGB(234, 248, 155, 16),
                 iconSize: 22,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,

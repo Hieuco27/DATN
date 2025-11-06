@@ -67,6 +67,9 @@ dependencies:
   image: ^3.3.0
   e_book_reader: ^0.0.12
 
+  # Chọn ảnh từ thư viện
+  image_picker: ^1.1.2
+
   # file_picker: ^6.1.1 # Chọn file từ thiết bị
   # permission_handler: ^11.0.1 # Quản lý quyền truy cập
   cached_network_image: ^3.3.0 # Cache hình ảnh

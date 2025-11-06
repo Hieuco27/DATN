@@ -94,7 +94,7 @@ class _MainHomePageState extends State<MainHomePage> {
       appBar: AppTopBar(
         title: 'Trang chủ',
         leadingType: AppTopBarLeading.menu,
-        onLeadingTap: () => _showNavigationModal(context),
+        // onLeadingTap: () => _showNavigationModal(context),
         actions: [
           AppTopBarAction.search(
             onTap: () {
@@ -114,7 +114,7 @@ class _MainHomePageState extends State<MainHomePage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFF1F2), Color(0xFFFFFFFF)],
+                colors: [Color.fromARGB(255, 250, 229, 194), Color(0xFFFFFFFF)],
               ),
             ),
           ),

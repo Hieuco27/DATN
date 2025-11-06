@@ -11,7 +11,7 @@ class ProfileDetailPage extends StatelessWidget {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text(
-          'Thông tin chi tiết',
+          'Thông tin tài khoản',
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.white,
