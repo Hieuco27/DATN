@@ -21,6 +21,7 @@ import 'package:book_tech/features/auth/presentations/providers/search_provider.
 import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/splash_page.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
@@ -92,7 +93,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Book Tech',
         theme: AppTheme.darkThemeMode,
-        home: const AuthWrapper(),
+        home: const SplashPage(),
         onGenerateRoute: (settings) {
           switch (settings.name) {
             case '/document-detail':
