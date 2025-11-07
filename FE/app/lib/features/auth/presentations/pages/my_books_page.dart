@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
+import 'package:book_tech/core/widgets/gradient_background.dart';
 
 class MyBooksPage extends StatefulWidget {
   const MyBooksPage({super.key});
@@ -20,7 +21,6 @@ class _MyBooksPageState extends State<MyBooksPage>
 
   // Màu sắc đồng nhất với cart_page
   static const Color _primaryColor = Color(0xFFFF6B35);
-  static const Color _backgroundColor = Color(0xFFF8F9FA);
   static const Color _textColor = Color(0xFF1A202C);
 
   @override
@@ -40,103 +40,15 @@ class _MyBooksPageState extends State<MyBooksPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        leading: _isSelectionMode
-            ? Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: _textColor,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isSelectionMode = false;
-                      _selectedItems.clear();
-                    });
-                  },
-                ),
-              )
-            : null,
-        title: Text(
-          _isSelectionMode ? 'Đã chọn ${_selectedItems.length}' : 'Thư viện',
-          style: const TextStyle(
-            color: _textColor,
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          if (_isSelectionMode) ...[
-            if (_selectedItems.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: Color(0xFFE53E3E),
-                  ),
-                  onPressed: () => _handleDelete(),
-                  tooltip: 'Xóa',
-                ),
-              ),
-            Container(
-              margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryColor.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.select_all_rounded,
-                  color: _primaryColor,
-                ),
-                onPressed: _selectAll,
-                tooltip: 'Chọn tất cả',
-              ),
-            ),
-          ] else ...[
-            Consumer<CartProvider>(
-              builder: (context, cart, _) {
-                final count = cart.totalItems;
-                return Container(
-                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+    return AppGradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          leading: _isSelectionMode
+              ? Container(
+                  margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -149,74 +61,164 @@ class _MyBooksPageState extends State<MyBooksPage>
                     ],
                   ),
                   child: IconButton(
-                    onPressed: () => Navigator.pushNamed(context, '/cart'),
-                    icon: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(
-                          Icons.shopping_cart_outlined,
-                          size: 26,
-                          color: _textColor,
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: _textColor,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isSelectionMode = false;
+                        _selectedItems.clear();
+                      });
+                    },
+                  ),
+                )
+              : null,
+          title: Text(
+            _isSelectionMode ? 'Đã chọn ${_selectedItems.length}' : 'Thư viện',
+            style: const TextStyle(
+              color: _textColor,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            if (_isSelectionMode) ...[
+              if (_selectedItems.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFE53E3E),
+                    ),
+                    onPressed: () => _handleDelete(),
+                    tooltip: 'Xóa',
+                  ),
+                ),
+              Container(
+                margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryColor.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.select_all_rounded,
+                    color: _primaryColor,
+                  ),
+                  onPressed: _selectAll,
+                  tooltip: 'Chọn tất cả',
+                ),
+              ),
+            ] else ...[
+              Consumer<CartProvider>(
+                builder: (context, cart, _) {
+                  final count = cart.totalItems;
+                  return Container(
+                    margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                        if (count > 0)
-                          Positioned(
-                            right: -6,
-                            top: -6,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: _primaryColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 1,
-                                ),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 18,
-                                minHeight: 18,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  count > 99 ? '99+' : '$count',
-                                  style: const TextStyle(
+                      ],
+                    ),
+                    child: IconButton(
+                      onPressed: () => Navigator.pushNamed(context, '/cart'),
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 26,
+                            color: _textColor,
+                          ),
+                          if (count > 0)
+                            Positioned(
+                              right: -6,
+                              top: -6,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
                                     color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
+                                    width: 1,
                                   ),
-                                  textAlign: TextAlign.center,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    count > 99 ? '99+' : '$count',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+        body: Column(
+          children: [
+            _buildTabBar(),
+            Expanded(
+              child: Builder(
+                builder: (context) {
+                  if (_selectedTabIndex == 0) {
+                    return _buildReadingList();
+                  } else if (_selectedTabIndex == 1) {
+                    return _buildWishlist();
+                  }
+                  return _buildEmptyState(
+                    'Chưa có dữ liệu',
+                    Icons.menu_book_outlined,
+                  );
+                },
+              ),
             ),
           ],
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildTabBar(),
-          Expanded(
-            child: Builder(
-              builder: (context) {
-                if (_selectedTabIndex == 0) {
-                  return _buildReadingList();
-                } else if (_selectedTabIndex == 1) {
-                  return _buildWishlist();
-                }
-                return _buildEmptyState(
-                  'Chưa có dữ liệu',
-                  Icons.menu_book_outlined,
-                );
-              },
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

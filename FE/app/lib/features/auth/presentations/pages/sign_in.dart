@@ -165,14 +165,25 @@ void _handleAuthState(BuildContext context, AuthState state) {
   // ✅ REMOVE loading handling từ listener
   if (state is AuthAuthenticated) {
     // Điều hướng đến trang chủ
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-
-    NotificationService.showSuccess(context, message: 'Đăng nhập thành công!');
+    // Use addPostFrameCallback to avoid Navigator lock during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+        NotificationService.showSuccess(
+          context,
+          message: 'Đăng nhập thành công!',
+        );
+      }
+    });
   } else if (state is AuthError) {
-    NotificationService.showError(context, message: state.message);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        NotificationService.showError(context, message: state.message);
+      }
+    });
   }
 }
 

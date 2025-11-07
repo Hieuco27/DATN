@@ -5,9 +5,7 @@ class CartProvider with ChangeNotifier {
   final List<CartItemModel> _items = [];
 
   List<CartItemModel> get items => List.unmodifiable(_items);
-
   int get totalItems => _items.fold(0, (sum, item) => sum + item.quantity);
-
   int get totalMinDeposit => _items.fold(
     0,
     (sum, item) => sum + ((item.minDeposit ?? 0) * item.quantity),

@@ -50,6 +50,21 @@ class EbookReaderService {
     return EbookFormat.pdf; // Default fallback
   }
 
+  /// Lấy thư mục lưu trữ ebooks lâu dài (không bị xóa khi app đóng)
+  static Future<Directory> _getEbooksDirectory() async {
+    // Sử dụng Application Documents Directory thay vì Temporary Directory
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final ebooksDir = Directory('${appDocDir.path}/ebooks');
+
+    // Tạo thư mục nếu chưa tồn tại
+    if (!await ebooksDir.exists()) {
+      await ebooksDir.create(recursive: true);
+      print('📂 Đã tạo thư mục ebooks: ${ebooksDir.path}');
+    }
+
+    return ebooksDir;
+  }
+
   static Future<String> downloadFile(String url) async {
     final response = await http.get(Uri.parse(url));
 
@@ -65,7 +80,8 @@ class EbookReaderService {
       throw Exception('File tải về trống. URL: $url');
     }
 
-    final directory = await getTemporaryDirectory();
+    // ✅ Sử dụng thư mục Documents thay vì Temporary để lưu lâu dài
+    final ebooksDirectory = await _getEbooksDirectory();
     var fileName = url.split('/').last;
 
     // ✅ Xử lý trường hợp fileName rỗng hoặc không hợp lệ
@@ -75,9 +91,98 @@ class EbookReaderService {
       fileName = 'ebook.${format.name}';
     }
 
-    final file = File('${directory.path}/$fileName');
+    // ✅ Tạo tên file unique bằng cách hash URL để tránh trùng lặp
+    // Sử dụng hash của URL để đảm bảo mỗi URL có một file riêng
+    // Tạo hash đơn giản từ URL bằng cách dùng hashCode
+    final urlHashCode = url.hashCode.abs();
+    // Chuyển hashCode sang hex string (12 ký tự)
+    final urlHash = urlHashCode
+        .toRadixString(16)
+        .padLeft(12, '0')
+        .substring(0, 12);
+    final fileExtension = fileName.contains('.')
+        ? fileName.substring(fileName.lastIndexOf('.'))
+        : '';
+    final baseFileName = fileName.contains('.')
+        ? fileName.substring(0, fileName.lastIndexOf('.'))
+        : fileName;
+
+    // Tạo tên file: baseName_hash.extension (ví dụ: ebook_a1b2c3d4e5f6.pdf)
+    final uniqueFileName = '${baseFileName}_$urlHash$fileExtension';
+    final filePath = '${ebooksDirectory.path}/$uniqueFileName';
+    final file = File(filePath);
+
+    // ✅ Kiểm tra file đã tồn tại chưa (nếu có thì không cần tải lại)
+    if (await file.exists()) {
+      print('📖 File đã tồn tại, sử dụng file cũ: $filePath');
+      return file.path;
+    }
+
+    // ✅ Ghi file vào thư mục Documents
     await file.writeAsBytes(response.bodyBytes);
+
+    // ✅ Log đường dẫn file đã lưu
+    print('📁 File được lưu tại: ${file.path}');
+    print('📂 Thư mục ebooks: ${ebooksDirectory.path}');
+    print('📄 Tên file: $fileName');
+    print('💾 File được lưu lâu dài, không bị xóa khi app đóng');
+
     return file.path;
+  }
+
+  /// Xóa file ebook đã tải về
+  static Future<bool> deleteEbookFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+        print('🗑️ Đã xóa file: $filePath');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Lỗi khi xóa file: $e');
+      return false;
+    }
+  }
+
+  /// Lấy danh sách tất cả các file ebook đã tải về
+  static Future<List<FileSystemEntity>> getDownloadedEbooks() async {
+    try {
+      final ebooksDirectory = await _getEbooksDirectory();
+      if (await ebooksDirectory.exists()) {
+        final files = ebooksDirectory.listSync();
+        // Lọc chỉ lấy file, bỏ qua thư mục
+        return files
+            .where((file) => FileSystemEntity.isFileSync(file.path))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('❌ Lỗi khi lấy danh sách ebooks: $e');
+      return [];
+    }
+  }
+
+  /// Xóa tất cả các file ebook đã tải về
+  static Future<int> clearAllDownloadedEbooks() async {
+    try {
+      final ebooks = await getDownloadedEbooks();
+      int deletedCount = 0;
+      for (final ebook in ebooks) {
+        try {
+          await ebook.delete();
+          deletedCount++;
+        } catch (e) {
+          print('⚠️ Không thể xóa file: ${ebook.path} - $e');
+        }
+      }
+      print('🗑️ Đã xóa $deletedCount file ebook');
+      return deletedCount;
+    } catch (e) {
+      print('❌ Lỗi khi xóa tất cả ebooks: $e');
+      return 0;
+    }
   }
 
   // Helper function to get items that need to be removed (for creating placeholders)
@@ -282,6 +387,39 @@ class EbookReaderService {
           'OEBPS/$withoutOEBPS',
         };
 
+        // ✅ QUAN TRỌNG: Nếu href không có OEBPS prefix, thử tìm trong OEBPS folder
+        // Ví dụ: titlepage.xhtml có thể ở OEBPS/titlepage.xhtml
+        if (!normalizedHref.startsWith('OEBPS/')) {
+          possiblePaths.add('OEBPS/$normalizedHref');
+          // Cũng thử trong các subfolder phổ biến
+          possiblePaths.addAll([
+            'OEBPS/Text/$normalizedHref',
+            'OEBPS/text/$normalizedHref',
+            'OEBPS/Contents/$normalizedHref',
+            'OEBPS/contents/$normalizedHref',
+            'OEBPS/Content/$normalizedHref',
+            'OEBPS/content/$normalizedHref',
+          ]);
+        }
+
+        // ✅ Xử lý các file trong contents/ folder
+        if (normalizedHref.contains('contents/') ||
+            normalizedHref.contains('Contents/')) {
+          // Giữ nguyên path có contents/
+          possiblePaths.add(normalizedHref);
+          // Thử không có contents/ prefix
+          final withoutContents = normalizedHref.replaceAll(
+            RegExp(r'contents?/', caseSensitive: false),
+            '',
+          );
+          possiblePaths.addAll([
+            withoutContents,
+            'OEBPS/$withoutContents',
+            'OEBPS/Text/$withoutContents',
+            'OEBPS/text/$withoutContents',
+          ]);
+        }
+
         // Try in Images folder variations
         if (normalizedHref.contains('Images/') ||
             normalizedHref.contains('images/') ||
@@ -324,12 +462,32 @@ class EbookReaderService {
             'Fonts/$filename',
             'OEBPS/onts/$filename', // Fix typo
             'onts/$filename', // Fix typo
+            // Thử cả path không có OEBPS prefix
             filename,
           ]);
         }
 
         // Always try just filename
         possiblePaths.add(filename);
+
+        // ✅ Xử lý các file CSS và các file không có OEBPS prefix
+        if (filename.endsWith('.css') ||
+            filename.endsWith('.xhtml') ||
+            filename.endsWith('.html') ||
+            filename.endsWith('.ncx') ||
+            filename.endsWith('.jpeg') ||
+            filename.endsWith('.jpg') ||
+            filename.endsWith('.png')) {
+          // Thử tìm ở root level và trong OEBPS
+          possiblePaths.addAll([
+            filename, // Root level
+            'OEBPS/$filename', // Trong OEBPS
+            'OEBPS/Text/$filename', // Trong OEBPS/Text
+            'OEBPS/text/$filename',
+            'OEBPS/Contents/$filename', // Trong OEBPS/Contents
+            'OEBPS/contents/$filename',
+          ]);
+        }
 
         // Also try searching by filename in common folders if not found
         if (!availableFiles.contains(normalizedHref)) {
@@ -340,6 +498,12 @@ class EbookReaderService {
             'Images',
             'css',
             'CSS',
+            'Text',
+            'text',
+            'Contents',
+            'contents',
+            'Content',
+            'content',
           ];
           for (final folder in commonFolders) {
             possiblePaths.addAll([
@@ -757,6 +921,7 @@ class EbookReaderService {
         '.ogg',
         '.xml',
         '.js',
+        '.ncx', // ✅ Thêm NCX files
       ];
 
       for (final file in archive) {
@@ -767,11 +932,13 @@ class EbookReaderService {
               name != 'mimetype' &&
               assetExtensions.any((ext) => name.toLowerCase().endsWith(ext))) {
             rootAssets.add(name);
+            print('      📄 Found root asset: $name');
           }
         }
       }
 
-      // Sao chép tất cả assets ở root vào OEBPS folder
+      // ✅ Sao chép tất cả assets ở root vào OEBPS folder
+      // Điều này đảm bảo các file như titlepage.xhtml, toc.ncx, CSS files có thể tìm thấy
       for (final rootFile in rootAssets) {
         final targetPath = 'OEBPS/$rootFile';
         if (!availableFiles.contains(targetPath)) {
@@ -786,6 +953,30 @@ class EbookReaderService {
             );
             availableFiles.add(targetPath);
             processedFiles.add(targetPath); // Đánh dấu đã xử lý
+            print(
+              '      ✅ Copied root asset to OEBPS: $rootFile -> $targetPath',
+            );
+          }
+        } else {
+          print('      ℹ️ Root asset already exists in OEBPS: $targetPath');
+        }
+      }
+
+      // ✅ QUAN TRỌNG: Giữ nguyên file ở root level để đảm bảo backward compatibility
+      // Một số EPUB readers có thể tìm file ở root level
+      for (final rootFile in rootAssets) {
+        if (!processedFiles.contains(rootFile)) {
+          final file = archive.findFile(rootFile);
+          if (file != null && file.isFile) {
+            fixed.addFile(
+              ArchiveFile(
+                rootFile,
+                file.size,
+                Uint8List.fromList(file.content as List<int>),
+              ),
+            );
+            processedFiles.add(rootFile);
+            print('      ✅ Kept root asset at root level: $rootFile');
           }
         }
       }
@@ -812,19 +1003,24 @@ class EbookReaderService {
             // Try decode với UTF-8, cho phép malformed bytes để tránh crash
             String content;
             try {
-              // Cho phép malformed bytes để tránh FormatException
+              // ✅ QUAN TRỌNG: Luôn dùng allowMalformed: true để tránh FormatException
+              // Điều này xử lý lỗi "Missing extension byte" khi decode UTF-8
               content = utf8.decode(data, allowMalformed: true);
             } catch (e) {
               // Nếu UTF-8 fail, thử Latin1
               try {
                 content = latin1.decode(data);
                 print(
-                  '      ⚠️ File "$name" decoded as Latin1 instead of UTF-8',
+                  '      ⚠️ File "$name" decoded as Latin1 instead of UTF-8: $e',
                 );
               } catch (e2) {
-                // Nếu cả 2 đều fail, dùng String.fromCharCodes với allowMalformed
+                // Nếu cả 2 đều fail, dùng String.fromCharCodes (fallback)
                 try {
-                  content = String.fromCharCodes(data);
+                  // ✅ Filter out invalid characters để tránh FormatException
+                  final validData = data
+                      .where((byte) => byte >= 0 && byte <= 255)
+                      .toList();
+                  content = String.fromCharCodes(validData);
                   print(
                     '      ⚠️ File "$name" decoded with fromCharCodes (fallback)',
                   );
@@ -1159,45 +1355,59 @@ class EbookReaderService {
                 final typoPath = fixInfo['typoPath']!;
                 final actualPath = fixInfo['actualPath']!;
 
-                // Tìm actual file trong archive
-                final actualFile = archive.findFile(actualPath);
+                // ✅ Tìm actual file trong archive hoặc fixed archive
+                ArchiveFile? actualFile = archive.findFile(actualPath);
                 if (actualFile == null || !actualFile.isFile) {
-                  // Thử tìm với case-insensitive
+                  // Thử tìm trong fixed archive (có thể đã được copy)
+                  actualFile = fixed.findFile(actualPath);
+                }
+
+                if (actualFile == null || !actualFile.isFile) {
+                  // Thử tìm với case-insensitive trong archive
                   final actualPathLower = actualPath.toLowerCase();
                   for (final archiveFile in archive) {
                     if (archiveFile.isFile &&
                         archiveFile.name.toLowerCase() == actualPathLower) {
-                      final foundFile = archive.findFile(archiveFile.name);
-                      if (foundFile != null && foundFile.isFile) {
-                        fixed.addFile(
-                          ArchiveFile(
-                            typoPath,
-                            foundFile.size,
-                            Uint8List.fromList(foundFile.content as List<int>),
-                          ),
-                        );
-                        availableFiles.add(typoPath);
-                        print(
-                          '         ✅ Created duplicate: "$typoPath" from "${foundFile.name}"',
-                        );
+                      actualFile = archiveFile;
+                      break;
+                    }
+                  }
+
+                  // Nếu vẫn không tìm thấy, thử trong fixed archive
+                  if (actualFile == null) {
+                    for (final fixedFile in fixed) {
+                      if (fixedFile.isFile &&
+                          fixedFile.name.toLowerCase() == actualPathLower) {
+                        actualFile = fixedFile;
                         break;
                       }
                     }
                   }
-                  continue;
                 }
 
-                if (!availableFiles.contains(typoPath)) {
-                  fixed.addFile(
-                    ArchiveFile(
-                      typoPath,
-                      actualFile.size,
-                      Uint8List.fromList(actualFile.content as List<int>),
-                    ),
-                  );
-                  availableFiles.add(typoPath);
+                if (actualFile != null && actualFile.isFile) {
+                  if (!availableFiles.contains(typoPath) &&
+                      !processedFiles.contains(typoPath)) {
+                    fixed.addFile(
+                      ArchiveFile(
+                        typoPath,
+                        actualFile.size,
+                        Uint8List.fromList(actualFile.content as List<int>),
+                      ),
+                    );
+                    availableFiles.add(typoPath);
+                    processedFiles.add(typoPath);
+                    print(
+                      '         ✅ Created duplicate: "$typoPath" from "$actualPath"',
+                    );
+                  } else {
+                    print(
+                      '         ℹ️ Duplicate already exists or processed: "$typoPath"',
+                    );
+                  }
+                } else {
                   print(
-                    '         ✅ Created duplicate: "$typoPath" from "$actualPath"',
+                    '         ⚠️ Cannot find actual file for typo path: "$actualPath" (typo: "$typoPath")',
                   );
                 }
               }
@@ -1225,6 +1435,162 @@ class EbookReaderService {
                 ArchiveFile(name, data.length, Uint8List.fromList(data)),
               );
               processedFiles.add(name);
+              // ✅ Tự động tạo duplicate cho typo paths (onts <-> fonts, mages <-> images)
+              // Điều này đảm bảo epub reader tìm thấy file dù path có typo
+              final lowerName = name.toLowerCase();
+              String? typoPath;
+
+              // ✅ QUAN TRỌNG: Nếu file trong fonts/, tạo duplicate tại onts/
+              // Điều này đảm bảo TẤT CẢ files trong fonts/ đều có duplicate tại onts/
+              // Xử lý cả OEBPS/fonts/ và fonts/ (không có OEBPS prefix)
+              if (lowerName.contains('/fonts/') ||
+                  lowerName.contains('oebps/fonts/') ||
+                  lowerName.startsWith('fonts/')) {
+                // Xử lý OEBPS/fonts/ -> OEBPS/onts/ trước
+                if (name.contains('OEBPS/fonts/') ||
+                    lowerName.contains('oebps/fonts/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'OEBPS[/\\]fonts[/\\]', caseSensitive: false),
+                    'OEBPS/onts/',
+                  );
+                } else if (lowerName.contains('/fonts/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'[/\\]fonts[/\\]', caseSensitive: false),
+                    '/onts/',
+                  );
+                } else if (lowerName.startsWith('fonts/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'^fonts[/\\]', caseSensitive: false),
+                    'onts/',
+                  );
+                }
+              }
+
+              // Nếu file trong onts/, tạo duplicate tại fonts/
+              if (typoPath == null) {
+                if (lowerName.contains('/onts/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'[/\\]onts[/\\]', caseSensitive: false),
+                    '/fonts/',
+                  );
+                } else if (lowerName.startsWith('onts/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'^onts[/\\]', caseSensitive: false),
+                    'fonts/',
+                  );
+                } else if (lowerName.contains('oebps/onts/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'oebps[/\\]onts[/\\]', caseSensitive: false),
+                    'OEBPS/fonts/',
+                  );
+                }
+              }
+
+              // Tương tự cho images <-> mages
+              if (typoPath == null) {
+                if (lowerName.contains('/images/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'[/\\]images[/\\]', caseSensitive: false),
+                    '/mages/',
+                  );
+                } else if (lowerName.startsWith('images/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'^images[/\\]', caseSensitive: false),
+                    'mages/',
+                  );
+                } else if (lowerName.contains('oebps/images/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'oebps[/\\]images[/\\]', caseSensitive: false),
+                    'OEBPS/mages/',
+                  );
+                }
+              }
+
+              if (typoPath == null) {
+                if (lowerName.contains('/mages/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'[/\\]mages[/\\]', caseSensitive: false),
+                    '/images/',
+                  );
+                } else if (lowerName.startsWith('mages/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'^mages[/\\]', caseSensitive: false),
+                    'images/',
+                  );
+                } else if (lowerName.contains('oebps/mages/')) {
+                  typoPath = name.replaceFirst(
+                    RegExp(r'oebps[/\\]mages[/\\]', caseSensitive: false),
+                    'OEBPS/images/',
+                  );
+                }
+              }
+
+              // Tạo duplicate nếu có typo path và chưa tồn tại
+              if (typoPath != null && !processedFiles.contains(typoPath)) {
+                fixed.addFile(
+                  ArchiveFile(typoPath, data.length, Uint8List.fromList(data)),
+                );
+                processedFiles.add(typoPath);
+                availableFiles.add(typoPath);
+                print(
+                  '      ✅ Auto-created typo duplicate: "$typoPath" from "$name"',
+                );
+              }
+
+              // ✅ QUAN TRỌNG: Tạo duplicate tại cả path không có OEBPS prefix
+              // Ví dụ: Nếu có OEBPS/fonts/bookerlyItalic.ttf, tạo cả onts/bookerlyItalic.ttf
+              // (không có OEBPS prefix) vì có thể có reference đến path này
+              // Xử lý cả fonts/ và Fonts/ (case-insensitive)
+              if (name.contains('OEBPS/fonts/') ||
+                  name.contains('OEBPS/Fonts/') ||
+                  name.contains('fonts/') ||
+                  name.contains('Fonts/')) {
+                final filename = name.split('/').last;
+                // Tạo cả onts/ và OEBPS/onts/ để đảm bảo tìm thấy
+                final typoPaths = [
+                  'onts/$filename', // Không có OEBPS prefix
+                  'OEBPS/onts/$filename', // Có OEBPS prefix
+                ];
+                for (final typoPathNoOEBPS in typoPaths) {
+                  if (!processedFiles.contains(typoPathNoOEBPS) &&
+                      !availableFiles.contains(typoPathNoOEBPS)) {
+                    fixed.addFile(
+                      ArchiveFile(
+                        typoPathNoOEBPS,
+                        data.length,
+                        Uint8List.fromList(data),
+                      ),
+                    );
+                    processedFiles.add(typoPathNoOEBPS);
+                    availableFiles.add(typoPathNoOEBPS);
+                    print(
+                      '      ✅ Auto-created typo duplicate: "$typoPathNoOEBPS" from "$name"',
+                    );
+                  }
+                }
+              }
+
+              // Tương tự cho images
+              if (name.contains('OEBPS/images/') ||
+                  name.contains('OEBPS/Images/')) {
+                final filename = name.split('/').last;
+                final typoPathNoOEBPS = 'mages/$filename';
+                if (!processedFiles.contains(typoPathNoOEBPS) &&
+                    !availableFiles.contains(typoPathNoOEBPS)) {
+                  fixed.addFile(
+                    ArchiveFile(
+                      typoPathNoOEBPS,
+                      data.length,
+                      Uint8List.fromList(data),
+                    ),
+                  );
+                  processedFiles.add(typoPathNoOEBPS);
+                  availableFiles.add(typoPathNoOEBPS);
+                  print(
+                    '      ✅ Auto-created typo duplicate (no OEBPS): "$typoPathNoOEBPS" from "$name"',
+                  );
+                }
+              }
             }
           }
         }
@@ -1267,7 +1633,7 @@ class EbookReaderService {
             // Decode OPF content với UTF-8, cho phép malformed bytes
             String opfContent;
             try {
-              // Cho phép malformed bytes để tránh FormatException
+              // ✅ QUAN TRỌNG: Luôn dùng allowMalformed: true để tránh FormatException
               opfContent = utf8.decode(
                 file.content as List<int>,
                 allowMalformed: true,
@@ -1275,9 +1641,15 @@ class EbookReaderService {
             } catch (e) {
               try {
                 opfContent = latin1.decode(file.content as List<int>);
-                print('      ⚠️ OPF file decoded as Latin1 instead of UTF-8');
+                print(
+                  '      ⚠️ OPF file decoded as Latin1 instead of UTF-8: $e',
+                );
               } catch (e2) {
-                opfContent = String.fromCharCodes(file.content as List<int>);
+                // ✅ Filter out invalid characters để tránh FormatException
+                final validData = (file.content as List<int>)
+                    .where((byte) => byte >= 0 && byte <= 255)
+                    .toList();
+                opfContent = String.fromCharCodes(validData);
                 print(
                   '      ⚠️ OPF file decoded with fromCharCodes (may have encoding issues)',
                 );
@@ -1674,7 +2046,8 @@ class EbookReaderService {
         print('⚠️ Error while ensuring NCX aliases: $e');
       }
 
-      // Create alias duplicates for common folder typos (fonts -> onts, images -> mages)
+      // Create alias duplicates for common folder typos (fonts <-> onts, images <-> mages)
+      // ✅ Xử lý CẢ HAI CHIỀU để đảm bảo file tìm thấy dù path có typo hay không
       try {
         final existingNames = finalArchive.map((f) => f.name).toSet();
         final toAdd = <ArchiveFile>[];
@@ -1683,8 +2056,17 @@ class EbookReaderService {
           final name = f.name;
           final lower = name.toLowerCase();
 
+          // Tạo alias cho fonts -> onts
           String? aliasPath;
-          if (lower.contains('/fonts/')) {
+          // Xử lý OEBPS/fonts/ -> OEBPS/onts/ trước (case-sensitive)
+          if (name.contains('OEBPS/fonts/') || lower.contains('oebps/fonts/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'OEBPS[/\\]fonts[/\\]', caseSensitive: false),
+              'OEBPS/onts/',
+            );
+          }
+          // Xử lý fonts/ -> onts/ (không có OEBPS prefix)
+          else if (lower.contains('/fonts/')) {
             aliasPath = name.replaceFirst(
               RegExp(r'[/\\]fonts[/\\]', caseSensitive: false),
               '/onts/',
@@ -1693,6 +2075,32 @@ class EbookReaderService {
             aliasPath = name.replaceFirst(
               RegExp(r'^fonts[/\\]', caseSensitive: false),
               'onts/',
+            );
+          }
+          // Tạo alias cho onts -> fonts (CHIỀU NGƯỢC LẠI)
+          else if (name.contains('OEBPS/onts/') ||
+              lower.contains('oebps/onts/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'OEBPS[/\\]onts[/\\]', caseSensitive: false),
+              'OEBPS/fonts/',
+            );
+          } else if (lower.contains('/onts/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'[/\\]onts[/\\]', caseSensitive: false),
+              '/fonts/',
+            );
+          } else if (lower.startsWith('onts/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'^onts[/\\]', caseSensitive: false),
+              'fonts/',
+            );
+          }
+          // Tạo alias cho images -> mages
+          else if (name.contains('OEBPS/images/') ||
+              lower.contains('oebps/images/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'OEBPS[/\\]images[/\\]', caseSensitive: false),
+              'OEBPS/mages/',
             );
           } else if (lower.contains('/images/')) {
             aliasPath = name.replaceFirst(
@@ -1705,6 +2113,24 @@ class EbookReaderService {
               'mages/',
             );
           }
+          // Tạo alias cho mages -> images (CHIỀU NGƯỢC LẠI)
+          else if (name.contains('OEBPS/mages/') ||
+              lower.contains('oebps/mages/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'OEBPS[/\\]mages[/\\]', caseSensitive: false),
+              'OEBPS/images/',
+            );
+          } else if (lower.contains('/mages/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'[/\\]mages[/\\]', caseSensitive: false),
+              '/images/',
+            );
+          } else if (lower.startsWith('mages/')) {
+            aliasPath = name.replaceFirst(
+              RegExp(r'^mages[/\\]', caseSensitive: false),
+              'images/',
+            );
+          }
 
           if (aliasPath != null && !existingNames.contains(aliasPath)) {
             toAdd.add(
@@ -1715,13 +2141,19 @@ class EbookReaderService {
               ),
             );
             existingNames.add(aliasPath);
-            print('   ✅ Added typo alias: $aliasPath -> ${f.name}');
+            print(
+              '   ✅ Added typo alias (bidirectional): $aliasPath <-> ${f.name}',
+            );
           }
         }
 
         for (final nf in toAdd) {
           finalArchive.addFile(nf);
         }
+
+        print(
+          '   ✅ Finished creating typo aliases. Total aliases created: ${toAdd.length}',
+        );
       } catch (e) {
         print('⚠️ Error while creating folder typo aliases: $e');
       }

@@ -27,7 +27,6 @@ class LocalStorageDataSourceImpl implements LocalStorageDataSource {
       prefs.setString(_refreshTokenKey, refreshToken),
       prefs.setBool(_isLoggedInKey, true),
     ]);
-    print('💾 Tokens saved to local storage');
   }
 
   @override
@@ -56,9 +55,7 @@ class LocalStorageDataSourceImpl implements LocalStorageDataSource {
     try {
       final accountJson = json.encode(account.toJson());
       await prefs.setString(_accountKey, accountJson);
-      print('👤 Account data saved: ${account.email}');
     } catch (e) {
-      print('❌ Error saving account: $e');
       throw Exception('Failed to save account data');
     }
   }
@@ -72,14 +69,10 @@ class LocalStorageDataSourceImpl implements LocalStorageDataSource {
       if (accountJson != null) {
         final Map<String, dynamic> accountData = json.decode(accountJson);
         final account = AccountModel.fromJson(accountData);
-        print('👤 Account data loaded: ${account.email}');
         return account;
       }
-
-      print('👤 No account data found');
       return null;
     } catch (e) {
-      print('❌ Error loading account: $e');
       return null;
     }
   }
@@ -103,14 +96,12 @@ class LocalStorageDataSourceImpl implements LocalStorageDataSource {
       prefs.remove(_accountKey),
       prefs.remove(_isLoggedInKey),
     ]);
-    print('🗑️ All local data cleared');
   }
 
   @override
   Future<void> updateAccessToken(String newAccessToken) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_accessTokenKey, newAccessToken);
-    print('🔄 Access token updated');
   }
 
   // Helper method để kiểm tra token expiration (nếu cần)

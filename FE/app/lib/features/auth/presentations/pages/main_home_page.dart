@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/core/ui/app_top_bar.dart';
+import 'package:book_tech/core/widgets/gradient_background.dart';
 //
 import 'package:book_tech/features/auth/presentations/widgets/home/new_navigation.dart'
     as new_navigation;
@@ -89,175 +90,156 @@ class _MainHomePageState extends State<MainHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      appBar: AppTopBar(
-        title: 'Trang chủ',
-        leadingType: AppTopBarLeading.menu,
-        // onLeadingTap: () => _showNavigationModal(context),
-        actions: [
-          AppTopBarAction.search(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SearchPage()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // Background gradient + subtle overlay
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color.fromARGB(255, 250, 229, 194), Color(0xFFFFFFFF)],
-              ),
+    return AppGradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppTopBar(
+          title: 'Trang chủ',
+          leadingType: AppTopBarLeading.menu,
+          // onLeadingTap: () => _showNavigationModal(context),
+          actions: [
+            AppTopBarAction.search(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SearchPage()),
+                );
+              },
             ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                // Quote slider moved up
-                //const _QuoteSliderBar(),
+          ],
+        ),
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  // Quote slider moved up
+                  //const _QuoteSliderBar(),
 
-                // Quick actions
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _QuickAction(
-                        icon: Icons.grid_view_rounded,
-                        label: 'Thể loại',
-                        color: const Color(0xFFFF1744),
-                        onTap: () {
-                          Navigator.of(context).pushNamed('/genre');
-                        },
-                      ),
-                      _QuickAction(
-                        icon: Icons.library_books_rounded,
-                        label: 'Phổ biến',
-                        color: const Color(0xFF2979FF),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const MostBorrowedDocumentsPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      _QuickAction(
-                        icon: Icons.favorite_rounded,
-                        label: 'Mới nhất',
-                        color: const Color(0xFFFF6D00),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LatestDocumentsPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      // _QuickAction(
-                      //   icon: Icons.upload_file_rounded,
-                      //   label: 'Tải lên',
-                      //   color: const Color(0xFF00C853),
-                      //   onTap: () {},
-                      // ),
-                    ],
-                  ),
-                ),
-
-                // Fixed filter bar (stays while books scroll)
-                Consumer<DocumentProvider>(
-                  builder: (context, provider, _) {
-                    final List<GenreModel> chips = provider.genres;
-                    final List<String> labels = [
-                      'Tất cả',
-                      ...chips.map((g) => g.name),
-                    ];
-                    final List<int?> values = [
-                      null,
-                      ...chips.map((g) => g.genreId),
-                    ];
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: ChipsChoice<int?>.single(
-                        value: _selectedGenreId,
-                        onChanged: (val) =>
-                            setState(() => _selectedGenreId = val),
-                        choiceItems: C2Choice.listFrom<int?, String>(
-                          source: labels,
-                          value: (i, v) => values[i],
-                          label: (i, v) => v,
-                        ),
-                        choiceStyle: C2ChipStyle.filled(
-                          color: const Color(0xFFF1F1F1),
-                          selectedStyle: C2ChipStyle.filled(
-                            color: Color(0xFFFFCDD2),
-                          ),
-                        ),
-                        wrapped: false,
-                        scrollPhysics: const BouncingScrollPhysics(),
-                      ),
-                    );
-                  },
-                ),
-
-                // Content based on selected tab
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
+                  // Quick actions
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const SizedBox(height: 4),
-                        Consumer<DocumentProvider>(
-                          builder: (context, documentProvider, child) {
-                            if (documentProvider.isLoadingGenres) {
-                              return _LoadingBooksRow();
-                            }
-                            // Filtered sections: show selected genre only, else default 2
-                            final selectedId = _selectedGenreId;
-                            if (selectedId != null) {
-                              final genre = documentProvider.genres.firstWhere(
-                                (g) => g.genreId == selectedId,
-                                orElse: () => documentProvider.genres.isNotEmpty
-                                    ? documentProvider.genres.first
-                                    : GenreModel(genreId: -1, name: 'Không có'),
-                              );
-                              if (genre.genreId == -1) {
-                                return const SizedBox.shrink();
-                              }
-                              return GenreSectionWidget(
-                                    key: ValueKey<int>(genre.genreId),
-                                    genre: genre,
-                                    documentProvider: documentProvider,
-                                  )
-                                  .animate()
-                                  .fadeIn(duration: 250.ms)
-                                  .move(
-                                    begin: const Offset(0, 12),
-                                    end: Offset.zero,
-                                  );
-                            }
+                        _QuickAction(
+                          icon: Icons.grid_view_rounded,
+                          label: 'Thể loại',
+                          color: const Color(0xFFFF1744),
+                          onTap: () {
+                            Navigator.of(context).pushNamed('/genre');
+                          },
+                        ),
+                        _QuickAction(
+                          icon: Icons.library_books_rounded,
+                          label: 'Phổ biến',
+                          color: const Color(0xFF2979FF),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const MostBorrowedDocumentsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _QuickAction(
+                          icon: Icons.favorite_rounded,
+                          label: 'Mới nhất',
+                          color: const Color(0xFFFF6D00),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const LatestDocumentsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        // _QuickAction(
+                        //   icon: Icons.upload_file_rounded,
+                        //   label: 'Tải lên',
+                        //   color: const Color(0xFF00C853),
+                        //   onTap: () {},
+                        // ),
+                      ],
+                    ),
+                  ),
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: documentProvider.genres.map((genre) {
+                  // Fixed filter bar (stays while books scroll)
+                  Consumer<DocumentProvider>(
+                    builder: (context, provider, _) {
+                      final List<GenreModel> chips = provider.genres;
+                      final List<String> labels = [
+                        'Tất cả',
+                        ...chips.map((g) => g.name),
+                      ];
+                      final List<int?> values = [
+                        null,
+                        ...chips.map((g) => g.genreId),
+                      ];
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: ChipsChoice<int?>.single(
+                          value: _selectedGenreId,
+                          onChanged: (val) =>
+                              setState(() => _selectedGenreId = val),
+                          choiceItems: C2Choice.listFrom<int?, String>(
+                            source: labels,
+                            value: (i, v) => values[i],
+                            label: (i, v) => v,
+                          ),
+                          choiceStyle: C2ChipStyle.filled(
+                            color: const Color(0xFFF1F1F1),
+                            selectedStyle: C2ChipStyle.filled(
+                              color: Color(0xFFFFCDD2),
+                            ),
+                          ),
+                          wrapped: false,
+                          scrollPhysics: const BouncingScrollPhysics(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Content based on selected tab
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Consumer<DocumentProvider>(
+                            builder: (context, documentProvider, child) {
+                              if (documentProvider.isLoadingGenres) {
+                                return _LoadingBooksRow();
+                              }
+                              // Filtered sections: show selected genre only, else default 2
+                              final selectedId = _selectedGenreId;
+                              if (selectedId != null) {
+                                final genre = documentProvider.genres
+                                    .firstWhere(
+                                      (g) => g.genreId == selectedId,
+                                      orElse: () =>
+                                          documentProvider.genres.isNotEmpty
+                                          ? documentProvider.genres.first
+                                          : GenreModel(
+                                              genreId: -1,
+                                              name: 'Không có',
+                                            ),
+                                    );
+                                if (genre.genreId == -1) {
+                                  return const SizedBox.shrink();
+                                }
                                 return GenreSectionWidget(
                                       key: ValueKey<int>(genre.genreId),
                                       genre: genre,
@@ -269,19 +251,36 @@ class _MainHomePageState extends State<MainHomePage> {
                                       begin: const Offset(0, 12),
                                       end: Offset.zero,
                                     );
-                              }).toList(),
-                            );
-                          },
-                        ),
-                      ],
+                              }
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: documentProvider.genres.map((genre) {
+                                  return GenreSectionWidget(
+                                        key: ValueKey<int>(genre.genreId),
+                                        genre: genre,
+                                        documentProvider: documentProvider,
+                                      )
+                                      .animate()
+                                      .fadeIn(duration: 250.ms)
+                                      .move(
+                                        begin: const Offset(0, 12),
+                                        end: Offset.zero,
+                                      );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                // Removed tiny 4 buttons grid per request
-              ],
+                  // Removed tiny 4 buttons grid per request
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

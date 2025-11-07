@@ -200,15 +200,19 @@ class _SignUpPageState extends State<SignUpPage> {
         'username': _emailController.text.trim(), // Sử dụng email làm username
         'email': _emailController.text.trim(),
         'password': _passwordController.text,
-        'phoneNumber': _phoneController.text.trim(), // Sử dụng phoneNumber theo database schema
-        'fullName': _nameController.text.trim(), // Sử dụng fullName theo database schema
+        'phoneNumber': _phoneController.text
+            .trim(), // Sử dụng phoneNumber theo database schema
+        'fullName': _nameController.text
+            .trim(), // Sử dụng fullName theo database schema
         'roleId': 3, // 1 = doc_gia (reader) theo database schema
       };
       print('📝 Register data: ${registerData.toString()}');
       print('📝 Data validation:');
       print('  - Username: ${registerData['username']}');
       print('  - Email: ${registerData['email']}');
-      print('  - Password length: ${(registerData['password'] as String).length}');
+      print(
+        '  - Password length: ${(registerData['password'] as String).length}',
+      );
       print('  - Phone: ${registerData['phoneNumber']}');
       print('  - FullName: ${registerData['fullName']}');
       print('  - RoleId: ${registerData['roleId']}');
@@ -223,25 +227,44 @@ class _SignUpPageState extends State<SignUpPage> {
   void _handleAuthState(BuildContext context, AuthState state) {
     if (state is AuthAuthenticated) {
       // Đăng ký và đăng nhập thành công
-      NotificationService.showSuccess(context, message: 'Đăng ký thành công!');
-      // Tự động đăng nhập sau khi đăng ký thành công
+      // Use addPostFrameCallback to avoid Navigator lock during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          NotificationService.showSuccess(
+            context,
+            message: 'Đăng ký thành công!',
+          );
+          // Tự động đăng nhập sau khi đăng ký thành công
 
-      // Điều hướng đến trang chủ
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil('/home_page', (route) => false);
+          // Điều hướng đến trang chủ
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/home_page', (route) => false);
+        }
+      });
     } else if (state is AuthRegisterSuccess) {
       // Chỉ đăng ký thành công (nếu không auto-login)
-      NotificationService.showSuccess(context, message: 'Đăng ký thành công! Vui lòng đăng nhập.');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          NotificationService.showSuccess(
+            context,
+            message: 'Đăng ký thành công! Vui lòng đăng nhập.',
+          );
 
-      // Quay lại trang đăng nhập
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SignInPage()),
-      );
+          // Quay lại trang đăng nhập
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SignInPage()),
+          );
+        }
+      });
     } else if (state is AuthError) {
       // Hiển thị lỗi
-      NotificationService.showError(context, message: state.message);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          NotificationService.showError(context, message: state.message);
+        }
+      });
     }
   }
 }

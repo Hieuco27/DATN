@@ -5,9 +5,9 @@ class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
 
   void _goToLogin(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SignInPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SignInPage()));
   }
 
   @override
@@ -35,7 +35,10 @@ class SplashPage extends StatelessWidget {
                 child: TextButton.icon(
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     backgroundColor: Colors.white.withOpacity(0.08),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -61,8 +64,12 @@ class SplashPage extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: <Color>[
-                            const Color(0xFF22D3EE).withOpacity(0.85), // cyan-400
-                            const Color(0xFFA78BFA).withOpacity(0.85), // violet-400
+                            const Color(
+                              0xFF22D3EE,
+                            ).withOpacity(0.85), // cyan-400
+                            const Color(
+                              0xFFA78BFA,
+                            ).withOpacity(0.85), // violet-400
                           ],
                         ),
                         boxShadow: const <BoxShadow>[
@@ -110,5 +117,3 @@ class SplashPage extends StatelessWidget {
     );
   }
 }
-
-

@@ -4,6 +4,7 @@ import 'package:book_tech/features/auth/presentations/providers/document_provide
 import 'package:book_tech/features/auth/presentations/pages/genres_book_page.dart';
 import 'package:book_tech/features/auth/data/models/genre_model.dart';
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
+import 'package:book_tech/core/widgets/gradient_background.dart';
 
 class GenresListPage extends StatefulWidget {
   const GenresListPage({super.key});
@@ -12,39 +13,50 @@ class GenresListPage extends StatefulWidget {
 }
 
 class _GenresListPageState extends State<GenresListPage> {
-  final Map<int, String> _imageByGenreId = const {
-    120703: 'assets/image/genres/technology.png', // Công nghệ
-    120716: 'assets/image/genres/travel.png', // Du lịch
-    120717: 'assets/image/genres/amthuc.png', // Ẩm thực
-    120719: 'assets/image/genres/music.png', // Âm nhạc
-    120722: 'assets/image/genres/chinhtri.png', // Chính trị
-    120724: 'assets/image/genres/cotich.png',
-    120701: 'assets/image/genres/tieuthuyet.png',
-    120702: 'assets/image/genres/kinhte.png',
-    120704: 'assets/image/genres/khoahoc.png',
-    120705: 'assets/image/genres/history.png',
-    120706: 'assets/image/genres/dialy.png',
-    120707: 'assets/image/genres/tamly.png',
-    120708: 'assets/image/genres/kynangsong.png',
-    120709: 'assets/image/genres/thieunhi.png',
-    120710: 'assets/image/genres/vanhoc.png',
-    120711: 'assets/image/genres/tongiao.png',
-    120712: 'assets/image/genres/triethoc.png',
-    120713: 'assets/image/genres/yhoc.png',
-    120714: 'assets/image/genres/nghethuat.png',
-    120715: 'assets/image/genres/kientruc.png',
-    120718: 'assets/image/genres/ngoaingu.png',
-    120720: 'assets/image/genres/thethao.png',
-    120721: 'assets/image/genres/phapluat.png',
-    120723: 'assets/image/genres/moitruong.png',
-    120725: 'assets/image/genres/tho.png',
-    120726: 'assets/image/genres/tanvan.png',
-    120727: 'assets/image/genres/khoinghiep.png',
-    120728: 'assets/image/genres/phattrienbanthan.png',
-    120729: 'assets/image/genres/quantri.png',
-    120730: 'assets/image/genres/marketing.png',
-    120731: 'assets/image/genres/test.png',
-  };
+  // Pool ảnh dùng chung cho mọi thể loại. Ảnh sẽ được chọn "ngẫu nhiên có định
+  // danh" dựa trên genreId để đảm bảo ổn định giữa các lần render và không phụ
+  // thuộc dữ liệu id cố định từ backend.
+  final List<String> _genreImages = const [
+    'assets/image/genres/technology.png',
+    'assets/image/genres/travel.png',
+    'assets/image/genres/amthuc.png',
+    'assets/image/genres/music.png',
+    'assets/image/genres/chinhtri.png',
+    'assets/image/genres/cotich.png',
+    'assets/image/genres/tieuthuyet.png',
+    'assets/image/genres/kinhte.png',
+    'assets/image/genres/khoahoc.png',
+    'assets/image/genres/history.png',
+    'assets/image/genres/dialy.png',
+    'assets/image/genres/tamly.png',
+    'assets/image/genres/kynangsong.png',
+    'assets/image/genres/thieunhi.png',
+    'assets/image/genres/vanhoc.png',
+    'assets/image/genres/tongiao.png',
+    'assets/image/genres/triethoc.png',
+    'assets/image/genres/yhoc.png',
+    'assets/image/genres/nghethuat.png',
+    'assets/image/genres/kientruc.png',
+    'assets/image/genres/ngoaingu.png',
+    'assets/image/genres/thethao.png',
+    'assets/image/genres/phapluat.png',
+    'assets/image/genres/moitruong.png',
+    'assets/image/genres/tho.png',
+    'assets/image/genres/tanvan.png',
+    'assets/image/genres/khoinghiep.png',
+    'assets/image/genres/phattrienbanthan.png',
+    'assets/image/genres/quantri.png',
+    'assets/image/genres/marketing.png',
+    'assets/image/genres/test.png',
+  ];
+
+  String? _pickImageForGenre(GenreModel genre) {
+    if (_genreImages.isEmpty) return null;
+    final int positiveId = genre.genreId >= 0 ? genre.genreId : -genre.genreId;
+    final int index = positiveId % _genreImages.length;
+    return _genreImages[index];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -90,6 +102,7 @@ class _GenresListPageState extends State<GenresListPage> {
         ],
       ),
       body: Consumer<DocumentProvider>(
+        child: const AppGradientBackground(),
         builder: (context, provider, _) {
           if (provider.isLoadingGenres) {
             return const Center(child: CircularProgressIndicator());
@@ -116,7 +129,7 @@ class _GenresListPageState extends State<GenresListPage> {
             itemBuilder: (context, index) {
               final g = genres[index];
               final name = g.name.toUpperCase();
-              final img = _imageByGenreId[g.genreId];
+              final img = _pickImageForGenre(g);
 
               return _GenreTile(
                 title: name,

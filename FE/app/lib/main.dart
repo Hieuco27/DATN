@@ -2,7 +2,6 @@ import 'package:book_tech/features/auth/domain/repositories/document_repository.
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
 import 'package:book_tech/core/theme/theme.dart';
@@ -29,15 +28,20 @@ import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
 import 'package:cosmos_epub/cosmos_epub.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-
   // Khởi tạo CosmosEpub
   final cosmosInitialized = await CosmosEpub.initialize();
   if (!cosmosInitialized) {
     print('⚠️ Failed to initialize CosmosEpub');
+  }
+  // Only show splash on first app launch
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenSplash = prefs.getBool('has_seen_splash') ?? false;
+  if (!hasSeenSplash) {
+    await prefs.setBool('has_seen_splash', true);
   }
 
   // Khởi tạo các dependencies
@@ -47,14 +51,20 @@ void main() async {
     remoteDataSource: remoteDataSource,
     localStorageDataSource: localStorageDataSource,
   );
-
-  runApp(MyApp(authRepository: authRepository));
+  runApp(
+    MyApp(authRepository: authRepository, showSplashOnStart: !hasSeenSplash),
+  );
 }
 
 class MyApp extends StatelessWidget {
   final AuthenticationRepositoryImpl authRepository;
+  final bool showSplashOnStart;
 
-  const MyApp({super.key, required this.authRepository});
+  const MyApp({
+    super.key,
+    required this.authRepository,
+    required this.showSplashOnStart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +103,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Book Tech',
         theme: AppTheme.darkThemeMode,
-        home: const SplashPage(),
+        home: showSplashOnStart ? const SplashPage() : const AuthWrapper(),
         onGenerateRoute: (settings) {
           switch (settings.name) {
             case '/document-detail':
@@ -155,9 +165,14 @@ class AuthWrapper extends StatelessWidget {
 
         if (state is AuthAuthenticated) {
           // Navigate to main home page when authenticated
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomePage()),
-          );
+          // Use addPostFrameCallback to avoid Navigator lock during build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const HomePage()),
+              );
+            }
+          });
         }
       },
       child: BlocBuilder<AuthBloc, AuthState>(
