@@ -1,29 +1,25 @@
 {
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Flutter Debug",
-            "type": "dart",
+            "name": "kagri_tech",
             "request": "launch",
-            "program": "lib/main.dart",
-            "args": [
-                "--flavor",
-                "development"
-            ]
+            "type": "dart"
         },
         {
-            "name": "Flutter Release",
-            "type": "dart",
+            "name": "kagri_tech (profile mode)",
             "request": "launch",
-            "program": "lib/main.dart",
-            "flutterMode": "release"
-        },
-        {
-            "name": "Flutter Profile",
             "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
             "flutterMode": "profile"
+        },
+        {
+            "name": "kagri_tech (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
         }
     ]
 }
