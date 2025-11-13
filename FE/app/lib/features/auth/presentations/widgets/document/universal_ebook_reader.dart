@@ -10,9 +10,8 @@ import 'package:book_tech/core/services/ebook_settings_service.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_settings_dialog.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_table_of_contents.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_highlights_panel.dart';
-import 'package:cosmos_epub/cosmos_epub.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter_html/flutter_html.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 
 class UniversalEbookReader extends StatefulWidget {
   final String ebookUrl;
@@ -30,6 +29,18 @@ class UniversalEbookReader extends StatefulWidget {
   State<UniversalEbookReader> createState() => _UniversalEbookReaderState();
 }
 
+class _HighlightColorOption {
+  const _HighlightColorOption({
+    required this.label,
+    required this.hex,
+    required this.color,
+  });
+
+  final String label;
+  final String hex;
+  final Color color;
+}
+
 class _UniversalEbookReaderState extends State<UniversalEbookReader>
     with TickerProviderStateMixin {
   EbookFormat? _detectedFormat;
@@ -40,6 +51,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   PdfViewerController? _pdfController;
   // ✅ Thêm WebViewController để tránh reload
   WebViewController? _webViewController;
+  final ScrollController _epubScrollController = ScrollController();
+  int _currentChapterIndex = 0;
 
   // New state variables
   EbookSettings _settings = EbookSettings();
@@ -49,6 +62,35 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   bool _showTableOfContents = false;
   bool _showHighlights = false;
   late TabController _tabController;
+  Timer? _restReminderTimer;
+  bool _isRestDialogVisible = false;
+  final ScreenBrightness _screenBrightness = ScreenBrightness();
+  double? _originalBrightness;
+  bool _canControlBrightness = true;
+  String? _selectedPdfText;
+  bool _isHighlightSheetVisible = false;
+  static const List<_HighlightColorOption> _highlightColorOptions = [
+    _HighlightColorOption(
+      label: 'Vàng',
+      hex: '#FFF59D',
+      color: Color(0xFFFFF59D),
+    ),
+    _HighlightColorOption(
+      label: 'Xanh lá',
+      hex: '#C5E1A5',
+      color: Color(0xFFC5E1A5),
+    ),
+    _HighlightColorOption(
+      label: 'Xanh dương',
+      hex: '#AEDFF7',
+      color: Color(0xFFAEDFF7),
+    ),
+    _HighlightColorOption(
+      label: 'Hồng',
+      hex: '#F8BBD0',
+      color: Color(0xFFF8BBD0),
+    ),
+  ];
 
   @override
   void initState() {
@@ -59,7 +101,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
 
   @override
   void dispose() {
+    _restReminderTimer?.cancel();
     _tabController.dispose();
+    _epubScrollController.dispose();
+    unawaited(_restoreOriginalBrightness());
     super.dispose();
   }
 
@@ -69,6 +114,9 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
 
       // Load settings
       _settings = await EbookSettingsService.getSettings();
+      await _captureOriginalBrightness();
+      await _applyScreenBrightness();
+      _restartRestReminderTimer();
 
       // Detect format
       _detectedFormat =
@@ -76,19 +124,30 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           await EbookReaderService.detectFormat(widget.ebookUrl);
 
       // Chuẩn bị dữ liệu theo định dạng
-      // EPUB: không tải về trước, sẽ tải tạm thời khi mở
-      if (_detectedFormat == EbookFormat.epub) {
-        print('📖 EPUB format detected - will load from URL when opening');
-      } else if (_detectedFormat != EbookFormat.html) {
-        // PDF và định dạng khác: tải về file tạm để viewer sử dụng
+      if (_detectedFormat == EbookFormat.pdf ||
+          _detectedFormat == EbookFormat.mobi ||
+          _detectedFormat == EbookFormat.txt) {
+        // Tải file cục bộ để sử dụng cho các định dạng cần file
         _localFilePath = await EbookReaderService.downloadFile(widget.ebookUrl);
+      } else {
+        _localFilePath = null;
       }
-
       // Load highlights
       _highlights = await EbookSettingsService.getHighlights(widget.title);
 
-      // Generate mock chapters
-      _generateMockChapters();
+      if (_detectedFormat == EbookFormat.epub) {
+        _chapters = await EbookReaderService.loadEpubChaptersFromUrl(
+          widget.ebookUrl,
+          settings: _settings,
+        );
+        _currentChapterIndex = 0;
+        _currentPage = _currentChapterIndex + 1;
+        if (_chapters.isEmpty) {
+          _generateMockChapters();
+        }
+      } else {
+        _generateMockChapters();
+      }
 
       // Load specific format
       await _loadEbookContent();
@@ -105,7 +164,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       return EbookChapter(
         id: 'chapter_${index + 1}',
         title: 'Chương ${index + 1}',
-        pageNumber: (index * 5) + 1,
+        pageNumber: index + 1,
       );
     });
   }
@@ -127,9 +186,6 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             ..loadRequest(Uri.parse(widget.ebookUrl));
           break;
         case EbookFormat.epub:
-          // EPUB: Không cần khởi tạo controller cho cosmos_epub
-          // cosmos_epub sẽ tự mở fullscreen khi được gọi
-          print('✅ EPUB format detected - will use CosmosEpub');
           break;
         default:
           throw Exception('Unsupported format: $_detectedFormat');
@@ -143,8 +199,6 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       });
     }
   }
-
-  // Removed: _initializeEpubController - using cosmos_epub instead
 
   @override
   Widget build(BuildContext context) {
@@ -210,6 +264,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildTableOfContentsOverlay() {
+    final isEpub = _detectedFormat == EbookFormat.epub;
+    final chapters = _chapters;
     return Scaffold(
       backgroundColor: Colors.black54,
       appBar: AppBar(
@@ -219,13 +275,27 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           onPressed: () => setState(() => _showTableOfContents = false),
         ),
       ),
-      body: EbookTableOfContents(
-        chapters: _chapters,
-        currentPage: _currentPage,
-        onChapterSelected: (chapter) {
-          setState(() => _showTableOfContents = false);
-          _navigateToPage(chapter.pageNumber);
-        },
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: chapters.isEmpty
+            ? const Center(child: Text('Không có mục lục.'))
+            : EbookTableOfContents(
+                chapters: chapters,
+                currentPage: isEpub ? _currentChapterIndex + 1 : _currentPage,
+                onChapterSelected: (chapter) {
+                  setState(() => _showTableOfContents = false);
+                  if (isEpub) {
+                    final index = chapters.indexWhere(
+                      (c) => c.id == chapter.id,
+                    );
+                    if (index != -1) {
+                      _openEpubChapter(index);
+                    }
+                  } else {
+                    _navigateToPage(chapter.pageNumber);
+                  }
+                },
+              ),
       ),
     );
   }
@@ -256,21 +326,44 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     );
   }
 
+  void _openEpubChapter(int index) {
+    if (_detectedFormat != EbookFormat.epub ||
+        index < 0 ||
+        index >= _chapters.length) {
+      return;
+    }
+    setState(() {
+      _currentChapterIndex = index;
+      _currentPage = index + 1;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_epubScrollController.hasClients) {
+        _epubScrollController.jumpTo(0);
+      }
+    });
+  }
+
   Widget _buildMainReader() {
     return Stack(children: [_buildReaderContent(), _buildFloatingControls()]);
   }
 
   Widget _buildReaderContent() {
+    Widget content;
     switch (_detectedFormat) {
       case EbookFormat.pdf:
-        return _buildPdfReader();
+        content = _buildPdfReader();
+        break;
       case EbookFormat.epub:
-        return _buildEpubReader();
+        content = _buildEpubReader();
+        break;
       case EbookFormat.html:
-        return _buildHtmlReader();
+        content = _buildHtmlReader();
+        break;
       default:
-        return _buildWebViewReader();
+        content = _buildWebViewReader();
+        break;
     }
+    return _applyEyeComfortFilters(content);
   }
 
   // ✅ PDF reader với Syncfusion
@@ -304,6 +397,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           _error = 'Không thể tải PDF: ${details.error}';
         });
       },
+      onTextSelectionChanged: _handlePdfTextSelectionChanged,
       onPageChanged: (PdfPageChangedDetails details) {
         setState(() {
           _currentPage = details.newPageNumber;
@@ -334,6 +428,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             _error = 'Không thể tải PDF: ${details.error}';
           });
         },
+        onTextSelectionChanged: _handlePdfTextSelectionChanged,
         onPageChanged: (PdfPageChangedDetails details) {
           setState(() {
             _currentPage = details.newPageNumber;
@@ -382,6 +477,363 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       default:
         return Colors.white;
     }
+  }
+
+  Widget _applyEyeComfortFilters(Widget child) {
+    if (!_settings.eyeComfortEnabled) {
+      return child;
+    }
+
+    final warmth = _settings.warmth.clamp(0.0, 1.0);
+    final brightness = _settings.brightness.clamp(0.0, 1.0);
+    final warmOverlayOpacity = (warmth * 0.8).clamp(0.0, 0.85);
+    final dimOpacity = ((1 - brightness) * 0.9).clamp(0.0, 0.85);
+
+    return Stack(
+      children: [
+        child,
+        if (warmOverlayOpacity > 0)
+          IgnorePointer(
+            ignoring: true,
+            child: AnimatedOpacity(
+              opacity: warmOverlayOpacity,
+              duration: const Duration(milliseconds: 250),
+              child: Container(color: const Color(0xFFF4E1A1)),
+            ),
+          ),
+        if (dimOpacity > 0)
+          IgnorePointer(
+            ignoring: true,
+            child: AnimatedOpacity(
+              opacity: dimOpacity,
+              duration: const Duration(milliseconds: 250),
+              child: Container(color: Colors.black),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _handlePdfTextSelectionChanged(PdfTextSelectionChangedDetails details) {
+    final text = details.selectedText?.trim();
+    if (text == null || text.isEmpty) {
+      _selectedPdfText = null;
+      return;
+    }
+
+    _selectedPdfText = text;
+
+    if (!_isHighlightSheetVisible) {
+      _showCreateHighlightSheet();
+    }
+  }
+
+  Future<void> _showCreateHighlightSheet() async {
+    if (!mounted || _selectedPdfText == null || _selectedPdfText!.isEmpty) {
+      return;
+    }
+
+    setState(() => _isHighlightSheetVisible = true);
+
+    final noteController = TextEditingController();
+    String selectedColorHex = _highlightColorOptions.first.hex;
+
+    EbookHighlight? createdHighlight;
+    try {
+      createdHighlight = await showModalBottomSheet<EbookHighlight>(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SafeArea(
+              top: false,
+              child: StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Tạo đánh dấu',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _selectedPdfText!,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Chọn màu:',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          children: _highlightColorOptions.map((option) {
+                            final isSelected = option.hex == selectedColorHex;
+                            return GestureDetector(
+                              onTap: () {
+                                setModalState(
+                                  () => selectedColorHex = option.hex,
+                                );
+                              },
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: option.color,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Colors.black
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: isSelected
+                                        ? const Icon(Icons.check, size: 20)
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    option.label,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: noteController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Ghi chú (tuỳ chọn)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final text = _selectedPdfText;
+                              if (text == null || text.trim().isEmpty) {
+                                Navigator.of(context).pop();
+                                return;
+                              }
+
+                              final highlight = EbookHighlight(
+                                id: DateTime.now().microsecondsSinceEpoch
+                                    .toString(),
+                                text: text,
+                                pageNumber: _currentPage,
+                                note: noteController.text.trim().isEmpty
+                                    ? null
+                                    : noteController.text.trim(),
+                                createdAt: DateTime.now(),
+                                color: selectedColorHex,
+                              );
+
+                              Navigator.of(context).pop(highlight);
+                            },
+                            icon: const Icon(Icons.save),
+                            label: const Text('Lưu đánh dấu'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      );
+    } finally {
+      noteController.dispose();
+      _selectedPdfText = null;
+      _pdfController?.clearSelection();
+      if (mounted) {
+        setState(() => _isHighlightSheetVisible = false);
+      }
+    }
+
+    final highlight = createdHighlight;
+
+    if (!mounted || highlight == null) {
+      return;
+    }
+
+    setState(() {
+      _highlights.add(highlight);
+    });
+    try {
+      await EbookSettingsService.saveHighlight(widget.title, highlight);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã lưu đánh dấu.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể lưu đánh dấu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _captureOriginalBrightness() async {
+    if (kIsWeb || !_canControlBrightness) {
+      return;
+    }
+    try {
+      _originalBrightness ??= await _screenBrightness.current;
+    } catch (_) {
+      _canControlBrightness = false;
+    }
+  }
+
+  Future<void> _applyScreenBrightness() async {
+    if (kIsWeb || !_canControlBrightness) {
+      return;
+    }
+    try {
+      if (!_settings.eyeComfortEnabled) {
+        await _restoreOriginalBrightness();
+        return;
+      }
+      final target = _settings.brightness.clamp(0.0, 1.0);
+      await _screenBrightness.setScreenBrightness(target);
+    } catch (_) {
+      _canControlBrightness = false;
+    }
+  }
+
+  Future<void> _restoreOriginalBrightness() async {
+    if (kIsWeb || !_canControlBrightness) {
+      return;
+    }
+    try {
+      if (_originalBrightness != null) {
+        final value = _originalBrightness!.clamp(0.0, 1.0);
+        await _screenBrightness.setScreenBrightness(value);
+      } else {
+        await _screenBrightness.resetScreenBrightness();
+      }
+    } catch (_) {}
+  }
+
+  void _restartRestReminderTimer() {
+    _scheduleRestReminder(Duration(minutes: _settings.restReminderMinutes));
+  }
+
+  void _scheduleRestReminder(Duration duration) {
+    _restReminderTimer?.cancel();
+    if (!_settings.eyeComfortEnabled ||
+        !_settings.restReminderEnabled ||
+        duration.inMinutes <= 0) {
+      return;
+    }
+    _restReminderTimer = Timer(duration, _onRestReminderElapsed);
+  }
+
+  void _onRestReminderElapsed() {
+    if (!mounted) {
+      return;
+    }
+    _showRestReminderDialog();
+  }
+
+  Future<void> _showRestReminderDialog() async {
+    if (!mounted ||
+        !_settings.eyeComfortEnabled ||
+        !_settings.restReminderEnabled ||
+        _isRestDialogVisible) {
+      return;
+    }
+
+    _isRestDialogVisible = true;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Nghỉ ngơi cho mắt'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bạn đã đọc khoảng ${_settings.restReminderMinutes} phút.'),
+              const SizedBox(height: 12),
+              const Text(
+                'Hãy thực hiện quy tắc 20-20-20: mỗi 20 phút, nhìn vào một điểm cách xa 6 mét trong 20 giây.',
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Hít thở sâu, chớp mắt và xoay cổ tay, vai để thư giãn trước khi tiếp tục đọc nhé.',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _scheduleRestReminder(const Duration(minutes: 5));
+              },
+              child: const Text('Nhắc lại sau 5 phút'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _restartRestReminderTimer();
+              },
+              child: const Text('Đã nghỉ xong'),
+            ),
+          ],
+        );
+      },
+    );
+
+    _isRestDialogVisible = false;
   }
 
   Widget _buildFloatingControls() {
@@ -448,143 +900,86 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildEpubReader() {
-    // Sử dụng cosmos_epub thay vì epub_view
+    final backgroundColor = _getBackgroundColor();
+    final textColor = _settings.theme == 'dark' ? Colors.white : Colors.black87;
+
+    if (_chapters.isEmpty) {
+      return Container(
+        color: backgroundColor,
+        alignment: Alignment.center,
+        child: const Text('Không thể tải nội dung EPUB.'),
+      );
+    }
+
+    final chapter =
+        _chapters[_currentChapterIndex.clamp(0, _chapters.length - 1)];
+    final content = chapter.content?.trim();
+
     return Container(
-      color: _getBackgroundColor(),
-      child: _buildCosmosEpubContent(),
-    );
-  }
-
-  // Removed: _buildEpubContent - using cosmos_epub instead
-
-  Widget _buildCosmosEpubContent() {
-    // Gọi cosmos_epub để mở fullscreen reader (sẽ tải từ URL khi mở)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openCosmosEpub();
-    });
-
-    // Hiển thị thông báo đang tải và mở
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text('Đang tải sách: ${widget.title}'),
-          const SizedBox(height: 8),
-          const Text(
-            'Đang tải từ URL và mở Cosmos EPUB Reader...',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
+      color: backgroundColor,
+      child: Scrollbar(
+        controller: _epubScrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _epubScrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                chapter.title,
+                style: TextStyle(
+                  fontSize: _settings.fontSize + 4,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (content == null || content.isEmpty)
+                Text(
+                  'Chương này không có nội dung hoặc chưa được hỗ trợ hiển thị.',
+                  style: TextStyle(
+                    fontSize: _settings.fontSize,
+                    height: _settings.lineHeight,
+                    color: textColor,
+                  ),
+                )
+              else
+                Html(
+                  data: content,
+                  style: {
+                    'body': Style(
+                      fontFamily: _settings.fontFamily,
+                      fontSize: FontSize(_settings.fontSize),
+                      lineHeight: LineHeight(_settings.lineHeight),
+                      color: textColor,
+                      backgroundColor: backgroundColor,
+                      margin: Margins.zero,
+                      padding: HtmlPaddings.zero,
+                    ),
+                    'p': Style(margin: Margins.symmetric(vertical: 8)),
+                    'h1': Style(
+                      color: textColor,
+                      fontSize: FontSize(_settings.fontSize + 8),
+                    ),
+                    'h2': Style(
+                      color: textColor,
+                      fontSize: FontSize(_settings.fontSize + 6),
+                    ),
+                  },
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
-  }
-
-  Future<void> _openCosmosEpub() async {
-    if (kIsWeb) {
-      print('❌ Cannot open cosmos_epub on web platform');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('EPUB reader không hỗ trợ trên web'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    String? tempFilePath;
-
-    try {
-      // Tải file tạm thời từ URL
-      print('📥 Downloading EPUB from URL: ${widget.ebookUrl}');
-      
-      final response = await http.get(Uri.parse(widget.ebookUrl));
-      if (response.statusCode != 200) {
-        throw Exception(
-          'Không thể tải file: HTTP ${response.statusCode}',
-        );
-      }
-
-      if (response.bodyBytes.isEmpty) {
-        throw Exception('File tải về trống');
-      }
-
-      // Lưu vào temporary directory
-      final tempDir = await getTemporaryDirectory();
-      final fileName = widget.ebookUrl.split('/').last;
-      final fileExtension = fileName.contains('.') 
-          ? fileName.substring(fileName.lastIndexOf('.'))
-          : '.epub';
-      final uniqueFileName = 'epub_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
-      tempFilePath = '${tempDir.path}/$uniqueFileName';
-      
-      final file = io.File(tempFilePath);
-      await file.writeAsBytes(response.bodyBytes);
-      print('✅ EPUB downloaded to temporary file: $tempFilePath');
-
-      // Mở với cosmos_epub
-      print('📖 Opening EPUB with CosmosEpub: $tempFilePath');
-      await CosmosEpub.openLocalBook(
-        localPath: tempFilePath,
-        context: context,
-        bookId: widget.title,
-        onPageFlip: (int currentPage, int totalPages) {
-          print('📄 Page flipped: $currentPage / $totalPages');
-        },
-        onLastPage: (int lastPageIndex) {
-          print('🏁 Reached last page: $lastPageIndex');
-        },
-      );
-
-      // Xóa file tạm sau khi mở (đợi một chút để đảm bảo file đã được đọc)
-      Future.delayed(const Duration(seconds: 2), () async {
-        try {
-          if (tempFilePath != null) {
-            final tempFile = io.File(tempFilePath);
-            if (await tempFile.exists()) {
-              await tempFile.delete();
-              print('🗑️ Deleted temporary EPUB file: $tempFilePath');
-            }
-          }
-        } catch (e) {
-          print('⚠️ Could not delete temporary file: $e');
-        }
-      });
-    } catch (e) {
-      print('❌ Error opening cosmos_epub: $e');
-      
-      // Xóa file tạm nếu có lỗi
-      if (tempFilePath != null) {
-        try {
-          final tempFile = io.File(tempFilePath);
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-          }
-        } catch (_) {}
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Không thể mở EPUB: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   void _toggleTheme() async {
     final newTheme = _settings.theme == 'dark' ? 'light' : 'dark';
     final newSettings = _settings.copyWith(theme: newTheme);
 
-    await EbookSettingsService.saveSettings(newSettings);
-    setState(() {
-      _settings = newSettings;
-    });
+    await _updateSettings(newSettings);
   }
 
   void _showSettingsDialog() {
@@ -593,21 +988,51 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       builder: (context) => EbookSettingsDialog(
         currentSettings: _settings,
         onSettingsChanged: (newSettings) async {
-          await EbookSettingsService.saveSettings(newSettings);
-          setState(() {
-            _settings = newSettings;
-          });
+          await _updateSettings(newSettings);
         },
       ),
     );
   }
 
   void _navigateToPage(int pageNumber) {
+    if (_detectedFormat == EbookFormat.epub) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Định dạng EPUB không hỗ trợ nhảy trực tiếp theo số trang. Hãy chọn chương từ mục lục.',
+          ),
+        ),
+      );
+      return;
+    }
+
     if (_pdfController != null) {
       _pdfController!.jumpToPage(pageNumber);
     }
     setState(() {
       _currentPage = pageNumber;
     });
+  }
+
+  Future<void> _updateSettings(EbookSettings newSettings) async {
+    await EbookSettingsService.saveSettings(newSettings);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _settings = newSettings;
+    });
+
+    await _applyScreenBrightness();
+
+    if (_settings.eyeComfortEnabled && _settings.restReminderEnabled) {
+      _restartRestReminderTimer();
+    } else {
+      _restReminderTimer?.cancel();
+      _restReminderTimer = null;
+    }
   }
 }

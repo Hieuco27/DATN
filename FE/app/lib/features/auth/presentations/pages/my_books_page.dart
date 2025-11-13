@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
 import 'package:book_tech/core/widgets/gradient_background.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MyBooksPage extends StatefulWidget {
   const MyBooksPage({super.key});
@@ -19,7 +21,6 @@ class _MyBooksPageState extends State<MyBooksPage>
   Set<int> _selectedItems = {};
   late AnimationController _animationController;
 
-  // Màu sắc đồng nhất với cart_page
   static const Color _primaryColor = Color(0xFFFF6B35);
   static const Color _textColor = Color(0xFF1A202C);
 
@@ -40,15 +41,106 @@ class _MyBooksPageState extends State<MyBooksPage>
 
   @override
   Widget build(BuildContext context) {
-    return AppGradientBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          leading: _isSelectionMode
-              ? Container(
-                  margin: const EdgeInsets.all(8),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        iconTheme: const IconThemeData(color: _textColor),
+        leading: _isSelectionMode
+            ? Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: _textColor,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isSelectionMode = false;
+                      _selectedItems.clear();
+                    });
+                  },
+                ),
+              )
+            : null,
+        title: Text(
+          _isSelectionMode ? 'Đã chọn ${_selectedItems.length}' : 'Thư viện',
+          style: const TextStyle(
+            color: _textColor,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          if (_isSelectionMode) ...[
+            if (_selectedItems.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFE53E3E),
+                  ),
+                  onPressed: () => _handleDelete(),
+                  tooltip: 'Xóa',
+                ),
+              ),
+            Container(
+              margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.select_all_rounded,
+                  color: _primaryColor,
+                ),
+                onPressed: _selectAll,
+                tooltip: 'Chọn tất cả',
+              ),
+            ),
+          ] else ...[
+            Consumer<CartProvider>(
+              builder: (context, cart, _) {
+                final count = cart.totalItems;
+                return Container(
+                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -61,145 +153,62 @@ class _MyBooksPageState extends State<MyBooksPage>
                     ],
                   ),
                   child: IconButton(
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: _textColor,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isSelectionMode = false;
-                        _selectedItems.clear();
-                      });
-                    },
-                  ),
-                )
-              : null,
-          title: Text(
-            _isSelectionMode ? 'Đã chọn ${_selectedItems.length}' : 'Thư viện',
-            style: const TextStyle(
-              color: _textColor,
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            if (_isSelectionMode) ...[
-              if (_selectedItems.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: Color(0xFFE53E3E),
-                    ),
-                    onPressed: () => _handleDelete(),
-                    tooltip: 'Xóa',
-                  ),
-                ),
-              Container(
-                margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _primaryColor.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.select_all_rounded,
-                    color: _primaryColor,
-                  ),
-                  onPressed: _selectAll,
-                  tooltip: 'Chọn tất cả',
-                ),
-              ),
-            ] else ...[
-              Consumer<CartProvider>(
-                builder: (context, cart, _) {
-                  final count = cart.totalItems;
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                    onPressed: () => Navigator.pushNamed(context, '/cart'),
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(
+                          Icons.shopping_cart_outlined,
+                          size: 26,
+                          color: _textColor,
                         ),
-                      ],
-                    ),
-                    child: IconButton(
-                      onPressed: () => Navigator.pushNamed(context, '/cart'),
-                      icon: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(
-                            Icons.shopping_cart_outlined,
-                            size: 26,
-                            color: _textColor,
-                          ),
-                          if (count > 0)
-                            Positioned(
-                              right: -6,
-                              top: -6,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: _primaryColor,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
+                        if (count > 0)
+                          Positioned(
+                            right: -6,
+                            top: -6,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: _primaryColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1,
+                                ),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  count > 99 ? '99+' : '$count',
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    width: 1,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    count > 99 ? '99+' : '$count',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            ],
+                  ),
+                );
+              },
+            ),
           ],
+        ],
+      ),
+      body: AppGradientBackground(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFFF2E3), Colors.white],
         ),
-        body: Column(
+        child: Column(
           children: [
             _buildTabBar(),
             Expanded(
@@ -470,10 +479,29 @@ class _MyBooksPageState extends State<MyBooksPage>
                     ),
                     child: AspectRatio(
                       aspectRatio: 0.63,
-                      child: Image.network(
-                        coverPhoto,
+                      child: CachedNetworkImage(
+                        imageUrl: coverPhoto,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        cacheKey: 'book_$documentId',
+                        placeholder: (context, url) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _primaryColor.withOpacity(0.1),
+                                _primaryColor.withOpacity(0.05),
+                              ],
+                            ),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: _primaryColor,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,

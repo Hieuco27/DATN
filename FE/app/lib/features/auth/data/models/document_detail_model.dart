@@ -112,4 +112,33 @@ class DocumentDetailModel {
       numberOfCopy: numberOfCopy,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'documentId': documentId,
+      'documentType': documentType,
+      'title': title,
+      'language': language,
+      'publicationYear': publicationYear,
+      'coverPrice': coverPrice,
+      'description': description,
+      'shelfLocation': shelfLocation,
+      'coverPhoto': coverPhoto,
+      'ebookUrl': ebookUrl,
+      'numberOfCopy': numberOfCopy,
+      'category': category,
+      'publisher': publisher,
+      'book': book,
+      'magazine': magazine,
+      'newspaper': newspaper,
+      'authors': authors,
+      'genres': genres,
+      'copies': copies,
+      'totalCopies': totalCopies,
+      'availableCopies': availableCopies,
+      'availableCopiesEffective': availableCopiesEffective,
+      'minDeposit': minDeposit,
+      'maxDeposit': maxDeposit,
+    };
+  }
 }

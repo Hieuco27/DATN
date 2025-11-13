@@ -5,8 +5,7 @@ import '../../domain/entities/document_entity.dart';
 import '../../domain/entities/genre_entity.dart';
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
 import '../datasources/document_remote_data_source.dart';
-import '../models/document_response_model.dart';
-import '../models/document_detail_model.dart';
+import 'package:book_tech/core/services/cache_service.dart';
 
 class DocumentRepositoryImpl implements DocumentRepository {
   final DocumentRemoteDataSource remoteDataSource;
@@ -22,6 +21,21 @@ class DocumentRepositoryImpl implements DocumentRepository {
     String? documentType,
   }) async {
     try {
+      // Kiểm tra cache trước
+      if (page == 1) {
+        final cachedDocs = await CacheService.getDocumentsForReader(
+          categoryName: categoryName,
+          documentType: documentType,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
+
+      // Fetch từ server
       final documents = await remoteDataSource.getDocumentsForReader(
         accessToken: accessToken,
         page: page,
@@ -30,8 +44,34 @@ class DocumentRepositoryImpl implements DocumentRepository {
         documentType: documentType,
       );
 
-      return documents.map((doc) => doc.toEntity()).toList();
+      final entities = documents.map((doc) => doc.toEntity()).toList();
+
+      // Lưu vào cache nếu là page 1
+      if (page == 1) {
+        final docsJson = documents.map((doc) => doc.toJson()).toList();
+        await CacheService.saveDocumentsForReader(
+          docsJson,
+          categoryName: categoryName,
+          documentType: documentType,
+          page: page,
+        );
+      }
+
+      return entities;
     } catch (e) {
+      // Nếu có lỗi, thử load từ cache
+      if (page == 1) {
+        final cachedDocs = await CacheService.getDocumentsForReader(
+          categoryName: categoryName,
+          documentType: documentType,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
       throw Exception('Failed to fetch documents: $e');
     }
   }
@@ -98,13 +138,28 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required int documentId,
   }) async {
     try {
+      // Kiểm tra cache trước
+      final cachedDetail = await CacheService.getDocumentDetail(documentId);
+      if (cachedDetail != null) {
+        return DocumentDetailModel.fromJson(cachedDetail);
+      }
+
+      // Fetch từ server
       final response = await remoteDataSource.getDocumentDetail(
         accessToken: accessToken,
         documentId: documentId,
       );
 
+      // Lưu vào cache
+      await CacheService.saveDocumentDetail(documentId, response.toJson());
+
       return response;
     } catch (e) {
+      // Nếu có lỗi, thử load từ cache
+      final cachedDetail = await CacheService.getDocumentDetail(documentId);
+      if (cachedDetail != null) {
+        return DocumentDetailModel.fromJson(cachedDetail);
+      }
       throw Exception('Failed to fetch document detail: $e');
     }
   }
@@ -156,6 +211,20 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 20,
   }) async {
     try {
+      // Kiểm tra cache trước
+      if (page == 1) {
+        final cachedDocs = await CacheService.getSearchDocuments(
+          query,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
+
+      // Fetch từ server
       final documents = await remoteDataSource.searchDocuments(
         accessToken: accessToken,
         query: query,
@@ -163,8 +232,28 @@ class DocumentRepositoryImpl implements DocumentRepository {
         limit: limit,
       );
 
-      return documents.map((doc) => doc.toEntity()).toList();
+      final entities = documents.map((doc) => doc.toEntity()).toList();
+
+      // Lưu vào cache nếu là page 1
+      if (page == 1) {
+        final docsJson = documents.map((doc) => doc.toJson()).toList();
+        await CacheService.saveSearchDocuments(query, docsJson, page: page);
+      }
+
+      return entities;
     } catch (e) {
+      // Nếu có lỗi, thử load từ cache
+      if (page == 1) {
+        final cachedDocs = await CacheService.getSearchDocuments(
+          query,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
       throw Exception('Failed to search documents: $e');
     }
   }
@@ -218,14 +307,43 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 10,
   }) async {
     try {
+      // Kiểm tra cache trước
+      if (page == 1) {
+        final cachedDocs = await CacheService.getSimilarDocuments(documentId);
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
+
+      // Fetch từ server
       final documents = await remoteDataSource.getSimilarDocuments(
         accessToken: accessToken,
         documentId: documentId,
         page: page,
         limit: limit,
       );
-      return documents.map((doc) => doc.toEntity()).toList();
+
+      final entities = documents.map((doc) => doc.toEntity()).toList();
+
+      // Lưu vào cache nếu là page 1
+      if (page == 1) {
+        final docsJson = documents.map((doc) => doc.toJson()).toList();
+        await CacheService.saveSimilarDocuments(documentId, docsJson);
+      }
+
+      return entities;
     } catch (e) {
+      // Nếu có lỗi, thử load từ cache
+      if (page == 1) {
+        final cachedDocs = await CacheService.getSimilarDocuments(documentId);
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
       throw Exception('Failed to fetch similar documents: $e');
     }
   }
@@ -252,14 +370,53 @@ class DocumentRepositoryImpl implements DocumentRepository {
     String? documentType,
   }) async {
     try {
+      // Kiểm tra cache trước
+      if (page == 1) {
+        final cachedDocs = await CacheService.getNewDocuments(
+          documentType: documentType,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
+
+      // Fetch từ server
       final documents = await remoteDataSource.getNewDocuments(
         accessToken: accessToken,
         page: page,
         limit: limit,
         documentType: documentType,
       );
-      return documents.map((doc) => doc.toEntity()).toList();
+
+      final entities = documents.map((doc) => doc.toEntity()).toList();
+
+      // Lưu vào cache nếu là page 1
+      if (page == 1) {
+        final docsJson = documents.map((doc) => doc.toJson()).toList();
+        await CacheService.saveNewDocuments(
+          docsJson,
+          documentType: documentType,
+          page: page,
+        );
+      }
+
+      return entities;
     } catch (e) {
+      // Nếu có lỗi, thử load từ cache
+      if (page == 1) {
+        final cachedDocs = await CacheService.getNewDocuments(
+          documentType: documentType,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
       throw Exception('Failed to fetch new documents: $e');
     }
   }
@@ -273,14 +430,53 @@ class DocumentRepositoryImpl implements DocumentRepository {
     String? documentType,
   }) async {
     try {
+      // Kiểm tra cache trước
+      if (page == 1) {
+        final cachedDocs = await CacheService.getMostBorrowedDocuments(
+          documentType: documentType,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
+
+      // Fetch từ server
       final documents = await remoteDataSource.getMostBorrowedDocuments(
         accessToken: accessToken,
         page: page,
         limit: limit,
         documentType: documentType,
       );
-      return documents.map((doc) => doc.toEntity()).toList();
+
+      final entities = documents.map((doc) => doc.toEntity()).toList();
+
+      // Lưu vào cache nếu là page 1
+      if (page == 1) {
+        final docsJson = documents.map((doc) => doc.toJson()).toList();
+        await CacheService.saveMostBorrowedDocuments(
+          docsJson,
+          documentType: documentType,
+          page: page,
+        );
+      }
+
+      return entities;
     } catch (e) {
+      // Nếu có lỗi, thử load từ cache
+      if (page == 1) {
+        final cachedDocs = await CacheService.getMostBorrowedDocuments(
+          documentType: documentType,
+          page: page,
+        );
+        if (cachedDocs != null && cachedDocs.isNotEmpty) {
+          return cachedDocs
+              .map((json) => DocumentResponseModel.fromJson(json).toEntity())
+              .toList();
+        }
+      }
       throw Exception('Failed to fetch most borrowed documents: $e');
     }
   }

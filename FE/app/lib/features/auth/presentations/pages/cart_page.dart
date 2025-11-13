@@ -89,7 +89,12 @@ class _CartPageState extends State<CartPage>
           context,
           message: result['message'] ?? 'Đăng ký mượn thành công!',
         );
-        Navigator.pop(context);
+        // Tránh Navigator đang locked khi Flushbar đang push route
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {

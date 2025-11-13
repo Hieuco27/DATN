@@ -27,16 +27,10 @@ import 'package:book_tech/features/auth/presentations/providers/reading_provider
 import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
-import 'package:cosmos_epub/cosmos_epub.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Khởi tạo CosmosEpub
-  final cosmosInitialized = await CosmosEpub.initialize();
-  if (!cosmosInitialized) {
-    print('⚠️ Failed to initialize CosmosEpub');
-  }
   // Only show splash on first app launch
   final prefs = await SharedPreferences.getInstance();
   final hasSeenSplash = prefs.getBool('has_seen_splash') ?? false;

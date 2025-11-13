@@ -1,12 +1,29 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:math' as math;
 // Removed unused viewer imports
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
+import 'package:epubx/epubx.dart' as epubx;
+import 'package:book_tech/features/auth/data/models/ebook_model.dart';
 
 enum EbookFormat { pdf, epub, mobi, txt, html }
+
+class _ReaderThemePalette {
+  final String background;
+  final String text;
+  final String link;
+  final String muted;
+
+  const _ReaderThemePalette({
+    required this.background,
+    required this.text,
+    required this.link,
+    required this.muted,
+  });
+}
 
 class EbookReaderService {
   static Future<EbookFormat> detectFormat(String url) async {
@@ -183,6 +200,252 @@ class EbookReaderService {
       print('❌ Lỗi khi xóa tất cả ebooks: $e');
       return 0;
     }
+  }
+
+  static _ReaderThemePalette _resolveThemePalette(String theme) {
+    switch (theme.toLowerCase()) {
+      case 'dark':
+        return const _ReaderThemePalette(
+          background: '#0F1115',
+          text: '#F5F5F7',
+          link: '#8AB4F8',
+          muted: '#3A3D42',
+        );
+      case 'sepia':
+        return const _ReaderThemePalette(
+          background: '#F4ECD8',
+          text: '#5B4636',
+          link: '#A66B2B',
+          muted: '#CBB899',
+        );
+      default:
+        return const _ReaderThemePalette(
+          background: '#FFFFFF',
+          text: '#1F2933',
+          link: '#1E88E5',
+          muted: '#CBD2D9',
+        );
+    }
+  }
+
+  static String _applyReaderSettingsToHtml(
+    String html,
+    EbookSettings settings,
+  ) {
+    final normalizedHtml = _normalizeChapterHtml(html);
+    final palette = _resolveThemePalette(settings.theme);
+    final css = _buildReaderCss(settings, palette);
+    return _injectCssIntoHtml(normalizedHtml, css);
+  }
+
+  static String _buildReaderCss(
+    EbookSettings settings,
+    _ReaderThemePalette palette,
+  ) {
+    final bool eyeComfort = settings.eyeComfortEnabled;
+    final double rawBrightness = settings.brightness.clamp(0.0, 1.2);
+    final double brightnessFactor = eyeComfort
+        ? math.max(0.3, math.min(1.2, rawBrightness))
+        : 1.0;
+    final double textAdjustment = brightnessFactor < 0.85
+        ? math.min(1.35, 1 + (0.85 - brightnessFactor) * 0.9)
+        : 1.0;
+    final double backgroundAdjustment = brightnessFactor > 1.05
+        ? math.min(1.2, brightnessFactor)
+        : 1.0;
+
+    final String backgroundColor = _adjustHexBrightness(
+      palette.background,
+      backgroundAdjustment,
+    );
+    final String textColor = _adjustHexBrightness(palette.text, textAdjustment);
+
+    final double warmthValue = eyeComfort
+        ? settings.warmth.clamp(0.0, 1.0)
+        : 0.0;
+
+    final filters = <String>[];
+    if ((brightnessFactor - 1.0).abs() > 0.01) {
+      filters.add('brightness(${brightnessFactor.toStringAsFixed(2)})');
+    }
+    if (warmthValue > 0) {
+      final double warmthStrength = math.max(
+        0.15,
+        math.min(0.85, 0.25 + warmthValue * 0.55),
+      );
+      filters.add('sepia(${warmthStrength.toStringAsFixed(2)})');
+      final double saturation = math.max(
+        0.65,
+        math.min(1.15, 1.05 - warmthValue * 0.25),
+      );
+      filters.add('saturate(${saturation.toStringAsFixed(2)})');
+      final double hueRotate = -12 * warmthValue;
+      filters.add('hue-rotate(${hueRotate.toStringAsFixed(2)}deg)');
+    }
+
+    final filterCss = filters.isNotEmpty
+        ? 'filter: ${filters.join(' ')} !important;'
+        : '';
+
+    return '''
+:root {
+  color-scheme: ${settings.theme.toLowerCase() == 'dark' ? 'dark' : 'light'};
+}
+body, html {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: $backgroundColor !important;
+  color: $textColor !important;
+  font-family: "${settings.fontFamily}", sans-serif !important;
+  font-size: ${settings.fontSize}px !important;
+  line-height: ${settings.lineHeight} !important;
+  $filterCss
+}
+p, span, li, div, section, article {
+  color: $textColor !important;
+}
+a {
+  color: ${palette.link} !important;
+}
+img, video, svg, canvas {
+  max-width: 100% !important;
+  height: auto !important;
+}
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+table, th, td {
+  border-color: ${palette.muted} !important;
+}
+blockquote {
+  border-left: 4px solid ${palette.muted} !important;
+  margin-left: 0 !important;
+  padding-left: 16px !important;
+}
+mark {
+  background-color: rgba(255, 214, 64, 0.4) !important;
+  color: $textColor !important;
+  padding: 0 0.1em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: "${settings.fontFamily}", sans-serif !important;
+  color: $textColor !important;
+}
+''';
+  }
+
+  static String _injectCssIntoHtml(String html, String css) {
+    final trimmed = html.trim();
+    if (trimmed.isEmpty) {
+      return '''
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<style id="ebook-reader-theme">
+$css
+</style>
+</head>
+<body class="ebook-reader-body">
+</body>
+</html>
+''';
+    }
+
+    final sanitized = trimmed.replaceAll(
+      RegExp(
+        '<style[^>]+id=["\']ebook-reader-theme["\'][^>]*>[\\s\\S]*?</style>',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    final styleTag = '<style id="ebook-reader-theme">\n$css\n</style>';
+    final headRegex = RegExp(r'<head[^>]*>', caseSensitive: false);
+    final htmlRegex = RegExp(r'<html[^>]*>', caseSensitive: false);
+    final bodyRegex = RegExp(r'<body[^>]*>', caseSensitive: false);
+
+    if (headRegex.hasMatch(sanitized)) {
+      return sanitized.replaceFirstMapped(
+        headRegex,
+        (match) => '${match.group(0)}\n$styleTag',
+      );
+    }
+    if (htmlRegex.hasMatch(sanitized)) {
+      return sanitized.replaceFirstMapped(
+        htmlRegex,
+        (match) => '${match.group(0)}\n<head>\n$styleTag\n</head>',
+      );
+    }
+    if (bodyRegex.hasMatch(sanitized)) {
+      return '''
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+$styleTag
+</head>
+$sanitized
+</html>
+''';
+    }
+    return '''
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+$styleTag
+</head>
+<body class="ebook-reader-body">
+$sanitized
+</body>
+</html>
+''';
+  }
+
+  static String _normalizeChapterHtml(String html) {
+    final trimmed = html.trim();
+    if (trimmed.isEmpty) {
+      return '<p>(Không có nội dung)</p>';
+    }
+    return trimmed;
+  }
+
+  static String _adjustHexBrightness(String hexColor, double factor) {
+    final rgb = _hexToRgb(hexColor);
+    if (rgb == null) {
+      return hexColor;
+    }
+    final adjusted = rgb
+        .map(
+          (channel) => math.max(0, math.min(255, (channel * factor).round())),
+        )
+        .toList();
+    return _rgbToHex(adjusted);
+  }
+
+  static List<int>? _hexToRgb(String hex) {
+    var cleaned = hex.replaceAll('#', '').trim();
+    if (cleaned.length == 3) {
+      cleaned = cleaned.split('').map((c) => '$c$c').join();
+    }
+    if (cleaned.length != 6) {
+      return null;
+    }
+    final value = int.tryParse(cleaned, radix: 16);
+    if (value == null) {
+      return null;
+    }
+    return [(value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF];
+  }
+
+  static String _rgbToHex(List<int> rgb) {
+    final buffer = StringBuffer('#');
+    for (final channel in rgb) {
+      final clamped = channel.clamp(0, 255).toInt();
+      buffer.write(clamped.toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
   }
 
   // Helper function to get items that need to be removed (for creating placeholders)
@@ -2037,7 +2300,7 @@ class EbookReaderService {
                   ),
                 );
                 existingNames.add(alias);
-                print('   ✅ Added NCX alias: $alias -> $ncxPathInArchive');
+                print('✅ Added NCX alias: $alias -> $ncxPathInArchive');
               }
             }
           }
@@ -2245,5 +2508,112 @@ class EbookReaderService {
       print('   Returning original EPUB bytes as fallback');
       return originalBytes;
     }
+  }
+
+  static Future<List<EbookChapter>> loadEpubChaptersFromFile(
+    String filePath, {
+    EbookSettings? settings,
+  }) async {
+    try {
+      final fileBytes = await File(filePath).readAsBytes();
+      return _parseEpubChapters(
+        fileBytes,
+        settings: settings,
+        sourceDescription: 'file: $filePath',
+      );
+    } catch (e) {
+      throw Exception('Không thể tải chương EPUB: $e');
+    }
+  }
+
+  static Future<List<EbookChapter>> loadEpubChaptersFromUrl(
+    String url, {
+    EbookSettings? settings,
+  }) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+      if (response.bodyBytes.isEmpty) {
+        throw Exception('Dữ liệu EPUB trống.');
+      }
+      return _parseEpubChapters(
+        response.bodyBytes,
+        settings: settings,
+        sourceDescription: 'url: $url',
+      );
+    } catch (e) {
+      throw Exception('Không thể tải chương EPUB từ URL: $e');
+    }
+  }
+
+  static Future<List<EbookChapter>> _parseEpubChapters(
+    Uint8List originalBytes, {
+    EbookSettings? settings,
+    String? sourceDescription,
+  }) async {
+    Uint8List sanitizedBytes;
+    try {
+      sanitizedBytes = sanitizeEpubBytes(originalBytes);
+    } catch (e) {
+      print(
+        '⚠️ sanitizeEpubBytes failed (${sourceDescription ?? 'unknown source'}): $e',
+      );
+      sanitizedBytes = originalBytes;
+    }
+
+    epubx.EpubBook epubBook;
+    try {
+      epubBook = await epubx.EpubReader.readBook(sanitizedBytes);
+    } on FormatException catch (e) {
+      print(
+        '⚠️ readBook failed with sanitized bytes (${sourceDescription ?? 'unknown source'}): ${e.message}. Retrying with original bytes.',
+      );
+      epubBook = await epubx.EpubReader.readBook(originalBytes);
+    }
+    final chapterEntities = epubBook.Chapters;
+
+    final chapters = <EbookChapter>[];
+
+    Future<void> extractChapters(List<epubx.EpubChapter>? refs) async {
+      if (refs == null || refs.isEmpty) {
+        return;
+      }
+      for (final chapter in refs) {
+        final title = (chapter.Title?.trim().isNotEmpty ?? false)
+            ? chapter.Title!.trim()
+            : 'Chương ${chapters.length + 1}';
+        final rawId = [chapter.Anchor, chapter.ContentFileName].firstWhere(
+          (value) => value != null && value.trim().isNotEmpty,
+          orElse: () => null,
+        );
+        final id = (rawId?.trim().isNotEmpty ?? false)
+            ? rawId!.trim()
+            : 'chapter_${chapters.length + 1}';
+        final rawHtml = (chapter.HtmlContent?.trim().isNotEmpty ?? false)
+            ? chapter.HtmlContent!.trim()
+            : '<p>(Không có nội dung)</p>';
+        final processedHtml = settings != null
+            ? _applyReaderSettingsToHtml(rawHtml, settings)
+            : _normalizeChapterHtml(rawHtml);
+        chapters.add(
+          EbookChapter(
+            id: id,
+            title: title,
+            pageNumber: chapters.length + 1,
+            content: processedHtml,
+          ),
+        );
+        await extractChapters(chapter.SubChapters);
+      }
+    }
+
+    await extractChapters(chapterEntities);
+
+    if (chapters.isEmpty) {
+      throw Exception('EPUB không chứa chương hợp lệ.');
+    }
+    return chapters;
   }
 }

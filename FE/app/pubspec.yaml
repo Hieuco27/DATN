@@ -75,7 +75,7 @@ dependencies:
   cached_network_image: ^3.3.0 # Cache hình ảnh
   another_flushbar: ^1.12.30 # Snackbar thay thế, đẹp hơn
   chips_choice: ^3.0.0
-  cosmos_epub: ^0.0.1+4
+  screen_brightness: ^1.0.1
 
   # Override dependencies để fix compatibility issues
 dependency_overrides:

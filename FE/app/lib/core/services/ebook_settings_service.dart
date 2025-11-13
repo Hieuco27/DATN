@@ -14,10 +14,25 @@ class EbookSettingsService {
     if (settingsJson != null) {
       final settingsMap = json.decode(settingsJson);
       return EbookSettings(
-        fontSize: settingsMap['fontSize']?.toDouble() ?? 16.0,
+        fontSize: settingsMap['fontSize'] is num
+            ? (settingsMap['fontSize'] as num).toDouble()
+            : 16.0,
         fontFamily: settingsMap['fontFamily'] ?? 'Roboto',
-        lineHeight: settingsMap['lineHeight']?.toDouble() ?? 1.5,
+        lineHeight: settingsMap['lineHeight'] is num
+            ? (settingsMap['lineHeight'] as num).toDouble()
+            : 1.5,
         theme: settingsMap['theme'] ?? 'light',
+        eyeComfortEnabled: settingsMap['eyeComfortEnabled'] ?? true,
+        warmth: settingsMap['warmth'] is num
+            ? (settingsMap['warmth'] as num).toDouble()
+            : 0.35,
+        brightness: settingsMap['brightness'] is num
+            ? (settingsMap['brightness'] as num).toDouble()
+            : 0.85,
+        restReminderEnabled: settingsMap['restReminderEnabled'] ?? true,
+        restReminderMinutes: settingsMap['restReminderMinutes'] is num
+            ? (settingsMap['restReminderMinutes'] as num).round()
+            : 30,
       );
     }
 
@@ -31,6 +46,11 @@ class EbookSettingsService {
       'fontFamily': settings.fontFamily,
       'lineHeight': settings.lineHeight,
       'theme': settings.theme,
+      'eyeComfortEnabled': settings.eyeComfortEnabled,
+      'warmth': settings.warmth,
+      'brightness': settings.brightness,
+      'restReminderEnabled': settings.restReminderEnabled,
+      'restReminderMinutes': settings.restReminderMinutes,
     };
     await prefs.setString(_settingsKey, json.encode(settingsMap));
   }

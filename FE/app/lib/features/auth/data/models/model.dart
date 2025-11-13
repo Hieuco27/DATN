@@ -5,6 +5,8 @@ export 'document_author_map_model.dart';
 export 'document_copy_model.dart';
 export 'document_genre_map_model.dart';
 export 'document_model.dart';
+export 'document_response_model.dart';
+export 'document_detail_model.dart';
 export 'genre_model.dart';
 export 'magazine_model.dart';
 export 'newspaper_model.dart';

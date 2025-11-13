@@ -15,6 +15,7 @@ class CartItemModel {
     this.maxDeposit,
   });
 
+
   Map<String, dynamic> toJson() => {
     'documentId': documentId,
     'quantity': quantity,

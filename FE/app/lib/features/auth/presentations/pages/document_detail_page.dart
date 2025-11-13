@@ -14,6 +14,7 @@ import 'package:book_tech/core/ui/notification_service.dart';
 import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/document_detail_view_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -261,10 +262,29 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                _vm.coverPhoto,
+              child: CachedNetworkImage(
+                imageUrl: _vm.coverPhoto,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+                cacheKey: 'doc_detail_${_vm.documentId}',
+                placeholder: (context, url) => Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _primaryColor.withOpacity(0.1),
+                        _primaryColor.withOpacity(0.05),
+                      ],
+                    ),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _primaryColor,
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) {
                   return Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(

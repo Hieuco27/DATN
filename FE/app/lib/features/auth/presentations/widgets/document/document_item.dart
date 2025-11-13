@@ -3,6 +3,7 @@ import 'package:book_tech/features/auth/presentations/pages/document_detail_page
 import 'package:flutter/material.dart';
 import 'package:book_tech/features/auth/domain/entities/document_entity.dart';
 import 'package:book_tech/features/auth/data/models/document_response_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class DocumentItem extends StatelessWidget {
   final DocumentEntity document;
@@ -48,15 +49,13 @@ class DocumentItem extends StatelessWidget {
                 child:
                     document.coverPhoto != null &&
                         document.coverPhoto!.isNotEmpty
-                    ? Image.network(
-                        document.coverPhoto!,
+                    ? CachedNetworkImage(
+                        imageUrl: document.coverPhoto!,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
+                        cacheKey: 'doc_item_${document.documentId}',
+                        placeholder: (context, url) => _buildLoadingImage(),
+                        errorWidget: (context, url, error) {
                           return _buildPlaceholderImage();
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return _buildLoadingImage();
                         },
                       )
                     : _buildPlaceholderImage(),

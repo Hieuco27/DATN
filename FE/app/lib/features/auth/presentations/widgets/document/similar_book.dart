@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:book_tech/features/auth/data/models/document_response_model.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SimilarBooksModelWidget extends StatelessWidget {
   final List<DocumentResponseModel> similarBooks;
@@ -90,11 +91,18 @@ class SimilarBooksModelWidget extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: book.coverPhoto != null
-                    ? Image.network(
-                        book.coverPhoto!,
+                    ? CachedNetworkImage(
+                        imageUrl: book.coverPhoto!,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
+                        cacheKey: 'similar_${book.documentId}',
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) {
                           return Container(
                             color: Colors.grey[200],
                             child: const Icon(
