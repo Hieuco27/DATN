@@ -6,6 +6,14 @@ import '../models/reader_model.dart';
 abstract class AuthenticationRemoteDataSource {
   Future<LoginResponseModel> login(String email, String password);
   Future<RegisterResponseModel> register(Map<String, dynamic> accountData);
+
+  // New 3-step registration flow
+  Future<Map<String, dynamic>> registerInit(String email);
+  Future<Map<String, dynamic>> registerVerify(Map<String, dynamic> verifyData);
+  Future<Map<String, dynamic>> registerComplete(
+    Map<String, dynamic> completeData,
+  );
+
   Future<LoginResponseModel> refreshToken(String refreshToken);
   Future<void> logout(String accessToken);
   Future<ReaderModel> getProfile(String accessToken);
@@ -113,6 +121,127 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       throw Exception('Có lỗi xảy ra trong quá trình đăng ký');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerInit(String email) async {
+    try {
+      final response = await dio.post(
+        '/auth/register/init',
+        data: {'email': email.trim()},
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Không thể gửi mã OTP';
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Không thể gửi mã OTP';
+          throw Exception(message);
+        default:
+          throw Exception(
+            'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+          );
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra khi gửi mã OTP: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerVerify(
+    Map<String, dynamic> verifyData,
+  ) async {
+    try {
+      final response = await dio.post(
+        '/auth/register/verify',
+        data: verifyData,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Xác thực OTP thất bại';
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Xác thực OTP thất bại';
+          throw Exception(message);
+        default:
+          throw Exception(
+            'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+          );
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra khi xác thực OTP: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerComplete(
+    Map<String, dynamic> completeData,
+  ) async {
+    try {
+      print('📤 Sending registerComplete request: $completeData');
+      final response = await dio.post(
+        '/auth/register/complete',
+        data: completeData,
+      );
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response data: ${response.data}');
+      print('📥 Response data type: ${response.data.runtimeType}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Kiểm tra xem response có được wrap trong 'data' không
+        final responseData = response.data as Map<String, dynamic>;
+        if (responseData.containsKey('data') && responseData['data'] is Map) {
+          // Nếu có 'data' wrapper, lấy data bên trong
+          return responseData['data'] as Map<String, dynamic>;
+        }
+        return responseData;
+      } else {
+        final message = response.data['message'] ?? 'Hoàn tất đăng ký thất bại';
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Hoàn tất đăng ký thất bại';
+          throw Exception(message);
+        default:
+          throw Exception(
+            'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+          );
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra khi hoàn tất đăng ký: ${e.toString()}');
     }
   }
 

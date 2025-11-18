@@ -581,11 +581,15 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               child: ElevatedButton.icon(
                 onPressed: _addToCart,
                 icon: const Icon(Icons.shopping_cart_outlined),
-                label: const Text('Thêm vào giỏ hàng'),
+                label: const Text('Thêm vào giỏ sách'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

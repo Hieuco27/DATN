@@ -15,7 +15,9 @@ import 'package:book_tech/features/auth/data/datasources/local_storage_data_sour
 import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
 import 'package:book_tech/features/auth/presentations/pages/borrow_history_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/profile_detail_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/membership_selection_page.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
+import 'package:book_tech/features/auth/presentations/pages/notifications_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -467,6 +469,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                           ),
                         ],
                       ),
+                      // Hiển thị trạng thái thành viên hoặc nút nâng cấp
+                      const SizedBox(height: 12),
+                      _buildMembershipStatus(state),
 
                       // Text(
                       //   userEmail,
@@ -885,10 +890,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
   }
 
   void _openNotifications() {
-    NotificationService.showInfo(
+    Navigator.of(
       context,
-      message: 'Tính năng Thông báo đang phát triển',
-    );
+    ).push(MaterialPageRoute(builder: (_) => const NotificationsPage()));
   }
 
   void _openSettings() {
@@ -896,5 +900,158 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
       context,
       message: 'Tính năng Cài đặt đang phát triển',
     );
+  }
+
+  Widget _buildMembershipStatus(ProfileState state) {
+    final profile = state is ProfileLoaded
+        ? state.profile
+        : (state is ProfileUpdated ? state.profile : null);
+
+    if (profile == null) return const SizedBox.shrink();
+
+    final memberCard = profile.memberCard;
+    final cardType = memberCard?.cardType;
+    final bool hasFullMembership =
+        memberCard != null && cardType != null && cardType.canBorrowHome;
+    final bool shouldPromptUpgrade =
+        memberCard == null ||
+        (cardType != null && cardType.maxBorrowLimit == 0);
+
+    if (hasFullMembership && !shouldPromptUpgrade) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade400, Colors.blue.shade600],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.card_membership, color: Colors.white, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              cardType.typeName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final label = memberCard == null
+        ? 'Chưa có thẻ thành viên'
+        : 'Thẻ miễn phí';
+    final subtitle = memberCard == null
+        ? 'Nhấn để đăng ký và mượn sách'
+        : 'Nâng cấp để mượn sách mang về';
+
+    return InkWell(
+      onTap: _navigateToUpgradeMembership,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryColor, _primaryColor.withOpacity(0.85)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: _primaryColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.upgrade, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white,
+              size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToUpgradeMembership() {
+    final profileState = context.read<ProfileBloc>().state;
+    final profile = profileState is ProfileLoaded
+        ? profileState.profile
+        : (profileState is ProfileUpdated ? profileState.profile : null);
+
+    if (profile == null) {
+      NotificationService.showInfo(
+        context,
+        message: 'Vui lòng chờ tải thông tin hồ sơ trước khi nâng cấp.',
+      );
+      return;
+    }
+
+    final authState = context.read<AuthBloc>().state;
+    final email =
+        profile.email ??
+        (authState is AuthAuthenticated ? authState.account.email : null) ??
+        'user@example.com';
+
+    Navigator.of(context)
+        .push<bool>(
+          MaterialPageRoute(
+            builder: (_) => MembershipSelectionPage(
+              readerId: profile.readerId,
+              accountId: profile.accountId,
+              email: email,
+              isFromRegistration: false,
+              onMembershipUpdated: () {
+                final authState = context.read<AuthBloc>().state;
+                if (authState is AuthAuthenticated &&
+                    (authState.account.accessToken?.isNotEmpty ?? false)) {
+                  context.read<ProfileBloc>().add(ProfileLoadRequested());
+                }
+              },
+            ),
+          ),
+        )
+        .then((success) {
+          if (success == true) {
+            final authState = context.read<AuthBloc>().state;
+            if (authState is AuthAuthenticated &&
+                (authState.account.accessToken?.isNotEmpty ?? false)) {
+              context.read<ProfileBloc>().add(ProfileLoadRequested());
+            }
+          }
+        });
   }
 }

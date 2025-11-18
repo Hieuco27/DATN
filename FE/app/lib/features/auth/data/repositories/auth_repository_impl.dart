@@ -81,6 +81,37 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> registerInit(String email) async {
+    try {
+      return await remoteDataSource.registerInit(email);
+    } catch (e) {
+      throw Exception('Không thể gửi mã OTP: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerVerify(
+    Map<String, dynamic> verifyData,
+  ) async {
+    try {
+      return await remoteDataSource.registerVerify(verifyData);
+    } catch (e) {
+      throw Exception('Xác thực OTP thất bại: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerComplete(
+    Map<String, dynamic> completeData,
+  ) async {
+    try {
+      return await remoteDataSource.registerComplete(completeData);
+    } catch (e) {
+      throw Exception('Hoàn tất đăng ký thất bại: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<RegisterResponse> register(Map<String, dynamic> data) async {
     try {
       // Validation dữ liệu đăng ký

@@ -30,7 +30,7 @@ class EbookTableOfContents extends StatelessWidget {
               itemCount: chapters.length,
               itemBuilder: (context, index) {
                 final chapter = chapters[index];
-                final isCurrentChapter = chapter.pageNumber <= currentPage;
+                final isCurrentChapter = chapter.pageNumber == currentPage;
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -61,10 +61,7 @@ class EbookTableOfContents extends StatelessWidget {
                     trailing: isCurrentChapter
                         ? const Icon(Icons.check_circle, color: Colors.blue)
                         : null,
-                    onTap: () {
-                      onChapterSelected(chapter);
-                      Navigator.pop(context);
-                    },
+                    onTap: () => onChapterSelected(chapter),
                   ),
                 );
               },

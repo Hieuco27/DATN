@@ -1,4 +1,5 @@
 import '../../domain/entities/reader_entity.dart';
+import 'member_card_model.dart';
 
 class ReaderModel extends ReaderEntity {
   const ReaderModel({
@@ -15,6 +16,7 @@ class ReaderModel extends ReaderEntity {
     super.createdAt,
     super.updatedAt,
     super.email,
+    super.memberCard,
   });
 
   // factory ReaderModel.fromJson(Map<String, dynamic> json) {
@@ -43,9 +45,11 @@ class ReaderModel extends ReaderEntity {
     // json ở đây chính là data['reader'] từ API
     final reader = json; // json chính là reader data
     final account = json['account'] as Map<String, dynamic>? ?? {};
+    final memberCard = json['memberCard'] as Map<String, dynamic>?;
 
     print('🔍 Reader data: $reader');
     print('🔍 Account data: $account');
+    print('🔍 MemberCard data: $memberCard');
 
     return ReaderModel(
       readerId: _parseInt(reader['readerId']),
@@ -67,6 +71,9 @@ class ReaderModel extends ReaderEntity {
           ? DateTime.tryParse(reader['updated_at'])
           : null,
       email: account['email'] as String?,
+      memberCard: memberCard != null
+          ? MemberCardModel.fromJson(memberCard)
+          : null,
     );
   }
 

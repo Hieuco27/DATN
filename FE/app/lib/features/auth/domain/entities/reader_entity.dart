@@ -1,3 +1,5 @@
+import 'member_card_entity.dart';
+
 class ReaderEntity {
   final int readerId;
   final int accountId;
@@ -12,6 +14,7 @@ class ReaderEntity {
   final String? email;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final MemberCardEntity? memberCard;
 
   const ReaderEntity({
     required this.readerId,
@@ -27,6 +30,7 @@ class ReaderEntity {
     this.note,
     this.createdAt,
     this.updatedAt,
+    this.memberCard,
   });
 
   @override
@@ -45,7 +49,8 @@ class ReaderEntity {
         other.updatedAt == updatedAt &&
         other.totolBorrow == totolBorrow &&
         other.note == note &&
-        other.email == email;
+        other.email == email &&
+        other.memberCard == memberCard;
   }
 
   @override
@@ -64,6 +69,7 @@ class ReaderEntity {
       createdAt,
       updatedAt,
       email,
+      memberCard,
     );
   }
 
@@ -82,6 +88,7 @@ class ReaderEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? email,
+    MemberCardEntity? memberCard,
   }) {
     return ReaderEntity(
       readerId: readerId ?? this.readerId,
@@ -97,6 +104,7 @@ class ReaderEntity {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       email: email ?? this.email,
+      memberCard: memberCard ?? this.memberCard,
     );
   }
 

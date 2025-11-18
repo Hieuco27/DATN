@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
 import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
+import 'package:book_tech/core/widgets/gradient_background.dart';
 import 'package:book_tech/features/auth/presentations/widgets/auth_field.dart';
 import 'package:book_tech/features/auth/presentations/widgets/auth_gradient_button.dart';
 import 'package:book_tech/features/auth/presentations/pages/sign_up.dart';
@@ -25,43 +26,44 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) => _handleAuthState(context, state),
-        child: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            // Nếu đang loading từ sign in action
-            if (state is AuthLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            // Form đăng nhập bình thường
-            return Form(
-              key: _formKey,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Sign In',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 60,
-                        fontWeight: FontWeight.bold,
+      backgroundColor: Colors.transparent,
+      body: AppGradientBackground(
+        child: BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) => _handleAuthState(context, state),
+          child: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              if (state is AuthLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return Form(
+                key: _formKey,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Sign In',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 60,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 30),
-                    _buildEmailField(),
-                    SizedBox(height: 15),
-                    _buildPasswordField(),
-                    SizedBox(height: 15),
-                    _buildSignInButton(),
-                    SizedBox(height: 15),
-                    _buildSignUpNavigation(context),
-                  ],
+                      SizedBox(height: 30),
+                      _buildEmailField(),
+                      SizedBox(height: 15),
+                      _buildPasswordField(),
+                      SizedBox(height: 15),
+                      _buildSignInButton(),
+                      SizedBox(height: 15),
+                      _buildSignUpNavigation(context),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -85,7 +87,7 @@ class _SignInPageState extends State<SignInPage> {
 
   Widget _buildPasswordField() {
     return AuthField(
-      hintText: 'Password',
+      hintText: 'Mật khẩu',
       controller: _passwordController,
       obsecureText: true,
       validator: (value) {
@@ -104,7 +106,7 @@ class _SignInPageState extends State<SignInPage> {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         return AuthGradientButton(
-          buttonText: 'Sign In',
+          buttonText: 'Đăng nhập',
           onPressed: state is AuthLoading
               ? null // Disable button when loading
               : () => _signIn(context),
@@ -124,11 +126,13 @@ class _SignInPageState extends State<SignInPage> {
       },
       child: RichText(
         text: TextSpan(
-          text: 'Don\'t have an account? ',
-          style: Theme.of(context).textTheme.titleMedium,
+          text: 'Bạn chưa có tài khoản? ',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: const Color.fromARGB(221, 45, 45, 45),
+          ),
           children: [
             TextSpan(
-              text: 'Sign Up',
+              text: 'Đăng ký',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: AppPalette.gradient2,
                 fontWeight: FontWeight.bold,

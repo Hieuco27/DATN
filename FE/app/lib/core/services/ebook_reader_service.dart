@@ -3,11 +3,21 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:math' as math;
 // Removed unused viewer imports
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
 import 'package:epubx/epubx.dart' as epubx;
 import 'package:book_tech/features/auth/data/models/ebook_model.dart';
+
+const bool _enableEpubRepairVerboseLogs = false;
+
+void _epubRepairLog(String message) {
+  if (!_enableEpubRepairVerboseLogs) {
+    return;
+  }
+  debugPrint(message);
+}
 
 enum EbookFormat { pdf, epub, mobi, txt, html }
 
@@ -871,9 +881,6 @@ $sanitized
 
       // Update href trong manifest items để match với actual file paths
       if (idToActualPath.isNotEmpty) {
-        print(
-          '   🔄 Updating href in manifest items to match actual file paths...',
-        );
         String updated = opfContent;
 
         idToActualPath.forEach((id, actualPath) {
@@ -910,9 +917,6 @@ $sanitized
           updated = updated.replaceAllMapped(updatePattern1, (match) {
             final oldHref = match.group(2)!;
             if (oldHref != relativePath) {
-              print(
-                '      🔄 Updating href for ID="$id": "$oldHref" -> "$relativePath"',
-              );
               return '${match.group(1)}$relativePath${match.group(3)}';
             }
             return match.group(0)!;
@@ -926,9 +930,6 @@ $sanitized
           updated = updated.replaceAllMapped(updatePattern2, (match) {
             final oldHref = match.group(2)!;
             if (oldHref != relativePath) {
-              print(
-                '      🔄 Updating href for ID="$id": "$oldHref" -> "$relativePath"',
-              );
               return '${match.group(1)}$relativePath${match.group(3)}';
             }
             return match.group(0)!;
@@ -944,9 +945,6 @@ $sanitized
           updated = updated.replaceAllMapped(updatePattern3, (match) {
             final oldHref = match.group(2)!;
             if (oldHref != relativePath) {
-              print(
-                '      🔄 Updating href for ID="$id" (multiline): "$oldHref" -> "$relativePath"',
-              );
               return '${match.group(1)}$relativePath${match.group(3)}';
             }
             return match.group(0)!;
@@ -962,9 +960,6 @@ $sanitized
           updated = updated.replaceAllMapped(updatePattern4, (match) {
             final oldHref = match.group(2)!;
             if (oldHref != relativePath) {
-              print(
-                '      🔄 Updating href for ID="$id" (multiline): "$oldHref" -> "$relativePath"',
-              );
               return '${match.group(1)}$relativePath${match.group(3)}';
             }
             return match.group(0)!;
@@ -972,7 +967,6 @@ $sanitized
         });
 
         opfContent = updated;
-        print('   ✅ Finished updating href in manifest items');
       }
 
       if (itemsToRemove.isEmpty && idToActualPath.isEmpty) {
@@ -2048,7 +2042,7 @@ $sanitized
                           ),
                         );
                         allAvailableFiles.add(targetRefPath);
-                        print(
+                        _epubRepairLog(
                           '      ✅ Created duplicate NCX file: "$targetRefPath" from "$actualNcxFile"',
                         );
                       }
@@ -2062,18 +2056,20 @@ $sanitized
                   }
                 }
               } else if (actualNcxFile == null && ncxReferences.isNotEmpty) {
-                print(
+                _epubRepairLog(
                   '      ⚠️ WARNING: NCX file referenced but not found in archive!',
                 );
-                print('         References: ${ncxReferences.join(", ")}');
+                _epubRepairLog(
+                  '         References: ${ncxReferences.join(", ")}',
+                );
               }
             } catch (e) {
-              print('      ⚠️ Error checking NCX references: $e');
+              _epubRepairLog('      ⚠️ Error checking NCX references: $e');
             }
 
             // Tạo duplicate files cho các IDs là path không hợp lệ
             if (idToActualPathMap.isNotEmpty) {
-              print(
+              _epubRepairLog(
                 '   🔄 Creating duplicate files for IDs with path issues...',
               );
               idToActualPathMap.forEach((id, actualPath) {
@@ -2103,7 +2099,7 @@ $sanitized
                         ),
                       );
                       allAvailableFiles.add(targetPath);
-                      print(
+                      _epubRepairLog(
                         '      ✅ Created duplicate file: "$targetPath" from "$actualPath"',
                       );
                     }
@@ -2132,14 +2128,16 @@ $sanitized
                 if (!allAvailableFiles.contains(normalizedPath) &&
                     !missingFiles.contains(normalizedPath)) {
                   missingFiles.add(normalizedPath);
-                  print('   📝 Will create placeholder for: $normalizedPath');
+                  _epubRepairLog(
+                    '   📝 Will create placeholder for: $normalizedPath',
+                  );
                 }
               }
             }
 
             final cleaned = cleanedOpfContent;
             if (cleaned != opfContent) {
-              print('✅ OPF manifest cleaned: ${file.name}');
+              _epubRepairLog('✅ OPF manifest cleaned: ${file.name}');
             }
             processedOpfFiles.add(file.name);
             // Encode lại với UTF-8 (EPUB standard yêu cầu UTF-8 cho OPF files)
@@ -2149,13 +2147,15 @@ $sanitized
             } catch (e) {
               // Fallback nếu UTF-8 encode fail
               encodedCleaned = Uint8List.fromList(cleaned.codeUnits);
-              print('      ⚠️ OPF file encoded with codeUnits fallback');
+              _epubRepairLog(
+                '      ⚠️ OPF file encoded with codeUnits fallback',
+              );
             }
             finalArchive.addFile(
               ArchiveFile(file.name, encodedCleaned.length, encodedCleaned),
             );
           } catch (e) {
-            print('⚠️ Error cleaning OPF file ${file.name}: $e');
+            _epubRepairLog('⚠️ Error cleaning OPF file ${file.name}: $e');
             // Nếu có lỗi, thêm file gốc
             finalArchive.addFile(file);
           }
@@ -2178,7 +2178,9 @@ $sanitized
               finalArchive.addFile(file);
             }
           } catch (e) {
-            print('⚠️ Error adding file ${file.name} to final archive: $e');
+            _epubRepairLog(
+              '⚠️ Error adding file ${file.name} to final archive: $e',
+            );
             // Fallback: copy nguyên
             finalArchive.addFile(file);
           }
@@ -2246,7 +2248,7 @@ $sanitized
           finalArchive.addFile(
             ArchiveFile(missingPath, placeholderBytes.length, placeholderBytes),
           );
-          print('   ✅ Created placeholder file: $missingPath');
+          _epubRepairLog('   ✅ Created placeholder file: $missingPath');
         }
       }
 
@@ -2300,13 +2302,15 @@ $sanitized
                   ),
                 );
                 existingNames.add(alias);
-                print('✅ Added NCX alias: $alias -> $ncxPathInArchive');
+                _epubRepairLog(
+                  '✅ Added NCX alias: $alias -> $ncxPathInArchive',
+                );
               }
             }
           }
         }
       } catch (e) {
-        print('⚠️ Error while ensuring NCX aliases: $e');
+        _epubRepairLog('⚠️ Error while ensuring NCX aliases: $e');
       }
 
       // Create alias duplicates for common folder typos (fonts <-> onts, images <-> mages)
@@ -2404,7 +2408,7 @@ $sanitized
               ),
             );
             existingNames.add(aliasPath);
-            print(
+            _epubRepairLog(
               '   ✅ Added typo alias (bidirectional): $aliasPath <-> ${f.name}',
             );
           }
@@ -2414,11 +2418,11 @@ $sanitized
           finalArchive.addFile(nf);
         }
 
-        print(
+        _epubRepairLog(
           '   ✅ Finished creating typo aliases. Total aliases created: ${toAdd.length}',
         );
       } catch (e) {
-        print('⚠️ Error while creating folder typo aliases: $e');
+        _epubRepairLog('⚠️ Error while creating folder typo aliases: $e');
       }
 
       // Reorder and enforce EPUB container rules: 'mimetype' first and uncompressed,

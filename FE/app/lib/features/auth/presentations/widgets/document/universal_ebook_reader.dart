@@ -8,8 +8,6 @@ import 'package:book_tech/core/services/ebook_reader_service.dart';
 import 'package:book_tech/features/auth/data/models/ebook_model.dart';
 import 'package:book_tech/core/services/ebook_settings_service.dart';
 import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_settings_dialog.dart';
-import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_table_of_contents.dart';
-import 'package:book_tech/features/auth/presentations/widgets/ebook/ebook_highlights_panel.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
@@ -17,12 +15,14 @@ class UniversalEbookReader extends StatefulWidget {
   final String ebookUrl;
   final String title;
   final EbookFormat? format;
+  final bool hideFloatingControls;
 
   const UniversalEbookReader({
     super.key,
     required this.ebookUrl,
     required this.title,
     this.format,
+    this.hideFloatingControls = false,
   });
 
   @override
@@ -58,9 +58,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   EbookSettings _settings = EbookSettings();
   List<EbookChapter> _chapters = [];
   List<EbookHighlight> _highlights = [];
+  EbookReadingProgress? _readingProgress;
   int _currentPage = 1;
-  bool _showTableOfContents = false;
-  bool _showHighlights = false;
+  bool _showReaderMenu = false;
+  int _readerMenuTabIndex = 0;
   late TabController _tabController;
   Timer? _restReminderTimer;
   bool _isRestDialogVisible = false;
@@ -68,7 +69,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   double? _originalBrightness;
   bool _canControlBrightness = true;
   String? _selectedPdfText;
+  String? _selectedEpubText;
   bool _isHighlightSheetVisible = false;
+  bool _isRestoringProgress = false;
+  bool _initialProgressApplied = false;
   static const List<_HighlightColorOption> _highlightColorOptions = [
     _HighlightColorOption(
       label: 'Vàng',
@@ -134,6 +138,9 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       }
       // Load highlights
       _highlights = await EbookSettingsService.getHighlights(widget.title);
+      _readingProgress = await EbookSettingsService.getReadingProgress(
+        widget.title,
+      );
 
       if (_detectedFormat == EbookFormat.epub) {
         _chapters = await EbookReaderService.loadEpubChaptersFromUrl(
@@ -151,6 +158,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
 
       // Load specific format
       await _loadEbookContent();
+      _applySavedProgressIfNeeded();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -169,6 +177,43 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     });
   }
 
+  void _applySavedProgressIfNeeded() {
+    if (_readingProgress == null || _initialProgressApplied) {
+      return;
+    }
+
+    final savedPage = _readingProgress!.pageNumber;
+    if (savedPage > 0 && savedPage != _currentPage) {
+      setState(() {
+        _currentPage = savedPage;
+      });
+    }
+
+    if (_detectedFormat == EbookFormat.epub && _chapters.isNotEmpty) {
+      final totalChapters = _chapters.length;
+      final savedIndex =
+          (_readingProgress!.chapterIndex ??
+                  (savedPage > 0 ? savedPage - 1 : 0))
+              .clamp(0, totalChapters - 1);
+      _isRestoringProgress = true;
+      _openEpubChapter(savedIndex);
+      _isRestoringProgress = false;
+    } else if (_detectedFormat == EbookFormat.pdf &&
+        _pdfController != null &&
+        savedPage > 0) {
+      _isRestoringProgress = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _pdfController == null) {
+          _isRestoringProgress = false;
+          return;
+        }
+        _pdfController!.jumpToPage(savedPage);
+      });
+    }
+
+    _initialProgressApplied = true;
+  }
+
   Future<void> _loadEbookContent() async {
     try {
       switch (_detectedFormat) {
@@ -176,6 +221,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
           // ✅ Khởi tạo PdfViewerController từ Syncfusion
           _pdfController = PdfViewerController();
           break;
+
         case EbookFormat.html:
         // HTML hiển thị bằng WebView
         case EbookFormat.mobi:
@@ -257,71 +303,277 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     return Stack(
       children: [
         _buildMainReader(),
-        if (_showTableOfContents) _buildTableOfContentsOverlay(),
-        if (_showHighlights) _buildHighlightsOverlay(),
+        if (_showReaderMenu) _buildReaderMenuOverlay(),
       ],
     );
   }
 
-  Widget _buildTableOfContentsOverlay() {
-    final isEpub = _detectedFormat == EbookFormat.epub;
+  Widget _buildReaderMenuOverlay() {
     final chapters = _chapters;
-    return Scaffold(
-      backgroundColor: Colors.black54,
-      appBar: AppBar(
-        title: const Text('Mục lục'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => setState(() => _showTableOfContents = false),
+    final isEpub = _detectedFormat == EbookFormat.epub;
+    final showHighlights = _readerMenuTabIndex == 1;
+    final mediaQuery = MediaQuery.of(context);
+
+    return Material(
+      color: Colors.black54,
+      child: SafeArea(
+        top: false,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            height: mediaQuery.size.height * 0.9,
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 520),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _closeReaderMenu,
+                      ),
+                      Expanded(child: _buildMenuSegmentedControl()),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    layoutBuilder: (currentChild, previousChildren) {
+                      return currentChild ?? const SizedBox.shrink();
+                    },
+                    child: showHighlights
+                        ? _buildHighlightsList(
+                            key: const ValueKey('highlights'),
+                          )
+                        : _buildContentsList(
+                            chapters,
+                            isEpub,
+                            key: const ValueKey('contents'),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: chapters.isEmpty
-            ? const Center(child: Text('Không có mục lục.'))
-            : EbookTableOfContents(
-                chapters: chapters,
-                currentPage: isEpub ? _currentChapterIndex + 1 : _currentPage,
-                onChapterSelected: (chapter) {
-                  setState(() => _showTableOfContents = false);
-                  if (isEpub) {
-                    final index = chapters.indexWhere(
-                      (c) => c.id == chapter.id,
-                    );
-                    if (index != -1) {
-                      _openEpubChapter(index);
-                    }
-                  } else {
-                    _navigateToPage(chapter.pageNumber);
-                  }
-                },
-              ),
       ),
     );
   }
 
-  Widget _buildHighlightsOverlay() {
-    return Scaffold(
-      backgroundColor: Colors.black54,
-      appBar: AppBar(
-        title: const Text('Đánh dấu'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => setState(() => _showHighlights = false),
-        ),
+  Widget _buildMenuSegmentedControl() {
+    final labels = ['Contents', 'Highlights'];
+    return Container(
+      height: 38,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(22),
       ),
-      body: EbookHighlightsPanel(
-        highlights: _highlights,
-        onHighlightTap: (highlight) {
-          setState(() => _showHighlights = false);
-          _navigateToPage(highlight.pageNumber);
-        },
-        onDeleteHighlight: (highlightId) async {
-          await EbookSettingsService.deleteHighlight(widget.title, highlightId);
-          setState(() {
-            _highlights.removeWhere((h) => h.id == highlightId);
-          });
-        },
+      child: Row(
+        children: List.generate(labels.length, (index) {
+          final isSelected = _readerMenuTabIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_readerMenuTabIndex != index) {
+                  setState(() => _readerMenuTabIndex = index);
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  labels[index],
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.redAccent : Colors.grey[700],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildContentsList(
+    List<EbookChapter> chapters,
+    bool isEpub, {
+    Key? key,
+  }) {
+    if (chapters.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.menu_book_outlined,
+        message: 'Không có mục lục.',
+      );
+    }
+
+    return ListView.separated(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      itemBuilder: (context, index) {
+        final chapter = chapters[index];
+        final isActive = isEpub
+            ? index == _currentChapterIndex
+            : (index + 1) == _currentPage;
+        return InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _handleChapterTap(chapter, index, isEpub),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            decoration: BoxDecoration(
+              color: isActive ? Colors.redAccent.withOpacity(0.08) : null,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? Colors.redAccent : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    chapter.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                if (!isEpub)
+                  Text(
+                    'Trang ${chapter.pageNumber}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemCount: chapters.length,
+    );
+  }
+
+  Widget _buildHighlightsList({Key? key}) {
+    if (_highlights.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.highlight_outlined,
+        message: 'Chưa có đánh dấu nào.',
+      );
+    }
+
+    return ListView.separated(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      itemBuilder: (context, index) {
+        final highlight = _highlights[index];
+        final color = _colorFromHex(highlight.color);
+        return InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _handleHighlightTap(highlight),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black12),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        highlight.text,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (highlight.note != null &&
+                          highlight.note!.trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            highlight.note!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _detectedFormat == EbookFormat.epub
+                            ? 'Chương ${highlight.pageNumber}'
+                            : 'Trang ${highlight.pageNumber}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  color: Colors.grey[500],
+                  onPressed: () => _handleDeleteHighlight(highlight),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemCount: _highlights.length,
+    );
+  }
+
+  Widget _buildEmptyState({required IconData icon, required String message}) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 12),
+          Text(message, style: TextStyle(color: Colors.grey[600])),
+        ],
       ),
     );
   }
@@ -341,10 +593,57 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
         _epubScrollController.jumpTo(0);
       }
     });
+    unawaited(_persistReadingProgress());
+  }
+
+  void _handleChapterTap(EbookChapter chapter, int index, bool isEpub) {
+    setState(() {
+      _showReaderMenu = false;
+    });
+    if (isEpub) {
+      _openEpubChapter(index);
+    } else {
+      _navigateToPage(chapter.pageNumber);
+    }
+  }
+
+  void _handleHighlightTap(EbookHighlight highlight) {
+    setState(() {
+      _showReaderMenu = false;
+    });
+    if (_detectedFormat == EbookFormat.epub) {
+      if (_chapters.isEmpty) {
+        return;
+      }
+      final targetIndex = (highlight.pageNumber - 1).clamp(
+        0,
+        _chapters.length - 1,
+      );
+      _openEpubChapter(targetIndex);
+    } else {
+      _navigateToPage(highlight.pageNumber);
+    }
+  }
+
+  Future<void> _handleDeleteHighlight(EbookHighlight highlight) async {
+    await EbookSettingsService.deleteHighlight(widget.title, highlight.id);
+    if (!mounted) return;
+    setState(() {
+      _highlights.removeWhere((h) => h.id == highlight.id);
+    });
+  }
+
+  void _closeReaderMenu() {
+    setState(() => _showReaderMenu = false);
   }
 
   Widget _buildMainReader() {
-    return Stack(children: [_buildReaderContent(), _buildFloatingControls()]);
+    return Stack(
+      children: [
+        _buildReaderContent(),
+        if (!widget.hideFloatingControls) _buildFloatingControls(),
+      ],
+    );
   }
 
   Widget _buildReaderContent() {
@@ -363,13 +662,15 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
         content = _buildWebViewReader();
         break;
     }
+    // Áp dụng theme trước, sau đó mới áp dụng eye comfort filters
     return _applyEyeComfortFilters(content);
   }
 
   // ✅ PDF reader với Syncfusion
   Widget _buildPdfReader() {
+    final backgroundColor = _getBackgroundColor();
     return Container(
-      color: _getBackgroundColor(),
+      color: backgroundColor,
       child: _localFilePath == null
           ? const SizedBox.shrink()
           : _buildPdfViewer(),
@@ -387,22 +688,36 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildNetworkPdfViewer() {
-    return SfPdfViewer.network(
-      widget.ebookUrl,
-      controller: _pdfController,
-      enableDoubleTapZooming: true,
-      enableTextSelection: true,
-      onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-        setState(() {
-          _error = 'Không thể tải PDF: ${details.error}';
-        });
-      },
-      onTextSelectionChanged: _handlePdfTextSelectionChanged,
-      onPageChanged: (PdfPageChangedDetails details) {
-        setState(() {
-          _currentPage = details.newPageNumber;
-        });
-      },
+    final backgroundColor = _getBackgroundColor();
+    return Theme(
+      data: Theme.of(context).copyWith(
+        brightness: _settings.theme == 'dark'
+            ? Brightness.dark
+            : Brightness.light,
+        scaffoldBackgroundColor: backgroundColor,
+      ),
+      child: SfPdfViewer.network(
+        widget.ebookUrl,
+        controller: _pdfController,
+        enableDoubleTapZooming: true,
+        enableTextSelection: true,
+        onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+          setState(() {
+            _error = 'Không thể tải PDF: ${details.error}';
+          });
+        },
+        onTextSelectionChanged: _handlePdfTextSelectionChanged,
+        onPageChanged: (PdfPageChangedDetails details) {
+          setState(() {
+            _currentPage = details.newPageNumber;
+          });
+          if (_isRestoringProgress) {
+            _isRestoringProgress = false;
+            return;
+          }
+          unawaited(_persistReadingProgress());
+        },
+      ),
     );
   }
 
@@ -418,22 +733,36 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       if (file == null) {
         return _buildNetworkPdfViewer();
       }
-      return SfPdfViewer.file(
-        file as dynamic,
-        controller: _pdfController,
-        enableDoubleTapZooming: true,
-        enableTextSelection: true,
-        onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-          setState(() {
-            _error = 'Không thể tải PDF: ${details.error}';
-          });
-        },
-        onTextSelectionChanged: _handlePdfTextSelectionChanged,
-        onPageChanged: (PdfPageChangedDetails details) {
-          setState(() {
-            _currentPage = details.newPageNumber;
-          });
-        },
+      final backgroundColor = _getBackgroundColor();
+      return Theme(
+        data: Theme.of(context).copyWith(
+          brightness: _settings.theme == 'dark'
+              ? Brightness.dark
+              : Brightness.light,
+          scaffoldBackgroundColor: backgroundColor,
+        ),
+        child: SfPdfViewer.file(
+          file as dynamic,
+          controller: _pdfController,
+          enableDoubleTapZooming: true,
+          enableTextSelection: true,
+          onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+            setState(() {
+              _error = 'Không thể tải PDF: ${details.error}';
+            });
+          },
+          onTextSelectionChanged: _handlePdfTextSelectionChanged,
+          onPageChanged: (PdfPageChangedDetails details) {
+            setState(() {
+              _currentPage = details.newPageNumber;
+            });
+            if (_isRestoringProgress) {
+              _isRestoringProgress = false;
+              return;
+            }
+            unawaited(_persistReadingProgress());
+          },
+        ),
       );
     } catch (e) {
       // Fallback to network if file access fails
@@ -451,8 +780,9 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildHtmlReader() {
+    final backgroundColor = _getBackgroundColor();
     return Container(
-      color: _getBackgroundColor(),
+      color: backgroundColor,
       child: _webViewController != null
           ? WebViewWidget(controller: _webViewController!)
           : const SizedBox.shrink(),
@@ -460,8 +790,9 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Widget _buildWebViewReader() {
+    final backgroundColor = _getBackgroundColor();
     return Container(
-      color: _getBackgroundColor(),
+      color: backgroundColor,
       child: _webViewController != null
           ? WebViewWidget(controller: _webViewController!)
           : const SizedBox.shrink(),
@@ -473,9 +804,35 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     switch (_settings.theme) {
       case 'dark':
         return Colors.grey[900]!;
+      case 'sepia':
+        return const Color(0xFFF4ECD8);
       case 'light':
       default:
         return Colors.white;
+    }
+  }
+
+  // Method để lấy màu text theo theme
+  Color _getTextColor() {
+    switch (_settings.theme) {
+      case 'dark':
+        return Colors.white;
+      case 'sepia':
+        return const Color(0xFF5B4636);
+      case 'light':
+      default:
+        return Colors.black; // Đảm bảo màu đen cho chế độ sáng
+    }
+  }
+
+  Color _colorFromHex(String hex) {
+    try {
+      final buffer = StringBuffer();
+      if (hex.length == 6 || hex.length == 7) buffer.write('ff');
+      buffer.write(hex.replaceFirst('#', ''));
+      return Color(int.parse(buffer.toString(), radix: 16));
+    } catch (_) {
+      return Colors.orangeAccent;
     }
   }
 
@@ -484,30 +841,48 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       return child;
     }
 
+    // Chế độ bảo vệ mắt chỉ hoạt động khi ở chế độ sáng
+    if (_settings.theme != 'light') {
+      return child;
+    }
+
     final warmth = _settings.warmth.clamp(0.0, 1.0);
     final brightness = _settings.brightness.clamp(0.0, 1.0);
-    final warmOverlayOpacity = (warmth * 0.8).clamp(0.0, 0.85);
-    final dimOpacity = ((1 - brightness) * 0.9).clamp(0.0, 0.85);
+    // Giảm opacity để overlay không che phủ quá nhiều nội dung
+    final warmOverlayOpacity = (warmth * 0.3).clamp(0.0, 0.4);
+    final dimOpacity = ((1 - brightness) * 0.4).clamp(0.0, 0.4);
+
+    // Chỉ áp dụng overlay khi cần thiết
+    if (warmOverlayOpacity <= 0 && dimOpacity <= 0) {
+      return child;
+    }
 
     return Stack(
+      fit: StackFit.expand,
       children: [
         child,
+        // Warmth overlay - màu vàng ấm với opacity thấp (chỉ cho light mode)
         if (warmOverlayOpacity > 0)
-          IgnorePointer(
-            ignoring: true,
-            child: AnimatedOpacity(
-              opacity: warmOverlayOpacity,
-              duration: const Duration(milliseconds: 250),
-              child: Container(color: const Color(0xFFF4E1A1)),
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: AnimatedOpacity(
+                opacity: warmOverlayOpacity,
+                duration: const Duration(milliseconds: 250),
+                child: Container(color: const Color(0xFFF4E1A1)),
+              ),
             ),
           ),
+        // Brightness overlay - làm tối với opacity thấp (chỉ cho light mode)
         if (dimOpacity > 0)
-          IgnorePointer(
-            ignoring: true,
-            child: AnimatedOpacity(
-              opacity: dimOpacity,
-              duration: const Duration(milliseconds: 250),
-              child: Container(color: Colors.black),
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: AnimatedOpacity(
+                opacity: dimOpacity,
+                duration: const Duration(milliseconds: 250),
+                child: Container(color: Colors.black),
+              ),
             ),
           ),
       ],
@@ -528,15 +903,17 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     }
   }
 
-  Future<void> _showCreateHighlightSheet() async {
-    if (!mounted || _selectedPdfText == null || _selectedPdfText!.isEmpty) {
+  Future<void> _showCreateHighlightSheet({String? initialColorHex}) async {
+    final selectedText = _selectedPdfText ?? _selectedEpubText;
+    if (!mounted) return;
+    if (selectedText == null || selectedText.isEmpty) {
       return;
     }
 
     setState(() => _isHighlightSheetVisible = true);
 
     final noteController = TextEditingController();
-    String selectedColorHex = _highlightColorOptions.first.hex;
+    String selectedColorHex = initialColorHex ?? _settings.highlightColor;
 
     EbookHighlight? createdHighlight;
     try {
@@ -583,7 +960,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            _selectedPdfText!,
+                            selectedText,
                             style: const TextStyle(fontSize: 15),
                           ),
                         ),
@@ -647,8 +1024,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              final text = _selectedPdfText;
-                              if (text == null || text.trim().isEmpty) {
+                              final text = selectedText;
+                              if (text.trim().isEmpty) {
                                 Navigator.of(context).pop();
                                 return;
                               }
@@ -683,6 +1060,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     } finally {
       noteController.dispose();
       _selectedPdfText = null;
+      _selectedEpubText = null;
       _pdfController?.clearSelection();
       if (mounted) {
         setState(() => _isHighlightSheetVisible = false);
@@ -718,6 +1096,22 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
         );
       }
     }
+  }
+
+  Future<void> _persistReadingProgress() async {
+    if (_isRestoringProgress) {
+      return;
+    }
+
+    final progress = EbookReadingProgress(
+      pageNumber: _currentPage,
+      chapterIndex: _detectedFormat == EbookFormat.epub
+          ? _currentChapterIndex
+          : null,
+      updatedAt: DateTime.now(),
+    );
+
+    await EbookSettingsService.saveReadingProgress(widget.title, progress);
   }
 
   Future<void> _captureOriginalBrightness() async {
@@ -862,7 +1256,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             backgroundColor: _settings.theme == 'dark'
                 ? Colors.grey[800]
                 : Colors.orange,
-            onPressed: () => setState(() => _showHighlights = true),
+            onPressed: () => setState(() {
+              _readerMenuTabIndex = 1;
+              _showReaderMenu = true;
+            }),
             child: Icon(
               Icons.highlight,
               color: _settings.theme == 'dark' ? Colors.white : Colors.white,
@@ -875,7 +1272,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             backgroundColor: _settings.theme == 'dark'
                 ? Colors.grey[800]
                 : Colors.green,
-            onPressed: () => setState(() => _showTableOfContents = true),
+            onPressed: () => setState(() {
+              _readerMenuTabIndex = 0;
+              _showReaderMenu = true;
+            }),
             child: Icon(
               Icons.list,
               color: _settings.theme == 'dark' ? Colors.white : Colors.white,
@@ -901,13 +1301,16 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
 
   Widget _buildEpubReader() {
     final backgroundColor = _getBackgroundColor();
-    final textColor = _settings.theme == 'dark' ? Colors.white : Colors.black87;
+    final textColor = _getTextColor(); // Sử dụng method helper
 
     if (_chapters.isEmpty) {
       return Container(
         color: backgroundColor,
         alignment: Alignment.center,
-        child: const Text('Không thể tải nội dung EPUB.'),
+        child: Text(
+          'Không thể tải nội dung EPUB.',
+          style: TextStyle(color: textColor),
+        ),
       );
     }
 
@@ -915,79 +1318,199 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
         _chapters[_currentChapterIndex.clamp(0, _chapters.length - 1)];
     final content = chapter.content?.trim();
 
-    return Container(
-      color: backgroundColor,
-      child: Scrollbar(
-        controller: _epubScrollController,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textSelectionTheme: TextSelectionThemeData(
+          selectionColor: Colors.transparent,
+          selectionHandleColor: Colors.orange,
+          cursorColor: Colors.orange,
+        ),
+      ),
+      child: Container(
+        color: backgroundColor,
+        child: Scrollbar(
           controller: _epubScrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                chapter.title,
-                style: TextStyle(
-                  fontSize: _settings.fontSize + 4,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (content == null || content.isEmpty)
-                Text(
-                  'Chương này không có nội dung hoặc chưa được hỗ trợ hiển thị.',
-                  style: TextStyle(
-                    fontSize: _settings.fontSize,
-                    height: _settings.lineHeight,
-                    color: textColor,
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            controller: _epubScrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (content == null || content.isEmpty)
+                  Text(
+                    'Chương này không có nội dung hoặc chưa được hỗ trợ hiển thị.',
+                    style: TextStyle(
+                      fontSize: _settings.fontSize,
+                      height: _settings.lineHeight,
+                      color: textColor,
+                    ),
+                  )
+                else
+                  Stack(
+                    children: [
+                      // HTML content để giữ format
+                      Html(
+                        data: _injectTextColorToHtml(content, textColor),
+                        style: {
+                          'html': Style(
+                            color: textColor,
+                            backgroundColor: backgroundColor,
+                          ),
+                          'body': Style(
+                            fontFamily: _settings.fontFamily,
+                            fontSize: FontSize(_settings.fontSize),
+                            lineHeight: LineHeight(_settings.lineHeight),
+                            color: textColor,
+                            backgroundColor: backgroundColor,
+                            margin: Margins.zero,
+                            padding: HtmlPaddings.zero,
+                          ),
+                          'p': Style(
+                            color: textColor,
+                            margin: Margins.symmetric(vertical: 8),
+                          ),
+                          'div': Style(color: textColor),
+                          'span': Style(color: textColor),
+                          'h1': Style(
+                            color: textColor,
+                            fontSize: FontSize(_settings.fontSize + 8),
+                          ),
+                          'h2': Style(
+                            color: textColor,
+                            fontSize: FontSize(_settings.fontSize + 6),
+                          ),
+                          'h3': Style(
+                            color: textColor,
+                            fontSize: FontSize(_settings.fontSize + 4),
+                          ),
+                          'h4': Style(
+                            color: textColor,
+                            fontSize: FontSize(_settings.fontSize + 2),
+                          ),
+                          'h5': Style(color: textColor),
+                          'h6': Style(color: textColor),
+                          'li': Style(color: textColor),
+                          'td': Style(color: textColor),
+                          'th': Style(color: textColor),
+                          'a': Style(color: textColor),
+                          'strong': Style(color: textColor),
+                          'em': Style(color: textColor),
+                          'b': Style(color: textColor),
+                          'i': Style(color: textColor),
+                        },
+                      ),
+                      // SelectableText overlay để hỗ trợ text selection
+                      Positioned.fill(
+                        child: SelectableText.rich(
+                          TextSpan(
+                            text: _extractPlainTextFromHtml(content),
+                            style: TextStyle(
+                              fontFamily: _settings.fontFamily,
+                              fontSize: _settings.fontSize,
+                              height: _settings.lineHeight,
+                              color: Colors
+                                  .transparent, // Transparent để không che HTML
+                            ),
+                          ),
+                          selectionControls: _EpubTextSelectionControls(
+                            highlightOptions: _highlightColorOptions,
+                            onHighlight: (String text, String colorHex) {
+                              _selectedEpubText = text;
+                              _showCreateHighlightSheet(
+                                initialColorHex: colorHex,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                )
-              else
-                Html(
-                  data: content,
-                  style: {
-                    'body': Style(
-                      fontFamily: _settings.fontFamily,
-                      fontSize: FontSize(_settings.fontSize),
-                      lineHeight: LineHeight(_settings.lineHeight),
-                      color: textColor,
-                      backgroundColor: backgroundColor,
-                      margin: Margins.zero,
-                      padding: HtmlPaddings.zero,
-                    ),
-                    'p': Style(margin: Margins.symmetric(vertical: 8)),
-                    'h1': Style(
-                      color: textColor,
-                      fontSize: FontSize(_settings.fontSize + 8),
-                    ),
-                    'h2': Style(
-                      color: textColor,
-                      fontSize: FontSize(_settings.fontSize + 6),
-                    ),
-                  },
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _toggleTheme() async {
-    final newTheme = _settings.theme == 'dark' ? 'light' : 'dark';
-    final newSettings = _settings.copyWith(theme: newTheme);
+  // Helper method để extract plain text từ HTML
+  String _extractPlainTextFromHtml(String html) {
+    // Loại bỏ các thẻ HTML và lấy text
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), ' ') // Loại bỏ HTML tags
+        .replaceAll(RegExp(r'&nbsp;'), ' ') // Thay &nbsp; bằng space
+        .replaceAll(RegExp(r'&[a-zA-Z]+;'), ' ') // Thay các HTML entities
+        .replaceAll(RegExp(r'\s+'), ' ') // Nhiều spaces thành 1 space
+        .trim();
+  }
 
+  // Helper method để inject CSS vào HTML để đảm bảo màu text được áp dụng
+  String _injectTextColorToHtml(String html, Color textColor) {
+    // Chuyển đổi Color sang hex string
+    final hexColor = '#${textColor.value.toRadixString(16).substring(2)}';
+
+    // Tạo CSS style để override màu text
+    final styleTag =
+        '''
+    <style>
+      * {
+        color: $hexColor !important;
+      }
+      body, p, div, span, h1, h2, h3, h4, h5, h6, li, td, th, a, strong, em, b, i {
+        color: $hexColor !important;
+      }
+    </style>
+    ''';
+
+    // Inject style vào đầu HTML nếu chưa có
+    if (html.contains('<head>')) {
+      return html.replaceFirst('<head>', '<head>$styleTag');
+    } else if (html.contains('<html>')) {
+      return html.replaceFirst('<html>', '<html><head>$styleTag</head>');
+    } else {
+      return '$styleTag$html';
+    }
+  }
+
+  void _toggleTheme() async {
+    // Chuyển đổi theme theo thứ tự: light -> sepia -> dark -> light
+    String newTheme;
+    switch (_settings.theme) {
+      case 'light':
+        newTheme = 'sepia';
+        break;
+      case 'sepia':
+        newTheme = 'dark';
+        break;
+      case 'dark':
+        newTheme = 'light';
+        break;
+      default:
+        newTheme = 'light';
+    }
+
+    final newSettings = _settings.copyWith(theme: newTheme);
     await _updateSettings(newSettings);
+
+    // Force rebuild để áp dụng theme ngay lập tức
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _showSettingsDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => EbookSettingsDialog(
         currentSettings: _settings,
         onSettingsChanged: (newSettings) async {
+          await _updateSettings(newSettings);
+        },
+        onSettingsChangedRealTime: (newSettings) async {
+          // Cập nhật settings real-time để preview ngay
           await _updateSettings(newSettings);
         },
       ),
@@ -1015,6 +1538,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     setState(() {
       _currentPage = pageNumber;
     });
+    unawaited(_persistReadingProgress());
   }
 
   Future<void> _updateSettings(EbookSettings newSettings) async {
@@ -1035,4 +1559,90 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       _restReminderTimer = null;
     }
   }
+}
+
+class _EpubTextSelectionControls extends MaterialTextSelectionControls {
+  final void Function(String, String) onHighlight;
+  final List<_HighlightColorOption> highlightOptions;
+
+  _EpubTextSelectionControls({
+    required this.onHighlight,
+    required this.highlightOptions,
+  });
+
+  @override
+  Widget buildToolbar(
+    BuildContext context,
+    Rect globalEditableRegion,
+    double textLineHeight,
+    Offset selectionMidpoint,
+    List<TextSelectionPoint> endpoints,
+    TextSelectionDelegate delegate,
+    ValueListenable<ClipboardStatus>? clipboardStatus,
+    Offset? startHandle,
+  ) {
+    final selection = delegate.textEditingValue.selection;
+    final selectedText = selection.textInside(delegate.textEditingValue.text);
+
+    return Material(
+      elevation: 4.0,
+      borderRadius: BorderRadius.circular(12),
+      color: Colors.white,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        height: 56,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.copy, color: Colors.black87),
+              tooltip: 'Sao chép',
+              onPressed: () {
+                delegate.copySelection(SelectionChangedCause.toolbar);
+                delegate.hideToolbar();
+              },
+            ),
+            Container(
+              width: 1,
+              height: 32,
+              color: Colors.grey.withOpacity(0.3),
+            ),
+            const SizedBox(width: 8),
+            ...highlightOptions.map(
+              (option) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Tooltip(
+                  message: 'Đánh dấu ${option.label.toLowerCase()}',
+                  child: InkResponse(
+                    radius: 22,
+                    onTap: selectedText.isEmpty
+                        ? null
+                        : () {
+                            onHighlight(selectedText, option.hex);
+                            delegate.hideToolbar();
+                          },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: option.color,
+                        border: Border.all(color: Colors.black12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool canSelectAll(TextSelectionDelegate delegate) => true;
+
+  @override
+  bool canCopy(TextSelectionDelegate delegate) => true;
 }

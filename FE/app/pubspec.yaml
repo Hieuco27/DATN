@@ -76,6 +76,8 @@ dependencies:
   another_flushbar: ^1.12.30 # Snackbar thay thế, đẹp hơn
   chips_choice: ^3.0.0
   screen_brightness: ^1.0.1
+  url_launcher: ^6.2.0
+  qr_flutter: ^4.1.0
 
   # Override dependencies để fix compatibility issues
 dependency_overrides:

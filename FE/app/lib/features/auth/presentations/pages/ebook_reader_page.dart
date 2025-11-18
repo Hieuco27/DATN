@@ -39,8 +39,11 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _isFullscreen ? null : _buildAppBar(),
-      body: _buildBody(),
-      bottomNavigationBar: _isFullscreen ? null : _buildBottomBar(),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _toggleFullscreen,
+        child: _buildBody(),
+      ),
     );
   }
 
@@ -64,17 +67,11 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.fullscreen, color: Colors.black),
-          onPressed: () {
-            setState(() {
-              _isFullscreen = !_isFullscreen;
-            });
-            if (_isFullscreen) {
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-            } else {
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-            }
-          },
+          icon: Icon(
+            _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+            color: Colors.black,
+          ),
+          onPressed: _toggleFullscreen,
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.black),
@@ -147,45 +144,20 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
       ebookUrl: widget.ebookUrl,
       title: widget.document.title,
       format: _detectedFormat,
+      hideFloatingControls: _isFullscreen,
     );
   }
 
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.bookmark_border),
-            onPressed: _addBookmark,
-          ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refreshEbook),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: _showFormatInfo,
-          ),
-          const Spacer(),
-          Text(
-            _detectedFormat?.name.toUpperCase() ?? 'UNKNOWN',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
+  void _toggleFullscreen() {
+    final next = !_isFullscreen;
+    setState(() {
+      _isFullscreen = next;
+    });
+    if (next) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
   }
 
   void _refreshEbook() {

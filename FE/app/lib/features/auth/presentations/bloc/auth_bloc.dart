@@ -81,6 +81,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: (data['email'] ?? '').toString(),
         password: (data['password'] ?? '').toString(),
         phone: (data['phoneNumber'] ?? data['phone'] ?? '').toString(),
+        registerAsMember: data['registerAsMember'] as bool? ?? false,
       );
 
       final result = await _registerUseCase(params);

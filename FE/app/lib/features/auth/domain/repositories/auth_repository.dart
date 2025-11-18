@@ -6,6 +6,14 @@ import '../entities/reader_entity.dart';
 abstract class AuthenticationRepository {
   Future<LoginResponse> login(String email, String password);
   Future<RegisterResponse> register(Map<String, dynamic> account);
+
+  // New 3-step registration flow
+  Future<Map<String, dynamic>> registerInit(String email);
+  Future<Map<String, dynamic>> registerVerify(Map<String, dynamic> verifyData);
+  Future<Map<String, dynamic>> registerComplete(
+    Map<String, dynamic> completeData,
+  );
+
   Future<void> logout();
   Future<bool> isLoggedIn();
   Future<Account?> getCurrentUser();

@@ -5,6 +5,7 @@ import 'package:book_tech/features/auth/data/models/ebook_model.dart';
 class EbookSettingsService {
   static const String _settingsKey = 'ebook_settings';
   static const String _highlightsKey = 'ebook_highlights';
+  static const String _progressKey = 'ebook_progress';
 
   // Settings
   static Future<EbookSettings> getSettings() async {
@@ -33,6 +34,9 @@ class EbookSettingsService {
         restReminderMinutes: settingsMap['restReminderMinutes'] is num
             ? (settingsMap['restReminderMinutes'] as num).round()
             : 30,
+        highlightColor: settingsMap['highlightColor'] is String
+            ? settingsMap['highlightColor'] as String
+            : '#FFF59D',
       );
     }
 
@@ -51,6 +55,7 @@ class EbookSettingsService {
       'brightness': settings.brightness,
       'restReminderEnabled': settings.restReminderEnabled,
       'restReminderMinutes': settings.restReminderMinutes,
+      'highlightColor': settings.highlightColor,
     };
     await prefs.setString(_settingsKey, json.encode(settingsMap));
   }
@@ -126,5 +131,51 @@ class EbookSettingsService {
     );
 
     await prefs.setString('${_highlightsKey}_$bookId', highlightsJson);
+  }
+
+  // Reading progress
+  static Future<EbookReadingProgress?> getReadingProgress(String bookId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final progressJson = prefs.getString('${_progressKey}_$bookId');
+
+    if (progressJson == null) {
+      return null;
+    }
+
+    try {
+      final progressMap = json.decode(progressJson);
+      final pageNumber = progressMap['pageNumber'] is num
+          ? (progressMap['pageNumber'] as num).round()
+          : 1;
+      final chapterIndex = progressMap['chapterIndex'] is num
+          ? (progressMap['chapterIndex'] as num).round()
+          : null;
+      final updatedAt = progressMap['updatedAt'] is String
+          ? DateTime.tryParse(progressMap['updatedAt'] as String) ??
+                DateTime.now()
+          : DateTime.now();
+
+      return EbookReadingProgress(
+        pageNumber: pageNumber > 0 ? pageNumber : 1,
+        chapterIndex: chapterIndex,
+        updatedAt: updatedAt,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveReadingProgress(
+    String bookId,
+    EbookReadingProgress progress,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = json.encode({
+      'pageNumber': progress.pageNumber,
+      'chapterIndex': progress.chapterIndex,
+      'updatedAt': progress.updatedAt.toIso8601String(),
+    });
+
+    await prefs.setString('${_progressKey}_$bookId', data);
   }
 }

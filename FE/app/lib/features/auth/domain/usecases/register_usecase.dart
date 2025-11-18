@@ -9,11 +9,13 @@ class RegisterParams {
   final String email;
   final String password;
   final String phone;
+  final bool registerAsMember;
   const RegisterParams({
     required this.name,
     required this.email,
     required this.password,
     required this.phone,
+    this.registerAsMember = false,
   });
 }
 
@@ -63,6 +65,8 @@ class RegisterUseCase
             .trim(), // Sử dụng phoneNumber theo database schema
         'fullName': params.name.trim(), // Sử dụng fullName theo database schema
         'roleId': 3, // 1 = doc_gia (reader) theo database schema
+        'registerAsMember':
+            params.registerAsMember, // Thêm flag đăng ký thành viên
       });
       return Result.ok(response);
     } catch (e) {
