@@ -27,7 +27,7 @@ abstract class AuthenticationRemoteDataSource {
 class AuthenticationRemoteDataSourceImpl
     implements AuthenticationRemoteDataSource {
   static const String baseUrl = 'https://kltn-2025-ehsx.onrender.com/api';
-  static const Duration timeoutDuration = Duration(seconds: 60);
+  static const Duration timeoutDuration = Duration(seconds: 30); // Giảm timeout xuống 30s
 
   // Tạo instance của Dio với cấu hình
   final dio = Dio(
@@ -127,35 +127,60 @@ class AuthenticationRemoteDataSourceImpl
 
   @override
   Future<Map<String, dynamic>> registerInit(String email) async {
+    final startTime = DateTime.now();
+    print('🔵 [OTP] Bắt đầu gửi OTP đến: $email');
+    
     try {
       final response = await dio.post(
         '/auth/register/init',
         data: {'email': email.trim()},
       );
+      
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('✅ [OTP] Phản hồi từ server sau ${elapsed}ms');
+      print('📊 [OTP] Status code: ${response.statusCode}');
+      print('📊 [OTP] Response data: ${response.data}');
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ [OTP] Gửi OTP thành công!');
         return response.data as Map<String, dynamic>;
       } else {
         final message = response.data['message'] ?? 'Không thể gửi mã OTP';
+        print('❌ [OTP] Thất bại: $message');
         throw Exception(message);
       }
     } on DioException catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('❌ [OTP] Lỗi sau ${elapsed}ms - Type: ${e.type}');
+      print('❌ [OTP] Error message: ${e.message}');
+      
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
+          print('⏱️ [OTP] Timeout - Server phản hồi chậm');
           throw Exception(
-            'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng và thử lại.',
           );
         case DioExceptionType.badResponse:
           final message =
               e.response?.data?['message'] ?? 'Không thể gửi mã OTP';
+          print('🚨 [OTP] Bad response: $message');
           throw Exception(message);
-        default:
+        case DioExceptionType.connectionError:
+          print('🚫 [OTP] Lỗi kết nối mạng');
           throw Exception(
-            'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+            'Không thể kết nối đến server. Kiểm tra kết nối internet.',
+          );
+        default:
+          print('❓ [OTP] Lỗi không xác định: ${e.type}');
+          throw Exception(
+            'Không thể kết nối đến server. Vui lòng thử lại.',
           );
       }
     } catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('🔴 [OTP] Exception sau ${elapsed}ms: ${e.toString()}');
       throw Exception('Có lỗi xảy ra khi gửi mã OTP: ${e.toString()}');
     }
   }

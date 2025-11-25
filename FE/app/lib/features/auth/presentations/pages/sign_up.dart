@@ -243,8 +243,12 @@ class _SignUpPageState extends State<SignUpPage> {
           localStorageDataSource: LocalStorageDataSourceImpl(),
         );
 
+        print('📤 Đang gửi OTP đến: ${_emailController.text.trim()}');
+        
         // Bước 1: Gửi OTP
-        await repository.registerInit(_emailController.text.trim());
+        final response = await repository.registerInit(_emailController.text.trim());
+        
+        print('✅ OTP đã được gửi thành công: $response');
 
         // Lưu thông tin đăng ký để dùng cho bước verify
         final registerData = {
@@ -263,15 +267,27 @@ class _SignUpPageState extends State<SignUpPage> {
             _isLoading = false;
           });
 
-          // Chuyển đến trang OTP verification
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => OtpVerificationPage(
-                email: _emailController.text.trim(),
-                registerData: registerData,
-              ),
-            ),
+          // ✅ Hiển thị thông báo thành công
+          NotificationService.showSuccess(
+            context,
+            message: 'Mã OTP đã được gửi đến email của bạn!',
+            duration: const Duration(seconds: 3),
           );
+
+          // Chờ 500ms để user nhìn thấy notification trước khi chuyển trang
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Chuyển đến trang OTP verification
+          if (mounted) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => OtpVerificationPage(
+                  email: _emailController.text.trim(),
+                  registerData: registerData,
+                ),
+              ),
+            );
+          }
         }
       } catch (e) {
         if (mounted) {

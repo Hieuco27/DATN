@@ -5,6 +5,15 @@ class ProfileDetailPage extends StatelessWidget {
   final ReaderEntity profile;
   const ProfileDetailPage({Key? key, required this.profile}) : super(key: key);
 
+  String _formatGender(String? gender) {
+    if (gender == null || gender.isEmpty) return 'Chưa cập nhật';
+    String lowerGender = gender.toLowerCase();
+    if (lowerGender == 'nam') return 'Nam';
+    if (lowerGender == 'nữ' || lowerGender == 'nu') return 'Nữ';
+    if (lowerGender == 'khác' || lowerGender == 'khac') return 'Khác';
+    return gender;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -349,7 +358,7 @@ class ProfileDetailPage extends StatelessWidget {
                     _infoTile(
                       Icons.transgender,
                       'Giới tính',
-                      profile.gender,
+                      _formatGender(profile.gender),
                       Colors.pink.shade400,
                     ),
                     _divider(),

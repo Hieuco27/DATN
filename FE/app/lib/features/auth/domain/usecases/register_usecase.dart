@@ -26,9 +26,7 @@ class RegisterUseCase
 
   @override
   Future<Result<RegisterResponse>> call(RegisterParams params) async {
-    print(
-      '🔍 RegisterUseCase validation - Name: "${params.name}", Email: "${params.email}", Phone: "${params.phone}", Password length: ${params.password.length}',
-    );
+    
 
     if (params.name.trim().isEmpty) {
       return Result.fail(ValidationFailure('Tên không được trống'));
@@ -53,8 +51,6 @@ class RegisterUseCase
         ),
       );
     }
-
-    print('✅ All validations passed, calling repository...');
 
     try {
       final response = await repository.register({

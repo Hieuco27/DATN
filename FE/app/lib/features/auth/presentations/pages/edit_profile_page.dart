@@ -44,7 +44,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _cccdController = TextEditingController(text: widget.profile.cccd ?? '');
     _noteController = TextEditingController(text: widget.profile.note ?? '');
     _selectedDate = widget.profile.dateOfBirth;
-    _selectedGender = (widget.profile.gender ?? '').trim();
+    
+    // Normalize gender value to match dropdown options
+    String rawGender = (widget.profile.gender ?? '').trim();
+    if (rawGender.toLowerCase() == 'nam') {
+      _selectedGender = 'Nam';
+    } else if (rawGender.toLowerCase() == 'nữ' || rawGender.toLowerCase() == 'nu') {
+      _selectedGender = 'Nữ';
+    } else if (rawGender.toLowerCase() == 'khác' || rawGender.toLowerCase() == 'khac') {
+      _selectedGender = 'Khác';
+    } else {
+      _selectedGender = rawGender;
+    }
   }
 
   @override
@@ -516,6 +527,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
 
     try {
+      // Convert gender back to lowercase for backend
+      String genderForBackend = '';
+      if (_selectedGender == 'Nam') {
+        genderForBackend = 'nam';
+      } else if (_selectedGender == 'Nữ') {
+        genderForBackend = 'nữ';
+      } else if (_selectedGender == 'Khác') {
+        genderForBackend = 'khác';
+      } else {
+        genderForBackend = _selectedGender.toLowerCase();
+      }
+      
       // Tạo data theo format API yêu cầu với đầy đủ thông tin từ widget.profile
       final profileData = {
         'readerId': widget.profile.readerId,
@@ -523,7 +546,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'fullName': _fullNameController.text.trim().isEmpty
             ? null
             : _fullNameController.text.trim(),
-        'gender': _selectedGender.isEmpty ? '' : _selectedGender,
+        'gender': genderForBackend.isEmpty ? '' : genderForBackend,
         'dateOfBirth': _selectedDate?.toIso8601String().split('T').first ?? '',
         'address': _addressController.text.trim().isEmpty
             ? null

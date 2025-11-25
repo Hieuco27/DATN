@@ -46,21 +46,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (response.success && response.data != null) {
           // ✅ KIỂM TRA ROLEID TRƯỚC KHI XỬ LÝ
           if (response.data!.roleId == 3) {
-            print(
-              '✅ [AuthBloc] RoleId check passed, user is a reader. Allowing login.',
-            );
+            
             // Set flag for first successful login
             final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('has_logged_in_before', true);
             emit(AuthAuthenticated(account: response.data!));
           } else {
-            print(
-              '❌ [AuthBloc] RoleId check failed (roleId=${response.data!.roleId}). User is not a reader. Blocking login.',
-            );
             emit(AuthError(message: "Ứng dụng này chỉ dành cho độc giả"));
           }
         } else {
-          print('❌ [AuthBloc] Response failed or data is null');
           emit(AuthError(message: response.message));
         }
       } else {

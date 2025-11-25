@@ -141,27 +141,41 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     });
 
     try {
+      print('🔄 [RESEND OTP] Đang gửi lại OTP...');
+      
       final repository = AuthenticationRepositoryImpl(
         remoteDataSource: AuthenticationRemoteDataSourceImpl(),
         localStorageDataSource: LocalStorageDataSourceImpl(),
       );
 
-      await repository.registerInit(widget.email);
+      // Hiển thị thông báo đang gửi
+      NotificationService.showInfo(
+        context,
+        message: 'Đang gửi lại mã OTP...',
+        duration: const Duration(milliseconds: 1500),
+      );
 
-      setState(() {
-        _countdown = 59;
-        _isResending = false;
-      });
-
-      _startCountdown();
+      final response = await repository.registerInit(widget.email);
+      
+      print('✅ [RESEND OTP] Gửi lại thành công: $response');
 
       if (mounted) {
+        setState(() {
+          _countdown = 59;
+          _isResending = false;
+        });
+
+        _startCountdown();
+
         NotificationService.showSuccess(
           context,
-          message: 'Đã gửi lại mã OTP đến email của bạn',
+          message: 'Đã gửi lại mã OTP đến email của bạn!',
+          duration: const Duration(seconds: 3),
         );
       }
     } catch (e) {
+      print('❌ [RESEND OTP] Lỗi: ${e.toString()}');
+      
       if (mounted) {
         setState(() {
           _isResending = false;
@@ -169,6 +183,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         NotificationService.showError(
           context,
           message: e.toString().replaceFirst('Exception: ', ''),
+          duration: const Duration(seconds: 4),
         );
       }
     }

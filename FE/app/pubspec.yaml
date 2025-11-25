@@ -109,8 +109,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/image/genres/
-    - test/previewtest/test_pdf.pdf
-    - test/previewtest/test_epub.epub
+    # - test/previewtest/test_pdf.pdf
+    # - test/previewtest/test_epub.epub
 
   # To add assets to your application, add an assets section, like this:
   # assets:

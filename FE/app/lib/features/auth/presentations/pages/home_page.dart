@@ -1,10 +1,14 @@
 // lib/features/auth/presentations/pages/home_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:book_tech/features/auth/presentations/pages/main_home_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/my_books_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/profile_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
+import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
+import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,10 +29,26 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: _pages[_currentIndex],
-      bottomNavigationBar: LayoutBuilder(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        // Khi logout thành công, navigate về trang đăng nhập
+        if (state is AuthUnauthenticated) {
+          // Đóng loading dialog nếu đang mở (sử dụng rootNavigator)
+          if (Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+          
+          // Navigate về trang đăng nhập và xóa toàn bộ navigation stack
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const SignInPage()),
+            (route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        body: _pages[_currentIndex],
+        bottomNavigationBar: LayoutBuilder(
         builder: (context, constraints) {
           final screenWidth = constraints.maxWidth;
           final isSmallScreen = screenWidth < 360;
@@ -90,6 +110,7 @@ class _HomePageState extends State<HomePage> {
           );
         },
       ),
-    );
+      ), // Đóng Scaffold
+    ); // Đóng BlocListener
   }
 }

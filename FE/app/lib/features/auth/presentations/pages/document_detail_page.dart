@@ -63,8 +63,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
 
   @override
   void didPopNext() {
-    // Được gọi khi user QUAY LẠI trang này từ trang khác (pop)
-    // VD: Borrow History → Back → Document Detail (đây!)
     _loadDocumentDetail();
   }
 

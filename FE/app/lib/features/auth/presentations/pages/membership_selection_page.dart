@@ -33,7 +33,7 @@ class MembershipSelectionPage extends StatefulWidget {
 }
 
 class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
-  int? _selectedCardTypeId; // 1 = FREE, 2 = PREMIUM
+  int? _selectedCardTypeId = 2; // Mặc định chọn thẻ thư viện
   bool _isLoading = false;
   bool _showPaymentQR = false;
   bool _isPaymentSuccess = false;
@@ -65,7 +65,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text(
-          'Chọn gói thành viên',
+          'Đăng ký thẻ thư viện',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -111,7 +111,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                               
                               const SizedBox(height: 12),
                               Text(
-                                'Lựa chọn gói phù hợp với bạn',
+                                'Đăng ký thẻ thư viện để truy cập đầy đủ tính năng',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -121,16 +121,9 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                           ),
                         ),
                         _buildCardTypeOption(
-                          1,
-                          'FREE',
-                          'Miễn phí',
-                          '0',
-                        ),
-                        const SizedBox(height: 12),
-                        _buildCardTypeOption(
                           2,
                           'PREMIUM',
-                          'Premium',
+                          'Thẻ thư viện',
                           '150000',
                         ),
                         const SizedBox(height: 20),
@@ -392,6 +385,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                 child: Column(
                   children: [
                     _buildFeature(
+                      
                       isFree ? Icons.menu_book : Icons.auto_stories,
                       isFree ? 'Mượn sách cơ bản' : 'Mượn sách không giới hạn',
                       isFree,
@@ -498,7 +492,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Bạn đã trở thành thành viên Premium',
+            'Bạn đã có thẻ thư viện',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
@@ -521,7 +515,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
         child: Column(
           children: [
             const Text(
-              'Thanh toán thành viên Premium',
+              'Thanh toán thẻ thư viện',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),

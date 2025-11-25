@@ -851,8 +851,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
   }
 
   void _performLogout(BuildContext context) {
+    // Đóng dialog xác nhận
     Navigator.of(context).pop();
 
+    // Hiển thị loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -890,18 +892,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
       ),
     );
 
+    // Trigger logout event - HomePage's BlocListener sẽ xử lý navigation
     context.read<AuthBloc>().add(AuthLogoutRequested());
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-
-      NotificationService.showSuccess(
-        context,
-        message: 'Đăng xuất thành công!',
-      );
-    });
   }
 
   void _navigateToBorrowHistory() {

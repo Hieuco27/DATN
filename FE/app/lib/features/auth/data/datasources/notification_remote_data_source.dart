@@ -160,6 +160,8 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
+      
+
       if (response.statusCode == 200) {
         return MarkAllReadResponse.fromJson(
           response.data as Map<String, dynamic>,
