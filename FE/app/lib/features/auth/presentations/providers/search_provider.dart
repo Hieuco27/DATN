@@ -47,8 +47,8 @@ class SearchProvider with ChangeNotifier {
       }
 
       // Gọi API với từ đầu tiên đã bỏ dấu để server trả phạm vi rộng
-      final normalizedFull = _normalizeText(query);
-      final firstToken = normalizedFull.split(' ').first;
+      final normalizedQuery = _normalizeText(query);
+      final firstToken = normalizedQuery.split(' ').first;
       if (firstToken.isEmpty) {
         clearSearch();
         return;
@@ -60,22 +60,14 @@ class SearchProvider with ChangeNotifier {
         limit: 20,
       );
 
-      // Lọc theo tiêu đề (accent-insensitive, case-insensitive) và ưu tiên bắt đầu bằng từ khóa
-      final normalizedQuery = _normalizeText(_currentQuery);
-      final filtered = fetchedResults
-          .where((doc) => _normalizeText(doc.title).contains(normalizedQuery))
-          .toList();
-
-      filtered.sort((a, b) {
-        final aTitle = _normalizeText(a.title);
-        final bTitle = _normalizeText(b.title);
-        final aStarts = aTitle.startsWith(normalizedQuery);
-        final bStarts = bTitle.startsWith(normalizedQuery);
-        if (aStarts == bStarts) {
-          return aTitle.compareTo(bTitle);
-        }
-        return bStarts ? 1 : -1; // true trước false
-      });
+      // Move heavy computation to isolate using compute()
+      final filtered = await compute(
+        _filterAndSortDocuments,
+        _SearchData(
+          documents: fetchedResults,
+          normalizedQuery: normalizedQuery,
+        ),
+      );
 
       _searchResults = filtered;
 
@@ -189,4 +181,64 @@ class SearchProvider with ChangeNotifier {
     });
     return s;
   }
+}
+
+// Helper class for passing data to isolate
+class _SearchData {
+  final List<DocumentEntity> documents;
+  final String normalizedQuery;
+
+  _SearchData({
+    required this.documents,
+    required this.normalizedQuery,
+  });
+}
+
+// Top-level function for compute() - must be static/top-level
+List<DocumentEntity> _filterAndSortDocuments(_SearchData data) {
+  // Normalize text helper (duplicate for isolate)
+  String normalizeText(String input) {
+    String s = input.toLowerCase().trim();
+    s = s.replaceAll(RegExp(r"\s+"), ' ');
+    const Map<String, String> map = {
+      'a': 'àáạảãâầấậẩẫăằắặẳẵ',
+      'e': 'èéẹẻẽêềếệểễ',
+      'i': 'ìíịỉĩ',
+      'o': 'òóọỏõôồốộổỗơờớợởỡ',
+      'u': 'ùúụủũưừứựửữ',
+      'y': 'ỳýỵỷỹ',
+      'd': 'đ',
+    };
+    map.forEach((non, accented) {
+      s = s.replaceAll(
+        RegExp('[' + accented + accented.toUpperCase() + ']'),
+        non,
+      );
+    });
+    return s;
+  }
+
+  // Cache normalized titles to avoid repeated normalization
+  final normalizedTitles = <int, String>{};
+  final filtered = data.documents.where((doc) {
+    final normalized = normalizedTitles.putIfAbsent(
+      doc.documentId,
+      () => normalizeText(doc.title),
+    );
+    return normalized.contains(data.normalizedQuery);
+  }).toList();
+
+  // Sort using cached normalized titles
+  filtered.sort((a, b) {
+    final aTitle = normalizedTitles[a.documentId]!;
+    final bTitle = normalizedTitles[b.documentId]!;
+    final aStarts = aTitle.startsWith(data.normalizedQuery);
+    final bStarts = bTitle.startsWith(data.normalizedQuery);
+    if (aStarts == bStarts) {
+      return aTitle.compareTo(bTitle);
+    }
+    return bStarts ? 1 : -1;
+  });
+
+  return filtered;
 }

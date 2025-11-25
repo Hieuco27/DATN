@@ -117,58 +117,72 @@ class _MainHomePageState extends State<MainHomePage> {
                   //const _QuoteSliderBar(),
 
                   // Quick actions
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _QuickAction(
-                          icon: Icons.grid_view_rounded,
-                          label: 'Thể loại',
-                          color: const Color(0xFFFF1744),
-                          onTap: () {
-                            Navigator.of(context).pushNamed('/genre');
-                          },
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final screenWidth = constraints.maxWidth;
+                      final isSmallScreen = screenWidth < 360;
+                      final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+                      final spacing = isSmallScreen ? 6.0 : 8.0;
+                      
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: 8,
                         ),
-                        _QuickAction(
-                          icon: Icons.library_books_rounded,
-                          label: 'Phổ biến',
-                          color: const Color(0xFF2979FF),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const MostBorrowedDocumentsPage(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: _QuickAction(
+                                icon: Icons.grid_view_rounded,
+                                label: 'Thể loại',
+                                color: const Color(0xFFFF1744),
+                                isSmallScreen: isSmallScreen,
+                                onTap: () {
+                                  Navigator.of(context).pushNamed('/genre');
+                                },
                               ),
-                            );
-                          },
-                        ),
-                        _QuickAction(
-                          icon: Icons.favorite_rounded,
-                          label: 'Mới nhất',
-                          color: const Color(0xFFFF6D00),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const LatestDocumentsPage(),
+                            ),
+                            SizedBox(width: spacing),
+                            Expanded(
+                              child: _QuickAction(
+                                icon: Icons.library_books_rounded,
+                                label: 'Phổ biến',
+                                color: const Color(0xFF2979FF),
+                                isSmallScreen: isSmallScreen,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const MostBorrowedDocumentsPage(),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
+                            ),
+                            SizedBox(width: spacing),
+                            Expanded(
+                              child: _QuickAction(
+                                icon: Icons.favorite_rounded,
+                                label: 'Mới nhất',
+                                color: const Color(0xFFFF6D00),
+                                isSmallScreen: isSmallScreen,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const LatestDocumentsPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                        // _QuickAction(
-                        //   icon: Icons.upload_file_rounded,
-                        //   label: 'Tải lên',
-                        //   color: const Color(0xFF00C853),
-                        //   onTap: () {},
-                        // ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
 
                   // Fixed filter bar (stays while books scroll)
@@ -183,38 +197,50 @@ class _MainHomePageState extends State<MainHomePage> {
                         null,
                         ...chips.map((g) => g.genreId),
                       ];
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: ChipsChoice<int?>.single(
-                          value: _selectedGenreId,
-                          onChanged: (val) =>
-                              setState(() => _selectedGenreId = val),
-                          choiceItems: C2Choice.listFrom<int?, String>(
-                            source: labels,
-                            value: (i, v) => values[i],
-                            label: (i, v) => v,
-                          ),
-                          choiceStyle: C2ChipStyle.filled(
-                            color: const Color(0xFFF1F1F1),
-                            selectedStyle: C2ChipStyle.filled(
-                              color: Color(0xFFFFCDD2),
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isSmallScreen = constraints.maxWidth < 360;
+                          final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+                          
+                          return Padding(
+                            padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 8),
+                            child: ChipsChoice<int?>.single(
+                              value: _selectedGenreId,
+                              onChanged: (val) =>
+                                  setState(() => _selectedGenreId = val),
+                              choiceItems: C2Choice.listFrom<int?, String>(
+                                source: labels,
+                                value: (i, v) => values[i],
+                                label: (i, v) => v,
+                              ),
+                              choiceStyle: C2ChipStyle.filled(
+                                color: const Color(0xFFF1F1F1),
+                                selectedStyle: C2ChipStyle.filled(
+                                  color: const Color(0xFFFFCDD2),
+                                ),
+                              ),
+                              wrapped: false,
+                              scrollPhysics: const BouncingScrollPhysics(),
                             ),
-                          ),
-                          wrapped: false,
-                          scrollPhysics: const BouncingScrollPhysics(),
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
 
                   // Content based on selected tab
                   Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Column(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isSmallScreen = constraints.maxWidth < 360;
+                        final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+                        
+                        return SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          padding: EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 16),
+                          child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 4),
@@ -273,6 +299,8 @@ class _MainHomePageState extends State<MainHomePage> {
                           ),
                         ],
                       ),
+                        );
+                      },
                     ),
                   ),
                   // Removed tiny 4 buttons grid per request
@@ -293,6 +321,7 @@ class _QuickAction extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final bool isSmallScreen;
 
   const _QuickAction({
     Key? key,
@@ -300,33 +329,48 @@ class _QuickAction extends StatelessWidget {
     required this.label,
     required this.color,
     required this.onTap,
+    this.isSmallScreen = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Responsive sizing
+    final iconSize = isSmallScreen ? 48.0 : 56.0;
+    final iconInnerSize = isSmallScreen ? 22.0 : 24.0;
+    final fontSize = isSmallScreen ? 11.5 : 13.0;
+    final verticalSpacing = isSmallScreen ? 4.0 : 6.0;
+    
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: iconSize,
+              height: iconSize,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: iconInnerSize),
             ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E1E1E),
+            SizedBox(height: verticalSpacing),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1E1E1E),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

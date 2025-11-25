@@ -71,6 +71,10 @@ class _AuthFieldState extends State<AuthField> {
               ? const Color.fromARGB(255, 220, 82, 82)
               : const Color.fromARGB(255, 160, 160, 160),
         ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         // Ẩn error mặc định bên dưới
         errorText: null,
         errorStyle: const TextStyle(height: 0, color: Colors.transparent),

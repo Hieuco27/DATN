@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../../domain/repositories/document_repository.dart';
 import '../../data/models/document_detail_model.dart';
 import '../../data/models/document_response_model.dart';
-import '../providers/wishlist_provider.dart';
-import '../providers/cart_provider.dart';
+import '../providers/wishlist_provider.dart'; // Still use WishlistItem model
 import '../../data/models/cart_item_model.dart';
+import '../bloc/wishlist_state.dart';
+import '../bloc/cart_state.dart';
 
 class DocumentDetailViewModel extends ChangeNotifier {
   DocumentDetailViewModel({required this.repository});
@@ -47,7 +48,7 @@ class DocumentDetailViewModel extends ChangeNotifier {
   Future<void> load({
     required String accessToken,
     required int documentId,
-    required WishlistProvider wishlist,
+    required WishlistState wishlistState,
   }) async {
     _isLoading = true;
     _error = null;
@@ -59,7 +60,8 @@ class DocumentDetailViewModel extends ChangeNotifier {
         documentId: documentId,
       );
       _document = doc;
-      _isBookmarked = wishlist.contains(doc.documentId);
+      // Check if document is in wishlist from BLoC state
+      _isBookmarked = wishlistState is WishlistData && wishlistState.contains(doc.documentId);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -107,36 +109,47 @@ class DocumentDetailViewModel extends ChangeNotifier {
     }
   }
 
-  void toggleWishlist(WishlistProvider wishlist) {
-    if (_document == null) return;
-    wishlist.toggle(
-      WishlistItem(
-        documentId: _document!.documentId,
-        title: _document!.title,
-        coverPhoto: _document!.coverPhoto,
-      ),
+  /// Get wishlist item for toggling
+  /// Returns null if document not loaded
+  WishlistItem? getWishlistItem() {
+    if (_document == null) return null;
+    return WishlistItem(
+      documentId: _document!.documentId,
+      title: _document!.title,
+      coverPhoto: _document!.coverPhoto,
     );
-    _isBookmarked = wishlist.contains(_document!.documentId);
+  }
+
+  /// Update bookmark status from wishlist state
+  void updateBookmarkStatus(WishlistState wishlistState) {
+    if (_document == null) return;
+    _isBookmarked = wishlistState is WishlistData && wishlistState.contains(_document!.documentId);
     notifyListeners();
   }
 
-  bool addToCart(CartProvider cart) {
-    if (_document == null) return false;
+  /// Get cart item for adding to cart
+  /// Returns null if document not loaded or already in cart
+  CartItemModel? getCartItem(CartState cartState) {
+    if (_document == null) return null;
     final id = _document!.documentId;
-    if (cart.hasItem(id)) return false;
-    cart.addItem(
-      CartItemModel(
-        documentId: id,
-        title: _document!.title,
-        coverPhoto: _document!.coverPhoto,
-        quantity: _quantity,
-        minDeposit: _document!.minDeposit,
-        maxDeposit: _document!.maxDeposit,
-      ),
+    
+    // Check if item already in cart
+    if (cartState is CartLoaded && cartState.hasItem(id)) return null;
+    
+    return CartItemModel(
+      documentId: id,
+      title: _document!.title,
+      coverPhoto: _document!.coverPhoto,
+      quantity: _quantity,
+      minDeposit: _document!.minDeposit,
+      maxDeposit: _document!.maxDeposit,
     );
+  }
+
+  /// Reset quantity after adding to cart
+  void resetQuantity() {
     _quantity = 1;
     notifyListeners();
-    return true;
   }
 
   void setQuantity(int value) {

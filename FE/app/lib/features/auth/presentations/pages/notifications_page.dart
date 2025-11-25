@@ -5,7 +5,7 @@ import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/data/repositories/notification_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/notification_remote_data_source.dart';
 import 'package:book_tech/features/auth/data/models/notification_model.dart';
-import 'package:book_tech/core/ui/notification_service.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'notification_detail_page.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -28,6 +28,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   String? _selectedType;
   bool? _selectedIsRead;
   final ScrollController _scrollController = ScrollController();
+  bool _isHandlingTap = false; // Prevent double tap
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<void> _loadNotifications({bool refresh = false}) async {
     if (_isLoading) return;
 
+    print('🔃 _loadNotifications called (refresh=$refresh)');
     setState(() {
       _isLoading = true;
       if (refresh) {
@@ -94,10 +96,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
         setState(() {
           _isLoading = false;
         });
-        NotificationService.showError(
-          context,
+        Flushbar(
+          title: 'Lỗi',
           message: 'Lỗi tải thông báo: ${e.toString()}',
-        );
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ).show(context);
       }
     }
   }
@@ -121,21 +125,103 @@ class _NotificationsPageState extends State<NotificationsPage> {
       );
 
       if (mounted) {
-        NotificationService.showSuccess(
-          context,
+        Flushbar(
+          title: 'Thành công',
           message: 'Đã đánh dấu ${response.updated} thông báo là đã đọc',
-        );
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.green,
+        ).show(context);
         _loadNotifications(refresh: true);
       }
     } catch (e) {
       if (mounted) {
-        NotificationService.showError(context, message: 'Lỗi: ${e.toString()}');
+        final errorMessage = e.toString().replaceFirst('Exception: ', '');
+        Flushbar(
+          title: 'Lỗi',
+          message: errorMessage,
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ).show(context);
       }
+    }
+  }
+
+  Future<void> _handleNotificationTap(NotificationModel notification) async {
+    // Prevent double tap
+    if (_isHandlingTap) {
+      print('⚠️ Ignoring tap - already handling');
+      return;
+    }
+    
+    _isHandlingTap = true;
+    print('👆 Handling tap for notification ${notification.notificationID}');
+    
+    // Auto mark as read nếu chưa đọc
+    if (!notification.isRead) {
+      try {
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticated &&
+            authState.account.accessToken?.isNotEmpty == true) {
+          // Update UI ngay lập tức
+          setState(() {
+            final index = _notifications.indexWhere(
+              (n) => n.notificationID == notification.notificationID,
+            );
+            if (index != -1) {
+              print('🔄 Marking notification ${notification.notificationID} as read');
+              _notifications[index] = notification.copyWith(
+                isRead: true,
+                readAt: DateTime.now(),
+              );
+              print('✅ Updated notification ${notification.notificationID}: isRead = ${_notifications[index].isRead}');
+            }
+          });
+
+          // Gọi API trong background
+          _repository.markAsRead(
+            accessToken: authState.account.accessToken!,
+            notificationId: notification.notificationID,
+          ).then((_) {
+            // Success
+          }).catchError((e) {
+            // Revert nếu lỗi
+            if (mounted) {
+              setState(() {
+                final index = _notifications.indexWhere(
+                  (n) => n.notificationID == notification.notificationID,
+                );
+                if (index != -1) {
+                  _notifications[index] = notification;
+                }
+              });
+            }
+          });
+        }
+      } catch (e) {
+        // Silently fail
+      }
+    }
+
+    // Navigate to detail
+    if (mounted) {
+      print('📱 Navigating to detail page for notification ${notification.notificationID}');
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NotificationDetailPage(
+            notificationId: notification.notificationID,
+          ),
+        ),
+      );
+      print('🔙 Back from detail page');
+      // Không refresh toàn bộ để giữ trạng thái "đã đọc"
+      _isHandlingTap = false; // Reset flag
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    print('🏗️ Building NotificationsPage - notifications count: ${_notifications.length}');
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -165,7 +251,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         children: [
           // Filter bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: Colors.white,
             child: Row(
               children: [
@@ -174,26 +260,35 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     value: _selectedType,
                     hint: const Text('Tất cả loại'),
                     isExpanded: true,
+                    isDense: true,
                     items: [
                       const DropdownMenuItem<String>(
                         value: null,
                         child: Text('Tất cả loại'),
                       ),
                       const DropdownMenuItem<String>(
-                        value: 'SYSTEM',
-                        child: Text('Hệ thống'),
+                        value: 'reservation',
+                        child: Text('📚 Đặt mượn'),
                       ),
                       const DropdownMenuItem<String>(
-                        value: 'LOAN_PENDING',
-                        child: Text('Chờ duyệt'),
+                        value: 'loan_approved',
+                        child: Text('✅ Đã duyệt'),
                       ),
                       const DropdownMenuItem<String>(
-                        value: 'LOAN_APPROVED',
-                        child: Text('Đã duyệt'),
+                        value: 'loan_rejected',
+                        child: Text('❌ Từ chối'),
                       ),
                       const DropdownMenuItem<String>(
-                        value: 'LOAN_REJECTED',
-                        child: Text('Từ chối'),
+                        value: 'loan_ready',
+                        child: Text('🎉 Sẵn sàng lấy'),
+                      ),
+                      const DropdownMenuItem<String>(
+                        value: 'loan_overdue',
+                        child: Text('⚠️ Quá hạn'),
+                      ),
+                      const DropdownMenuItem<String>(
+                        value: 'system',
+                        child: Text('🔔 Hệ thống'),
                       ),
                     ],
                     onChanged: (value) {
@@ -204,12 +299,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButton<bool>(
                     value: _selectedIsRead,
                     hint: const Text('Tất cả'),
                     isExpanded: true,
+                    isDense: true,
                     items: const [
                       DropdownMenuItem<bool>(
                         value: null,
@@ -276,58 +372,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         }
 
                         final notification = _notifications[index];
+                        print('📦 ItemBuilder index=$index: notification ${notification.notificationID}, isRead=${notification.isRead}');
                         return _NotificationItem(
+                          key: ValueKey('${notification.notificationID}_${notification.isRead}'),
                           notification: notification,
-                          onTap: () async {
-                            // Mark as read when opening
-                            if (!notification.isRead) {
-                              try {
-                                final authState = context
-                                    .read<AuthBloc>()
-                                    .state;
-                                if (authState is AuthAuthenticated &&
-                                    authState.account.accessToken?.isNotEmpty ==
-                                        true) {
-                                  await _repository.markAsRead(
-                                    accessToken: authState.account.accessToken!,
-                                    notificationId: notification.notificationID,
-                                  );
-                                  setState(() {
-                                    // Find and update the notification in the list
-                                    final index = _notifications.indexWhere(
-                                      (n) =>
-                                          n.notificationID ==
-                                          notification.notificationID,
-                                    );
-                                    if (index != -1) {
-                                      _notifications[index] = notification
-                                          .copyWith(
-                                            isRead: true,
-                                            readAt: DateTime.now(),
-                                          );
-                                    }
-                                  });
-                                }
-                              } catch (e) {
-                                // Ignore error, still open detail
-                              }
-                            }
-
-                            // Navigate to detail
-                            if (mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => NotificationDetailPage(
-                                    notificationId: notification.notificationID,
-                                  ),
-                                ),
-                              ).then((_) {
-                                // Refresh after returning
-                                _loadNotifications(refresh: true);
-                              });
-                            }
-                          },
+                          onTap: () => _handleNotificationTap(notification),
                         );
                       },
                     ),
@@ -343,44 +392,80 @@ class _NotificationItem extends StatelessWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
 
-  const _NotificationItem({required this.notification, required this.onTap});
+  const _NotificationItem({
+    Key? key,
+    required this.notification,
+    required this.onTap,
+  }) : super(key: key);
 
   String _getTypeLabel(String type) {
-    switch (type) {
-      case 'SYSTEM':
-        return 'Hệ thống';
-      case 'LOAN_PENDING':
-        return 'Chờ duyệt';
-      case 'LOAN_APPROVED':
-        return 'Đã duyệt';
-      case 'LOAN_REJECTED':
-        return 'Từ chối';
-      case 'LOAN_READY':
-        return 'Sẵn sàng';
-      case 'LOAN_DUE_SOON':
-        return 'Sắp đến hạn';
-      case 'LOAN_OVERDUE':
+    switch (type.toLowerCase()) {
+      case 'reservation':
+        return 'Đặt mượn';
+      case 'info':
+        return 'Thông tin';
+      case 'reminder':
+        return 'Nhắc nhở';
+      case 'alert':
+      case 'alter':
+        return 'Cảnh báo';
+      case 'reminder_due':
+        return 'Nhắc hạn trả';
+      case 'overdue_notice':
         return 'Quá hạn';
-      case 'PAYMENT_SUCCESS':
+      case 'reminder_approved':
+      case 'reminder_appooved':
+        return 'Đã duyệt';
+      case 'system':
+        return 'Hệ thống';
+      case 'loan_pending':
+        return 'Chờ duyệt';
+      case 'loan_approved':
+        return 'Đã duyệt';
+      case 'loan_rejected':
+        return 'Từ chối';
+      case 'loan_ready':
+        return 'Sẵn sàng lấy';
+      case 'loan_due_soon':
+        return 'Sắp đến hạn';
+      case 'loan_overdue':
+        return 'Quá hạn';
+      case 'payment_success':
         return 'Thanh toán';
+      case 'return_success':
+        return 'Đã trả';
       default:
         return type;
     }
   }
 
   Color _getTypeColor(String type) {
-    switch (type) {
-      case 'LOAN_APPROVED':
-      case 'PAYMENT_SUCCESS':
-        return Colors.green;
-      case 'LOAN_REJECTED':
-      case 'LOAN_OVERDUE':
-        return Colors.red;
-      case 'LOAN_PENDING':
-      case 'LOAN_DUE_SOON':
-        return Colors.orange;
+    switch (type.toLowerCase()) {
+      case 'loan_approved':
+      case 'payment_success':
+      case 'loan_ready':
+      case 'return_success':
+      case 'reminder_approved':
+      case 'reminder_appooved':
+        return const Color(0xFF10B981); // Green
+      case 'loan_rejected':
+      case 'loan_overdue':
+      case 'overdue_notice':
+      case 'alert':
+      case 'alter':
+        return const Color(0xFFEF4444); // Red
+      case 'reservation':
+      case 'loan_pending':
+      case 'loan_due_soon':
+      case 'reminder_due':
+        return const Color(0xFFF97316); // Orange
+      case 'reminder':
+        return const Color(0xFFF59E0B); // Amber
+      case 'system':
+      case 'info':
+        return const Color(0xFF3B82F6); // Blue
       default:
-        return Colors.blue;
+        return const Color(0xFF64748B); // Slate
     }
   }
 
@@ -407,28 +492,34 @@ class _NotificationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : const Color(0xFFE3F2FD),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: notification.isRead
-                ? Colors.grey.shade200
-                : const Color(0xFFFF6B35).withOpacity(0.3),
-            width: notification.isRead ? 1 : 1.5,
+    print('🎨 Building notification ${notification.notificationID}: isRead = ${notification.isRead}');
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.grey.withOpacity(0.1),
+        highlightColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: notification.isRead ? Colors.white : const Color(0xFFE3F2FD),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: notification.isRead
+                  ? Colors.grey.shade200
+                  : const Color(0xFFFF6B35).withOpacity(0.3),
+              width: notification.isRead ? 1 : 1.5,
+            ),
           ),
-        ),
-        child: Row(
+          child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Icon
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: _getTypeColor(notification.type).withOpacity(0.1),
                 shape: BoxShape.circle,
@@ -436,10 +527,10 @@ class _NotificationItem extends StatelessWidget {
               child: Icon(
                 _getIcon(notification.type),
                 color: _getTypeColor(notification.type),
-                size: 20,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             // Content
             Expanded(
               child: Column(
@@ -457,9 +548,12 @@ class _NotificationItem extends StatelessWidget {
                                 : FontWeight.w700,
                             color: const Color(0xFF1A202C),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (!notification.isRead)
+                      if (!notification.isRead) ...[
+                        const SizedBox(width: 8),
                         Container(
                           width: 8,
                           height: 8,
@@ -468,6 +562,7 @@ class _NotificationItem extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -477,12 +572,12 @@ class _NotificationItem extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
+                          horizontal: 5,
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
@@ -500,12 +595,16 @@ class _NotificationItem extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDate(notification.createdAt),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          _formatDate(notification.createdAt),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -514,29 +613,48 @@ class _NotificationItem extends StatelessWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
   }
 
   IconData _getIcon(String type) {
-    switch (type) {
-      case 'SYSTEM':
+    switch (type.toLowerCase()) {
+      case 'reservation':
+        return Icons.book_outlined;
+      case 'info':
         return Icons.info_outline;
-      case 'LOAN_PENDING':
+      case 'reminder':
+        return Icons.notifications_active_outlined;
+      case 'alert':
+      case 'alter':
+        return Icons.warning_amber_rounded;
+      case 'reminder_due':
+        return Icons.event_busy_outlined;
+      case 'overdue_notice':
+        return Icons.error_outline_rounded;
+      case 'reminder_approved':
+      case 'reminder_appooved':
+        return Icons.verified_outlined;
+      case 'system':
+        return Icons.settings_outlined;
+      case 'loan_pending':
         return Icons.access_time;
-      case 'LOAN_APPROVED':
+      case 'loan_approved':
         return Icons.check_circle_outline;
-      case 'LOAN_REJECTED':
+      case 'loan_rejected':
         return Icons.cancel_outlined;
-      case 'LOAN_READY':
+      case 'loan_ready':
         return Icons.done_all;
-      case 'LOAN_DUE_SOON':
+      case 'loan_due_soon':
         return Icons.schedule;
-      case 'LOAN_OVERDUE':
+      case 'loan_overdue':
         return Icons.warning_amber;
-      case 'PAYMENT_SUCCESS':
+      case 'payment_success':
         return Icons.payment;
+      case 'return_success':
+        return Icons.assignment_return;
       default:
         return Icons.notifications_outlined;
     }

@@ -9,12 +9,18 @@ import 'package:book_tech/features/auth/domain/repositories/document_repository.
 import '../bloc/auth_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
-import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
-import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
-import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
+import '../bloc/reading_bloc.dart';
+import '../bloc/reading_event.dart';
+import '../providers/reading_provider.dart'; // For ReadingItem model
+import '../bloc/cart_bloc.dart';
+import '../bloc/cart_event.dart';
+import '../bloc/wishlist_bloc.dart';
+import '../bloc/wishlist_event.dart';
+import '../bloc/wishlist_state.dart';
 import 'package:book_tech/features/auth/presentations/providers/document_detail_view_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:book_tech/main.dart' show routeObserver;
 
 class DocumentDetailPage extends StatefulWidget {
   final int documentId;
@@ -25,7 +31,7 @@ class DocumentDetailPage extends StatefulWidget {
   State<DocumentDetailPage> createState() => _DocumentDetailPageState();
 }
 
-class _DocumentDetailPageState extends State<DocumentDetailPage> {
+class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware {
   // Theme colors (keep consistent with other redesigned pages)
   static const Color _primaryColor = Color(0xFFFF6B35);
   static const Color _backgroundColor = Color(0xFFF8F9FA);
@@ -41,6 +47,27 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     _loadDocumentDetail();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to global route observer
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    _vm.removeListener(_onVmChanged);
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Được gọi khi user QUAY LẠI trang này từ trang khác (pop)
+    // VD: Borrow History → Back → Document Detail (đây!)
+    _loadDocumentDetail();
+  }
+
   void _onVmChanged() {
     if (!mounted) return;
     setState(() {});
@@ -53,11 +80,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           authState.account.accessToken?.isEmpty == true) {
         throw Exception('User not authenticated');
       }
-      final wishlist = Provider.of<WishlistProvider>(context, listen: false);
+      final wishlistState = context.read<WishlistBloc>().state;
       await _vm.load(
         accessToken: authState.account.accessToken!,
         documentId: widget.documentId,
-        wishlist: wishlist,
+        wishlistState: wishlistState,
       );
       await _vm.loadSimilar(
         accessToken: authState.account.accessToken!,
@@ -89,8 +116,10 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         title: Text(
           _vm.title,
           textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 22,
+            fontSize: 19,
             fontWeight: FontWeight.w700,
             color: _textColor,
             letterSpacing: -0.3,
@@ -112,29 +141,40 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             icon: const Icon(Icons.ios_share, color: _textColor, size: 20),
             onPressed: _shareDocument,
           ),
-          IconButton(
-            icon: Icon(
-              _vm.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _vm.isBookmarked ? _primaryColor : Colors.grey,
-            ),
-            onPressed: () {
-              final wishlist = Provider.of<WishlistProvider>(
-                context,
-                listen: false,
-              );
-              _vm.toggleWishlist(wishlist);
-              NotificationService.showInfo(
-                context,
-                message: _vm.isBookmarked
-                    ? 'Đã thêm vào muốn đọc'
-                    : 'Đã bỏ khỏi muốn đọc',
+          BlocBuilder<WishlistBloc, WishlistState>(
+            builder: (context, wishlistState) {
+              return IconButton(
+                icon: Icon(
+                  _vm.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  color: _vm.isBookmarked ? _primaryColor : Colors.grey,
+                ),
+                onPressed: () {
+                  final item = _vm.getWishlistItem();
+                  if (item != null) {
+                    context.read<WishlistBloc>().add(WishlistItemToggled(item));
+                    // Update local state after toggle
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      _vm.updateBookmarkStatus(context.read<WishlistBloc>().state);
+                      NotificationService.showInfo(
+                        context,
+                        message: _vm.isBookmarked
+                            ? 'Đã thêm vào muốn đọc'
+                            : 'Đã bỏ khỏi muốn đọc',
+                      );
+                    });
+                  }
+                },
               );
             },
           ),
         ],
       ),
 
-      body: _buildBody(),
+      body: RefreshIndicator(
+        onRefresh: _loadDocumentDetail,
+        color: _primaryColor,
+        child: _buildBody(),
+      ),
     );
   }
 
@@ -243,13 +283,13 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 120,
-            height: 168,
+            width: 100,
+            height: 140,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
@@ -298,7 +338,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                     ),
                     child: const Icon(
                       Icons.book_rounded,
-                      size: 48,
+                      size: 42,
                       color: _primaryColor,
                     ),
                   );
@@ -306,7 +346,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,10 +355,10 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 Text(
                   _vm.title,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
                     color: _textColor,
-                    height: 1.25,
+                    height: 1.35,
                     letterSpacing: -0.2,
                   ),
                   maxLines: 3,
@@ -373,53 +413,91 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                           .map((author) => '${author['fullName'] ?? ''} ')
                           .firstOrNull ??
                       'Không có tác giả chính',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _vm.ebookUrl != null ? _readNow : null,
-                      icon: const Icon(Icons.play_arrow, size: 18),
-                      label: const Text('ĐỌC NGAY'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 4,
-                        shadowColor: _primaryColor.withOpacity(0.3),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    if (_vm.ebookUrl != null)
-                      OutlinedButton.icon(
-                        onPressed: _downloadEbook,
-                        icon: const Icon(Icons.download_outlined, size: 18),
-                        label: const Text('TẢI EBOOK'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryColor,
-                          side: const BorderSide(
-                            color: _primaryColor,
-                            width: 1,
+                const SizedBox(height: 12),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final screenWidth = constraints.maxWidth;
+                    final isVerySmallScreen = screenWidth < 250;
+                    final isSmallScreen = screenWidth < 300;
+                    final isMediumScreen = screenWidth < 350;
+                    
+                    // Responsive values
+                    final iconSize = isVerySmallScreen ? 15.0 : (isSmallScreen ? 16.0 : 18.0);
+                    final fontSize = isVerySmallScreen ? 10.0 : (isSmallScreen ? 11.0 : (isMediumScreen ? 11.5 : 12.0));
+                    final verticalPadding = isVerySmallScreen ? 6.0 : (isSmallScreen ? 7.0 : 9.0);
+                    final horizontalPadding = isVerySmallScreen ? 8.0 : (isSmallScreen ? 10.0 : (isMediumScreen ? 12.0 : 14.0));
+                    final spacing = isVerySmallScreen ? 5.0 : (isSmallScreen ? 6.0 : 10.0);
+                    
+                    return Row(
+                      children: [
+                        Flexible(
+                          flex: _vm.ebookUrl != null ? 1 : 1,
+                          child: ElevatedButton.icon(
+                            onPressed: _vm.ebookUrl != null ? _readNow : null,
+                            icon: Icon(Icons.play_arrow, size: iconSize),
+                            label: Text(
+                              'ĐỌC NGAY',
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                vertical: verticalPadding,
+                                horizontal: horizontalPadding,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 4,
+                              shadowColor: _primaryColor.withOpacity(0.3),
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                            horizontal: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
                         ),
-                      ),
-                  ],
+                        SizedBox(width: spacing),
+                        if (_vm.ebookUrl != null)
+                          Flexible(
+                            flex: 1,
+                            child: OutlinedButton.icon(
+                              onPressed: _downloadEbook,
+                              icon: Icon(Icons.download_outlined, size: iconSize),
+                              label: Text(
+                                isVerySmallScreen ? 'TẢI' : 'TẢI EBOOK',
+                                style: TextStyle(
+                                  fontSize: fontSize,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _primaryColor,
+                                side: const BorderSide(
+                                  color: _primaryColor,
+                                  width: 1.5,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: verticalPadding,
+                                  horizontal: horizontalPadding * 0.8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -430,44 +508,52 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   }
 
   Widget _buildInfo() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 360;
+        final horizontalPadding = isSmallScreen ? 8.0 : 12.0;
+        
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildInfoItem('Tổng số', '${_vm.totalCopies}')),
-          Container(width: 1, height: 36, color: Colors.grey[200]),
-          Expanded(child: _buildInfoItem('Hiện có', '${_vm.availableCopies}')),
-          Container(width: 1, height: 36, color: Colors.grey[200]),
-          Expanded(
-            child: _buildInfoItem(
-              'Đang cho mượn',
-              '${_vm.totalCopies - _vm.availableCopies}',
-            ),
+          child: Row(
+            children: [
+              Expanded(child: _buildInfoItem('Tổng', '${_vm.totalCopies}', isSmallScreen)),
+              Container(width: 1, height: 38, color: Colors.grey[200]),
+              Expanded(child: _buildInfoItem('Hiện có', '${_vm.availableCopies}', isSmallScreen)),
+              Container(width: 1, height: 38, color: Colors.grey[200]),
+              Expanded(
+                child: _buildInfoItem(
+                  'Cho mượn',
+                  '${_vm.totalCopies - _vm.availableCopies}',
+                  isSmallScreen,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildInfoItem(String label, String value) {
+  Widget _buildInfoItem(String label, String value, bool isSmallScreen) {
     return Column(
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 17 : 19,
             fontWeight: FontWeight.w800,
             color: _primaryColor,
             letterSpacing: -0.2,
@@ -476,8 +562,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         const SizedBox(height: 4),
         Text(
           label,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: isSmallScreen ? 11 : 13,
             color: Colors.grey[600],
             fontWeight: FontWeight.w600,
           ),
@@ -528,15 +617,15 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   Widget _buildDescription() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 15),
+      margin: const EdgeInsets.symmetric(horizontal: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Mô tả',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
               color: _textColor,
             ),
           ),
@@ -558,7 +647,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             child: Text(
               _vm.description,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: Colors.grey[700],
                 height: 1.55,
               ),
@@ -571,7 +660,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
   Widget _buildDetails() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -580,16 +669,16 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _addToCart,
-                icon: const Icon(Icons.shopping_cart_outlined),
+                icon: const Icon(Icons.shopping_cart_outlined, size: 20),
                 label: const Text('Thêm vào giỏ sách'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primaryColor,
                   foregroundColor: Colors.white,
                   textStyle: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -710,17 +799,15 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     }
 
     // Lưu vào danh sách đang đọc
-    final readingProvider = Provider.of<ReadingProvider>(
-      context,
-      listen: false,
-    );
-    readingProvider.addOrUpdate(
-      ReadingItem(
-        documentId: _vm.documentId,
-        title: _vm.title,
-        coverPhoto: _vm.coverPhoto,
-        ebookUrl: _vm.ebookUrl!,
-        startedAt: DateTime.now(),
+    context.read<ReadingBloc>().add(
+      ReadingItemAddedOrUpdated(
+        ReadingItem(
+          documentId: _vm.documentId,
+          title: _vm.title,
+          coverPhoto: _vm.coverPhoto,
+          ebookUrl: _vm.ebookUrl!,
+          startedAt: DateTime.now(),
+        ),
       ),
     );
 
@@ -761,22 +848,24 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  // Thêm state variable
-  int _quantity = 1;
-
   void _addToCart() {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final added = _vm.addToCart(cartProvider);
-    if (!added) {
+    final cartState = context.read<CartBloc>().state;
+    final cartItem = _vm.getCartItem(cartState);
+    
+    if (cartItem == null) {
       NotificationService.showInfo(
         context,
         message: 'Sách đã có trong giỏ hàng',
       );
       return;
     }
+    
+    context.read<CartBloc>().add(CartItemAdded(cartItem));
+    _vm.resetQuantity();
+    
     NotificationService.showSuccess(
       context,
-      message: 'Đã thêm $_quantity sách vào giỏ hàng',
+      message: 'Đã thêm ${cartItem.quantity} sách vào giỏ hàng',
     );
   }
 }

@@ -211,35 +211,48 @@ class _MostBorrowedDocumentsPageState extends State<MostBorrowedDocumentsPage> {
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            color: const Color(0xFFFF1744),
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.65,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 20,
-                        ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      if (index >= _documents.length) {
-                        return _hasMore
-                            ? _buildLoadingCard()
-                            : const SizedBox.shrink();
-                      }
-                      return _buildDocumentCard(_documents[index], index + 1);
-                    }, childCount: _documents.length + (_hasMore ? 2 : 0)),
-                  ),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isSmallScreen = screenWidth < 360;
+              
+              // Responsive values
+              final padding = isSmallScreen ? 10.0 : 15.0;
+              final crossAxisSpacing = isSmallScreen ? 12.0 : 16.0;
+              final mainAxisSpacing = isSmallScreen ? 12.0 : 16.0;
+              final childAspectRatio = isSmallScreen ? 0.64 : 0.63;
+              
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                color: const Color(0xFFFF1744),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.all(padding),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: childAspectRatio,
+                              crossAxisSpacing: crossAxisSpacing,
+                              mainAxisSpacing: mainAxisSpacing,
+                            ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          if (index >= _documents.length) {
+                            return _hasMore
+                                ? _buildLoadingCard()
+                                : const SizedBox.shrink();
+                          }
+                          return _buildDocumentCard(_documents[index], index + 1);
+                        }, childCount: _documents.length + (_hasMore ? 2 : 0)),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -300,7 +313,7 @@ class _MostBorrowedDocumentsPageState extends State<MostBorrowedDocumentsPage> {
                           ? Center(
                               child: Icon(
                                 Icons.book_rounded,
-                                size: 48,
+                                size: 54,
                                 color: Colors.grey[400],
                               ),
                             )
@@ -315,7 +328,7 @@ class _MostBorrowedDocumentsPageState extends State<MostBorrowedDocumentsPage> {
                               errorWidget: (context, url, error) => Center(
                                 child: Icon(
                                   Icons.broken_image_rounded,
-                                  size: 48,
+                                  size: 54,
                                   color: Colors.grey[400],
                                 ),
                               ),
@@ -347,7 +360,7 @@ class _MostBorrowedDocumentsPageState extends State<MostBorrowedDocumentsPage> {
                       child: Text(
                         '#$rank',
                         style: GoogleFonts.montserrat(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: rank <= 3 ? Colors.black87 : Colors.white,
                         ),
@@ -358,48 +371,52 @@ class _MostBorrowedDocumentsPageState extends State<MostBorrowedDocumentsPage> {
               ),
             ),
             // Title and Borrow Count
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Title
-                    Text(
+            Container(
+              height: 74,
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Title
+                  Flexible(
+                    child: Text(
                       document.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.montserrat(
-                        fontSize: 14,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF1E1E1E),
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    // Borrow Count
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.local_library_rounded,
-                          size: 16,
-                          color: Colors.orange[600],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
+                  ),
+                  const SizedBox(height: 4),
+                  // Borrow Count
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.local_library_rounded,
+                        size: 15,
+                        color: Colors.orange[600],
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
                           '$borrowCount lượt mượn',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.montserrat(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: Colors.orange[700],
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -422,16 +439,28 @@ class _MostBorrowedDocumentsPageState extends State<MostBorrowedDocumentsPage> {
   }
 
   Widget _buildLoadingGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.65,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 20,
-      ),
-      itemCount: 6,
-      itemBuilder: (context, index) => _buildLoadingCard(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final isSmallScreen = screenWidth < 360;
+        
+        final padding = isSmallScreen ? 12.0 : 16.0;
+        final crossAxisSpacing = isSmallScreen ? 12.0 : 16.0;
+        final mainAxisSpacing = isSmallScreen ? 16.0 : 20.0;
+        final childAspectRatio = isSmallScreen ? 0.64 : 0.63;
+        
+        return GridView.builder(
+          padding: EdgeInsets.all(padding),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: crossAxisSpacing,
+            mainAxisSpacing: mainAxisSpacing,
+          ),
+          itemCount: 6,
+          itemBuilder: (context, index) => _buildLoadingCard(),
+        );
+      },
     );
   }
 }

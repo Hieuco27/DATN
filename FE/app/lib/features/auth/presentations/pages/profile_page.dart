@@ -136,6 +136,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             appBar: AppBar(
               title: const Text(
                 'Tài khoản',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 24,
@@ -149,7 +150,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
               centerTitle: true,
               actions: [
                 Container(
-                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  margin: const EdgeInsets.only(right: 4, top: 8, bottom: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -162,13 +163,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                     ],
                   ),
                   child: IconButton(
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
                     icon: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         const Icon(
                           Icons.notifications_outlined,
                           color: _textColor,
-                          size: 22,
+                          size: 20,
                         ),
                         Positioned(
                           right: -2,
@@ -203,10 +206,12 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                     ],
                   ),
                   child: IconButton(
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
                     icon: const Icon(
                       Icons.settings_outlined,
                       color: _textColor,
-                      size: 22,
+                      size: 20,
                     ),
                     tooltip: 'Cài đặt',
                     onPressed: _openSettings,
@@ -237,9 +242,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
   }
 
   Widget _buildProfileHeader() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.all(24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 360;
+        final margin = isSmallScreen ? 12.0 : 16.0;
+        final padding = isSmallScreen ? 16.0 : 24.0;
+        
+        return Container(
+          margin: EdgeInsets.fromLTRB(margin, margin, margin, 0),
+          padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -267,7 +278,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             return Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
                     shape: BoxShape.circle,
@@ -275,29 +286,29 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                   child: Icon(
                     Icons.error_outline_rounded,
                     color: _primaryColor,
-                    size: 40,
+                    size: 36,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 const Text(
                   'Lỗi tải thông tin',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _textColor,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   state.message,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Colors.grey[600],
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () {
                     final authState = context.read<AuthBloc>().state;
@@ -306,12 +317,12 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                       context.read<ProfileBloc>().add(ProfileLoadRequested());
                     }
                   },
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
                   label: const Text(
                     'Thử lại',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -319,11 +330,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 14,
+                      horizontal: 20,
+                      vertical: 12,
                     ),
                     elevation: 4,
                     shadowColor: _primaryColor.withOpacity(0.3),
@@ -381,15 +392,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             child: Row(
               children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 70,
+                  height: 70,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
                         color: _primaryColor.withOpacity(0.3),
@@ -400,19 +411,20 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                   ),
                   child: const Icon(
                     Icons.person_rounded,
-                    size: 36,
+                    size: 32,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         userName,
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: _textColor,
                           letterSpacing: -0.3,
@@ -420,43 +432,50 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 8,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEDF2F7),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.badge_rounded,
-                              size: 14,
+                              size: 12,
                               color: Colors.grey[700],
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'ID: $displayId',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
+                            Flexible(
+                              child: Text(
+                                'ID: $displayId',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             'Xem hồ sơ',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               color: _primaryColor,
                               fontWeight: FontWeight.w600,
                             ),
@@ -464,13 +483,13 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                           const SizedBox(width: 4),
                           Icon(
                             Icons.arrow_forward_ios_rounded,
-                            size: 12,
+                            size: 11,
                             color: _primaryColor,
                           ),
                         ],
                       ),
                       // Hiển thị trạng thái thành viên hoặc nút nâng cấp
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 6),
                       _buildMembershipStatus(state),
 
                       // Text(
@@ -517,6 +536,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
           );
         },
       ),
+        );
+      },
     );
   }
 
@@ -636,12 +657,12 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
           bottom: isLast ? const Radius.circular(24) : Radius.zero,
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   gradient: textColor == null
                       ? LinearGradient(
@@ -652,17 +673,17 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                         )
                       : null,
                   color: textColor != null ? itemColor.withOpacity(0.1) : null,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: itemColor, size: 22),
+                child: Icon(icon, color: itemColor, size: 20),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
                     color: textColor ?? _textColor,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                   ),
@@ -671,7 +692,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 color: textColor ?? Colors.grey[400],
-                size: 14,
+                size: 13,
               ),
             ],
           ),
@@ -919,24 +940,28 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
 
     if (hasFullMembership && !shouldPromptUpgrade) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.blue.shade400, Colors.blue.shade600],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.card_membership, color: Colors.white, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              cardType.typeName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+            const Icon(Icons.card_membership, color: Colors.white, size: 14),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                cardType.typeName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -954,12 +979,12 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
     return InkWell(
       onTap: _navigateToUpgradeMembership,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [_primaryColor, _primaryColor.withOpacity(0.85)],
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: _primaryColor.withOpacity(0.3),
@@ -971,34 +996,41 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.upgrade, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+            const Icon(Icons.upgrade, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 6),
             const Icon(
               Icons.arrow_forward_ios_rounded,
               color: Colors.white,
-              size: 14,
+              size: 12,
             ),
           ],
         ),

@@ -26,7 +26,6 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
       body: AppGradientBackground(
         child: BlocListener<AuthBloc, AuthState>(
           listener: (context, state) => _handleAuthState(context, state),
@@ -35,32 +34,55 @@ class _SignInPageState extends State<SignInPage> {
               if (state is AuthLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
-              return Form(
-                key: _formKey,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Sign In',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 60,
-                          fontWeight: FontWeight.bold,
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final screenWidth = constraints.maxWidth;
+                  final isSmallScreen = screenWidth < 360;
+                  final isMediumScreen = screenWidth < 380;
+                  
+                  // Responsive values
+                  final horizontalPadding = isSmallScreen ? 20.0 : 15.0;
+                  final titleFontSize = isSmallScreen ? 48.0 : (isMediumScreen ? 54.0 : 60.0);
+                  final spacing1 = isSmallScreen ? 20.0 : 30.0;
+                  final spacing2 = isSmallScreen ? 12.0 : 15.0;
+                  
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: IntrinsicHeight(
+                        child: Form(
+                          key: _formKey,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Sign In',
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: titleFontSize,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: spacing1),
+                                _buildEmailField(),
+                                SizedBox(height: spacing2),
+                                _buildPasswordField(),
+                                SizedBox(height: spacing2),
+                                _buildSignInButton(),
+                                SizedBox(height: spacing2),
+                                _buildSignUpNavigation(context),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      SizedBox(height: 30),
-                      _buildEmailField(),
-                      SizedBox(height: 15),
-                      _buildPasswordField(),
-                      SizedBox(height: 15),
-                      _buildSignInButton(),
-                      SizedBox(height: 15),
-                      _buildSignUpNavigation(context),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
           ),

@@ -32,14 +32,14 @@ class ProfileDetailPage extends StatelessWidget {
               color: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  vertical: 20,
-                  horizontal: 16,
+                  vertical: 14,
+                  horizontal: 10,
                 ),
                 child: Column(
                   children: [
                     Container(
-                      width: 82,
-                      height: 82,
+                      width: 60,
+                      height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
@@ -68,7 +68,7 @@ class ProfileDetailPage extends StatelessWidget {
                       profile.fullName ?? '---',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
@@ -78,31 +78,38 @@ class ProfileDetailPage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (profile.email != null && profile.email!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.email_outlined,
-                                  size: 14,
-                                  color: Colors.blue.shade600,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  profile.email!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue.shade700,
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.email_outlined,
+                                    size: 14,
+                                    color: Colors.blue.shade600,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      profile.email!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                       ],
@@ -114,6 +121,7 @@ class ProfileDetailPage extends StatelessWidget {
                         _contactInfo(
                           Icons.phone_outlined,
                           profile.phoneNumber ?? '---',
+                          
                         ),
                       ],
                     ),
@@ -132,7 +140,7 @@ class ProfileDetailPage extends StatelessWidget {
                 elevation: 3,
                 color: Colors.blue.shade50,
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(10),
                   child: Builder(
                     builder: (context) {
                       final memberCard = profile.memberCard!;
@@ -143,78 +151,89 @@ class ProfileDetailPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade600,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(
                                   Icons.card_membership,
                                   color: Colors.white,
-                                  size: 24,
+                                  size: 14,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
                                       'Thẻ thành viên thư viện',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.black87,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      cardType?.typeName ?? 'N/A',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.blue.shade800,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: memberCard.status == 'ACTIVE'
-                                      ? Colors.green.shade100
-                                      : Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      memberCard.status == 'ACTIVE'
-                                          ? Icons.check_circle
-                                          : Icons.cancel,
-                                      size: 14,
-                                      color: memberCard.status == 'ACTIVE'
-                                          ? Colors.green.shade700
-                                          : Colors.grey.shade700,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      memberCard.status == 'ACTIVE'
-                                          ? 'Đang hoạt động'
-                                          : 'Không hoạt động',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: memberCard.status == 'ACTIVE'
-                                            ? Colors.green.shade700
-                                            : Colors.grey.shade700,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          cardType?.typeName ?? 'N/A',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.blue.shade800,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: memberCard.status == 'ACTIVE'
+                                                ? Colors.green.shade100
+                                                : Colors.grey.shade200,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                memberCard.status == 'ACTIVE'
+                                                    ? Icons.check_circle
+                                                    : Icons.cancel,
+                                                size: 11,
+                                                color: memberCard.status == 'ACTIVE'
+                                                    ? Colors.green.shade700
+                                                    : Colors.grey.shade700,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                memberCard.status == 'ACTIVE'
+                                                    ? 'Hoạt động'
+                                                    : 'Không hoạt động',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: memberCard.status == 'ACTIVE'
+                                                      ? Colors.green.shade700
+                                                      : Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -273,8 +292,10 @@ class ProfileDetailPage extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     'Giới hạn: ${cardType.maxBorrowLimit} quyển / ${cardType.borrowDuration} ngày',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       color: Colors.grey.shade600,
                                     ),
                                   ),
@@ -460,8 +481,10 @@ class ProfileDetailPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${value ?? "Chưa cập nhật"}',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: Colors.black87,
                   ),
@@ -489,9 +512,14 @@ class ProfileDetailPage extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            '${value ?? ""}',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          Flexible(
+            child: Text(
+              '${value ?? ""}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
           ),
         ],
       ),
@@ -521,8 +549,10 @@ class ProfileDetailPage extends StatelessWidget {
         Expanded(
           child: Text(
             value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               color: Colors.black87,
               fontWeight: FontWeight.w600,
             ),
@@ -537,11 +567,15 @@ class ProfileDetailPage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(Icons.check_circle, size: 16, color: Colors.green.shade600),
+          Icon(Icons.check_circle, size: 15, color: Colors.green.shade600),
           const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+            ),
           ),
         ],
       ),

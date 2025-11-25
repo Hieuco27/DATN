@@ -21,32 +21,36 @@ import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/search_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/splash_page.dart';
-import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
-import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
-import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
+// ✅ BLoC imports (migration complete for Cart, Wishlist, Reading)
+import 'package:book_tech/features/auth/presentations/bloc/cart_bloc.dart';
+import 'package:book_tech/features/auth/presentations/bloc/wishlist_bloc.dart';
+import 'package:book_tech/features/auth/presentations/bloc/reading_bloc.dart';
 import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Global RouteObserver để track navigation trong app
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Only show splash on first app launch
+  
   final prefs = await SharedPreferences.getInstance();
-  final hasSeenSplash = prefs.getBool('has_seen_splash') ?? false;
-  if (!hasSeenSplash) {
-    await prefs.setBool('has_seen_splash', true);
-  }
+  final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;
 
-  // Khởi tạo các dependencies
   final remoteDataSource = AuthenticationRemoteDataSourceImpl();
   final localStorageDataSource = LocalStorageDataSourceImpl();
+  
+  await localStorageDataSource.initialize();
+  
   final authRepository = AuthenticationRepositoryImpl(
     remoteDataSource: remoteDataSource,
     localStorageDataSource: localStorageDataSource,
   );
+  
   runApp(
-    MyApp(authRepository: authRepository, showSplashOnStart: !hasSeenSplash),
+    MyApp(authRepository: authRepository, showSplashOnStart: !hasLoggedInBefore),
   );
 }
 
@@ -80,23 +84,36 @@ class MyApp extends StatelessWidget {
         Provider<DocumentRepository>(
           create: (context) => context.read<DocumentRepositoryImpl>(),
         ),
-        // SearchProvider có thể đọc DocumentRepositoryImpl
+        // ✅ Migration to BLoC-only: Replace all Providers with BLoCs
+        // SearchProvider → SearchBloc (TODO: implement SearchBloc)
         ChangeNotifierProvider(
           create: (context) => SearchProvider(
             Provider.of<DocumentRepository>(context, listen: false),
           ),
         ),
+        // DocumentProvider → DocumentBloc (TODO: implement DocumentBloc)
         ChangeNotifierProvider<DocumentProvider>(
           create: (ctx) => DocumentProvider(ctx.read<DocumentRepositoryImpl>()),
         ),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
-        ChangeNotifierProvider(create: (_) => WishlistProvider()),
-        ChangeNotifierProvider(create: (_) => ReadingProvider()),
+        
+        // ✅ BLoC implementations (simple features done)
+        BlocProvider(
+          create: (_) => CartBloc(),
+        ),
+        BlocProvider(
+          create: (_) => WishlistBloc(),
+        ),
+        BlocProvider(
+          create: (_) => ReadingBloc(),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Book Tech',
         theme: AppTheme.darkThemeMode,
+        navigatorObservers: [
+          routeObserver, // ✅ Global observer cho RouteAware
+        ],
         home: showSplashOnStart ? const SplashPage() : const AuthWrapper(),
         onGenerateRoute: (settings) {
           switch (settings.name) {
@@ -155,8 +172,6 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        print('🔄 Auth state changed: ${state.runtimeType}');
-
         if (state is AuthAuthenticated) {
           // Navigate to main home page when authenticated
           // Use addPostFrameCallback to avoid Navigator lock during build
@@ -171,8 +186,6 @@ class AuthWrapper extends StatelessWidget {
       },
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
-          print('🔄 Building AuthWrapper with state: ${state.runtimeType}');
-
           if (state is AuthLoading) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),

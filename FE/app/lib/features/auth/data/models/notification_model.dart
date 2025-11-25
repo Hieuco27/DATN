@@ -1,13 +1,17 @@
 class NotificationModel {
   final int notificationID;
   final int readerId;
-  final String type; // SYSTEM, LOAN_PENDING, LOAN_APPROVED, etc.
+  final String type; // reservation, system, loan_approved, loan_rejected, etc.
   final String title;
   final String content;
   final bool isRead;
-  final String priority;
+  final String priority; // normal, high, urgent
+  final String? link; // Deep link to related page
   final DateTime? readAt;
+  final DateTime? emailAt;
+  final bool deleted;
   final DateTime createdAt;
+  final DateTime updatedAt;
 
   NotificationModel({
     required this.notificationID,
@@ -17,23 +21,38 @@ class NotificationModel {
     required this.content,
     required this.isRead,
     required this.priority,
+    this.link,
     this.readAt,
+    this.emailAt,
+    required this.deleted,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       notificationID: json['notificationID'] as int,
       readerId: json['readerId'] as int,
-      type: json['type'] as String,
-      title: json['title'] as String,
-      content: json['content'] as String,
-      isRead: (json['isRead'] as int? ?? 0) == 1,
-      priority: json['priority'] as String,
-      readAt: json['readAt'] != null
-          ? DateTime.parse(json['readAt'] as String)
+      type: json['type'] as String? ?? 'system',
+      title: json['title'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      // Handle both boolean and integer isRead
+      isRead: json['isRead'] is bool 
+          ? json['isRead'] as bool 
+          : (json['isRead'] as int? ?? 0) == 1,
+      priority: json['priority'] as String? ?? 'normal',
+      link: json['link'] as String?,
+      readAt: json['readAt'] != null && json['readAt'] != 'null'
+          ? DateTime.tryParse(json['readAt'] as String)
           : null,
+      emailAt: json['emailAt'] != null && json['emailAt'] != 'null'
+          ? DateTime.tryParse(json['emailAt'] as String)
+          : null,
+      deleted: json['deleted'] is bool
+          ? json['deleted'] as bool
+          : (json['deleted'] as int? ?? 0) == 1,
       createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
@@ -44,9 +63,14 @@ class NotificationModel {
       'type': type,
       'title': title,
       'content': content,
-      'isRead': isRead ? 1 : 0,
+      'isRead': isRead,
+      'priority': priority,
+      'link': link,
       'readAt': readAt?.toIso8601String(),
+      'emailAt': emailAt?.toIso8601String(),
+      'deleted': deleted,
       'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
@@ -58,8 +82,12 @@ class NotificationModel {
     String? content,
     bool? isRead,
     String? priority,
+    String? link,
     DateTime? readAt,
+    DateTime? emailAt,
+    bool? deleted,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return NotificationModel(
       notificationID: notificationID ?? this.notificationID,
@@ -69,8 +97,12 @@ class NotificationModel {
       content: content ?? this.content,
       isRead: isRead ?? this.isRead,
       priority: priority ?? this.priority,
+      link: link ?? this.link,
       readAt: readAt ?? this.readAt,
+      emailAt: emailAt ?? this.emailAt,
+      deleted: deleted ?? this.deleted,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

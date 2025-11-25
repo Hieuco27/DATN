@@ -110,6 +110,36 @@ class EbookSettingsService {
     await prefs.setString('${_highlightsKey}_$bookId', highlightsJson);
   }
 
+  static Future<void> updateHighlight(
+    String bookId,
+    EbookHighlight highlight,
+  ) async {
+    final highlights = await getHighlights(bookId);
+    final index = highlights.indexWhere((h) => h.id == highlight.id);
+    
+    if (index != -1) {
+      highlights[index] = highlight;
+      
+      final prefs = await SharedPreferences.getInstance();
+      final highlightsJson = json.encode(
+        highlights
+            .map(
+              (h) => {
+                'id': h.id,
+                'text': h.text,
+                'pageNumber': h.pageNumber,
+                'note': h.note,
+                'createdAt': h.createdAt.toIso8601String(),
+                'color': h.color,
+              },
+            )
+            .toList(),
+      );
+
+      await prefs.setString('${_highlightsKey}_$bookId', highlightsJson);
+    }
+  }
+
   static Future<void> deleteHighlight(String bookId, String highlightId) async {
     final highlights = await getHighlights(bookId);
     highlights.removeWhere((h) => h.id == highlightId);
@@ -131,6 +161,55 @@ class EbookSettingsService {
     );
 
     await prefs.setString('${_highlightsKey}_$bookId', highlightsJson);
+  }
+
+  static Future<String> exportHighlightsToJson(String bookId) async {
+    final highlights = await getHighlights(bookId);
+    
+    final exportData = {
+      'bookId': bookId,
+      'exportDate': DateTime.now().toIso8601String(),
+      'totalHighlights': highlights.length,
+      'highlights': highlights
+          .map(
+            (h) => {
+              'id': h.id,
+              'text': h.text,
+              'pageNumber': h.pageNumber,
+              'note': h.note,
+              'createdAt': h.createdAt.toIso8601String(),
+              'color': h.color,
+            },
+          )
+          .toList(),
+    };
+    
+    return json.encode(exportData);
+  }
+
+  static Future<String> exportHighlightsToText(String bookId) async {
+    final highlights = await getHighlights(bookId);
+    
+    final buffer = StringBuffer();
+    buffer.writeln('═══════════════════════════════════════');
+    buffer.writeln('HIGHLIGHTS EXPORT');
+    buffer.writeln('Book: $bookId');
+    buffer.writeln('Date: ${DateTime.now().toString()}');
+    buffer.writeln('Total: ${highlights.length} highlights');
+    buffer.writeln('═══════════════════════════════════════\n');
+    
+    for (var i = 0; i < highlights.length; i++) {
+      final h = highlights[i];
+      buffer.writeln('${i + 1}. [Page ${h.pageNumber}] - ${h.color}');
+      buffer.writeln('   "${h.text}"');
+      if (h.note != null && h.note!.isNotEmpty) {
+        buffer.writeln('   Note: ${h.note}');
+      }
+      buffer.writeln('   Created: ${h.createdAt}');
+      buffer.writeln();
+    }
+    
+    return buffer.toString();
   }
 
   // Reading progress

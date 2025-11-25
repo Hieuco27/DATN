@@ -117,30 +117,45 @@ class _GenresListPageState extends State<GenresListPage> {
             );
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.70,
-            ),
-            itemCount: genres.length,
-            itemBuilder: (context, index) {
-              final g = genres[index];
-              final name = g.name.toUpperCase();
-              final img = _pickImageForGenre(g);
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isSmallScreen = screenWidth < 360;
+              final isMediumScreen = screenWidth < 380;
+              
+              // Responsive values
+              final padding = isSmallScreen ? 8.0 : 12.0;
+              final spacing = isSmallScreen ? 8.0 : 12.0;
+              final crossAxisCount = isSmallScreen ? 2 : 3;
+              final childAspectRatio = isSmallScreen ? 0.75 : (isMediumScreen ? 0.72 : 0.70);
+              
+              return GridView.builder(
+                padding: EdgeInsets.all(padding),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                  childAspectRatio: childAspectRatio,
+                ),
+                itemCount: genres.length,
+                itemBuilder: (context, index) {
+                  final g = genres[index];
+                  final name = g.name.toUpperCase();
+                  final img = _pickImageForGenre(g);
 
-              return _GenreTile(
-                title: name,
-                imageUrl: img,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          GenreBooksPage(genreName: g.name, genreId: g.genreId),
-                    ),
+                  return _GenreTile(
+                    title: name,
+                    imageUrl: img,
+                    isSmallScreen: isSmallScreen,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              GenreBooksPage(genreName: g.name, genreId: g.genreId),
+                        ),
+                      );
+                    },
                   );
                 },
               );
@@ -156,8 +171,14 @@ class _GenreTile extends StatelessWidget {
   final String title;
   final String? imageUrl;
   final VoidCallback onTap;
+  final bool isSmallScreen;
 
-  const _GenreTile({required this.title, required this.onTap, this.imageUrl});
+  const _GenreTile({
+    required this.title,
+    required this.onTap,
+    this.imageUrl,
+    this.isSmallScreen = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +206,10 @@ class _GenreTile extends StatelessWidget {
           // Khung chữ giữa như ảnh mẫu
           Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 8 : 10,
+                vertical: isSmallScreen ? 6 : 8,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(6),
@@ -196,10 +220,10 @@ class _GenreTile extends StatelessWidget {
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
+                  fontSize: isSmallScreen ? 11.0 : 12.5,
                   letterSpacing: 0.3,
                 ),
               ),

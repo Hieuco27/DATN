@@ -40,42 +40,70 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
       body: AppGradientBackground(
         child: BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
             _handleAuthState(context, state);
           },
-          child: Form(
-            key: _formKey,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 50,
-                      fontWeight: FontWeight.bold,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final screenHeight = constraints.maxHeight;
+              final isSmallScreen = screenWidth < 360;
+              final isMediumScreen = screenWidth < 380;
+              final isShortScreen = screenHeight < 700;
+              
+              // Responsive values
+              final horizontalPadding = isSmallScreen ? 20.0 : 15.0;
+              final titleFontSize = isSmallScreen ? 40.0 : (isMediumScreen ? 45.0 : 50.0);
+              final spacing1 = isSmallScreen || isShortScreen ? 18.0 : 30.0;
+              final spacing2 = isSmallScreen || isShortScreen ? 10.0 : 15.0;
+              final spacing3 = isSmallScreen || isShortScreen ? 12.0 : 20.0;
+              
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: _formKey,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: isShortScreen ? 40 : 60,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: titleFontSize,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: spacing1),
+                            _buildNameField(),
+                            SizedBox(height: spacing2),
+                            _buildEmailField(),
+                            SizedBox(height: spacing2),
+                            _buildPasswordField(),
+                            SizedBox(height: spacing2),
+                            _buildPhoneField(),
+                            SizedBox(height: spacing3),
+                            _buildSignUpButton(),
+                            SizedBox(height: spacing2),
+                            _buildSignInNavigation(context),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 30),
-                  _buildNameField(),
-                  const SizedBox(height: 15),
-                  _buildEmailField(),
-                  const SizedBox(height: 15),
-                  _buildPasswordField(),
-                  const SizedBox(height: 15),
-                  _buildPhoneField(),
-                  const SizedBox(height: 20),
-                  _buildSignUpButton(),
-                  const SizedBox(height: 15),
-                  _buildSignInNavigation(context),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

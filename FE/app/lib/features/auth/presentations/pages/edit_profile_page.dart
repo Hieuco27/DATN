@@ -98,20 +98,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           actions: [
-            Container(
-              margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 10,
-                  ),
-                ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
+                  margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _saveProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                    ),
                 child: _isLoading
                     ? const SizedBox(
                         width: 20,
@@ -130,18 +132,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-              ),
+                  ),
+                );
+              },
             ),
           ],
         ),
         body: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Profile Header
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(20),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isSmallScreen = screenWidth < 360;
+              final margin = isSmallScreen ? 12.0 : 16.0;
+              final padding = isSmallScreen ? 16.0 : 20.0;
+              
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Profile Header
+                    Container(
+                      margin: EdgeInsets.all(margin),
+                      padding: EdgeInsets.all(padding),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
@@ -181,8 +192,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       Text(
                         widget.profile.fullName ?? '',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 16 : 18,
                           fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
@@ -191,8 +204,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       Text(
                         widget.profile.email ?? '',
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12 : 14,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -201,7 +216,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         'ID: ${widget.profile.readerId}',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12 : 14,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -211,8 +226,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                 // Form Fields
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(20),
+                  margin: EdgeInsets.symmetric(horizontal: margin),
+                  padding: EdgeInsets.all(padding),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -289,13 +304,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           icon: Icons.note_rounded,
                           maxLines: 3,
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+            },
           ),
         ),
       ),

@@ -30,7 +30,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
   bool _isResending = false;
-  int _countdown = 60;
+  int _countdown = 59;
 
   @override
   void initState() {
@@ -149,7 +149,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       await repository.registerInit(widget.email);
 
       setState(() {
-        _countdown = 60;
+        _countdown = 59;
         _isResending = false;
       });
 
@@ -202,8 +202,8 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 520),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 28,
+                  horizontal: 20,
+                  vertical: 24,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -219,156 +219,286 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Icon với animation subtle
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppPalette.gradient2.withOpacity(0.1),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppPalette.gradient2.withOpacity(0.1),
+                            AppPalette.gradient1.withOpacity(0.1),
+                          ],
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.email_outlined,
-                        size: 40,
+                        Icons.mark_email_read_outlined,
+                        size: 48,
                         color: AppPalette.gradient2,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
+                    const SizedBox(height: 20),
+                    
+                    // Title
+                    const Text(
                       'Xác thực Email',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppPalette.gradient1,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Chúng tôi đã gửi mã OTP 6 số đến\n${widget.email}',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 28),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(
-                        6,
-                        (index) => SizedBox(
-                          width: 48,
-                          child: TextField(
-                            controller: _otpControllers[index],
-                            focusNode: _focusNodes[index],
-                            textAlign: TextAlign.center,
-                            keyboardType: TextInputType.number,
-                            maxLength: 1,
-                            textInputAction: index < 5
-                                ? TextInputAction.next
-                                : TextInputAction.done,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              filled: true,
-                              fillColor: const Color(0xFFF8FAFF),
-                              contentPadding: EdgeInsets.zero,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: const Color(0xFFE0E6F3),
-                                  width: 1.2,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: AppPalette.gradient2,
-                                  width: 1.6,
-                                ),
-                              ),
-                            ),
-                            onChanged: (value) => _onOtpChanged(index, value),
-                          ),
-                        ),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppPalette.gradient1,
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+                    
+                    // Description with email - Fix overflow
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Nhập mã OTP gửi đến',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.black54,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 280),
+                            child: Text(
+                              widget.email,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppPalette.gradient2,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                 const SizedBox(height: 24),
+                    
+                    // OTP Input Fields - Responsive width
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Calculate spacing based on available width
+                          final availableWidth = constraints.maxWidth;
+                          final spacing = availableWidth > 400 ? 6.0 : 3.0;
+                          final totalSpacing = spacing * 5; // 5 gaps between 6 boxes
+                          final boxWidth = (availableWidth - totalSpacing - 12) / 6;
+                          final clampedWidth = boxWidth.clamp(30.0, 40.0);
+                        
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              6,
+                              (index) => Padding(
+                                padding: EdgeInsets.only(
+                                  right: index < 5 ? spacing / 2 : 0,
+                                  left: index > 0 ? spacing / 2 : 0,
+                                ),
+                                child: SizedBox(
+                                  width: clampedWidth,
+                                  height: clampedWidth + 6,
+                                  child: TextField(
+                                    controller: _otpControllers[index],
+                                    focusNode: _focusNodes[index],
+                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 1,
+                                    textInputAction: index < 5
+                                        ? TextInputAction.next
+                                        : TextInputAction.done,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppPalette.gradient1,
+                                    ),
+                                    decoration: InputDecoration(
+                                      counterText: '',
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8FAFF),
+                                      contentPadding: EdgeInsets.zero,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE0E6F3),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                          color: AppPalette.gradient2,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      errorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                          color: Colors.redAccent,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    onChanged: (value) => _onOtpChanged(index, value),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Verify Button
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
+                      height: 54,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _verifyOtp,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppPalette.gradient1,
+                          backgroundColor: AppPalette.gradient2,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          elevation: 0,
+                          elevation: _isLoading ? 0 : 2,
+                          shadowColor: AppPalette.gradient2.withOpacity(0.3),
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                                width: 22,
-                                height: 22,
+                                width: 24,
+                                height: 24,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: 2.5,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     Colors.white,
                                   ),
                                 ),
                               )
                             : const Text(
-                                'Xác thực',
+                                'Xác thực OTP',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Không nhận được mã? ',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: Colors.black54),
-                        ),
-                        TextButton(
-                          onPressed: _isResending || _countdown > 0
-                              ? null
-                              : _resendOtp,
-                          child: Text(
-                            _countdown > 0
-                                ? 'Gửi lại sau ($_countdown)'
-                                : 'Gửi lại',
+                    const SizedBox(height: 24),
+                    
+                    // Resend section - Fix overflow
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Không nhận được mã?',
                             style: TextStyle(
-                              color: _isResending || _countdown > 0
-                                  ? Colors.black26
-                                  : AppPalette.gradient2,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.black54,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          _countdown > 0
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    'Gửi lại sau ${_countdown}s',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black26,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                )
+                              : TextButton.icon(
+                                  onPressed: _isResending ? null : _resendOtp,
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    backgroundColor:
+                                        AppPalette.gradient2.withOpacity(0.08),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: _isResending
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              AppPalette.gradient2,
+                                            ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.refresh_rounded,
+                                          size: 16,
+                                          color: AppPalette.gradient2,
+                                        ),
+                                  label: const Text(
+                                    'Gửi lại OTP',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppPalette.gradient2,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    TextButton(
+                    const SizedBox(height: 12),
+                    
+                    // Back to login
+                    TextButton.icon(
                       onPressed: () {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(builder: (_) => const SignInPage()),
                         );
                       },
-                      child: Text(
-                        'Quay lại đăng nhập',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        size: 16,
+                        color: Colors.black45,
+                      ),
+                      label: const Text(
+                        'Đăng nhập',
+                        style: TextStyle(
+                          fontSize: 13,
                           color: Colors.black45,
                           fontWeight: FontWeight.w500,
                         ),

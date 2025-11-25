@@ -47,6 +47,7 @@ dependencies:
   get_it: ^7.6.4
   equatable: ^2.0.5
   shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0 # Secure storage cho tokens
   webview_flutter: ^4.4.00
 
   # Thư viện ebook reader
@@ -70,14 +71,16 @@ dependencies:
   # Chọn ảnh từ thư viện
   image_picker: ^1.1.2
 
-  # file_picker: ^6.1.1 # Chọn file từ thiết bị
+  file_picker: ^8.1.4 # Chọn file từ thiết bị
   # permission_handler: ^11.0.1 # Quản lý quyền truy cập
   cached_network_image: ^3.3.0 # Cache hình ảnh
+  share_plus: ^7.2.1 # Share files
   another_flushbar: ^1.12.30 # Snackbar thay thế, đẹp hơn
   chips_choice: ^3.0.0
   screen_brightness: ^1.0.1
   url_launcher: ^6.2.0
   qr_flutter: ^4.1.0
+  socket_io_client: ^2.0.3
 
   # Override dependencies để fix compatibility issues
 dependency_overrides:

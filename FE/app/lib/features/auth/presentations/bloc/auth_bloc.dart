@@ -8,6 +8,7 @@ import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/core/result.dart';
 import '../../domain/core/failure.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthenticationRepository _authRepository;
@@ -48,6 +49,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             print(
               '✅ [AuthBloc] RoleId check passed, user is a reader. Allowing login.',
             );
+            // Set flag for first successful login
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('has_logged_in_before', true);
             emit(AuthAuthenticated(account: response.data!));
           } else {
             print(
@@ -89,6 +93,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (result.isSuccess && result.value != null) {
         final response = result.value!;
         if (response.success && response.data != null) {
+          // Set flag for first successful registration/login
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('has_logged_in_before', true);
           emit(AuthAuthenticated(account: response.data!));
         } else {
           emit(AuthError(message: response.message));

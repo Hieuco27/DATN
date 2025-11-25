@@ -393,14 +393,17 @@ class _SearchPageState extends State<SearchPage>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Lịch sử tìm kiếm',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textPrimary,
+                            Expanded(
+                              child: Text(
+                                'Lịch sử tìm kiếm',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             TextButton.icon(
                               onPressed: () async {
                                 // Hiển thị dialog xác nhận

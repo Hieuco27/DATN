@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/cart_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/cart_bloc.dart';
+import '../bloc/cart_event.dart';
+import '../bloc/cart_state.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 import '../../domain/repositories/document_repository.dart';
+import '../../data/repositories/loan_repository.dart';
 // removed unused model import
 import 'package:book_tech/core/ui/notification_service.dart';
+import 'package:book_tech/core/ui/overlay_notification_service.dart';
+import 'package:book_tech/core/utils/app_logger.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -19,6 +25,11 @@ class _CartPageState extends State<CartPage>
   bool _isSubmitting = false;
   final Set<int> _selectedItems = {};
   late AnimationController _animationController;
+  
+  // Theo dõi số sách đang mượn
+  int _activeBorrowCount = 0;
+  bool _isLoadingBorrowStatus = true;
+  static const int _maxBorrowLimit = 3;
 
   @override
   void initState() {
@@ -27,6 +38,57 @@ class _CartPageState extends State<CartPage>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _checkActiveBorrowCount();
+  }
+
+  /// Kiểm tra số sách đang mượn (không bao gồm RETURNED)
+  Future<void> _checkActiveBorrowCount() async {
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is! AuthAuthenticated) {
+        setState(() => _isLoadingBorrowStatus = false);
+        return;
+      }
+
+      final loanRepo = Provider.of<LoanRepository>(context, listen: false);
+      
+      // Lấy tất cả borrow history (page 1, limit lớn để lấy hết)
+      final response = await loanRepo.getMyLoans(page: 1, limit: 100);
+      
+      // Đếm số sách đang active (không phải RETURNED)
+      int activeCount = 0;
+      for (final loan in response.data) {
+        final status = loan.status.toUpperCase();
+        // Các trạng thái tính là "đang mượn":
+        // PENDING, WAITING_FOR_PICKUP, APPROVED, BORROWING, OVERDUE
+        if (status != 'RETURNED') {
+          // Mỗi loan có thể có nhiều details (nhiều sách)
+          activeCount += loan.details.length;
+        }
+      }
+      
+      log.i('Active borrow count: $activeCount/$_maxBorrowLimit', 'CartPage');
+      
+      setState(() {
+        _activeBorrowCount = activeCount;
+        _isLoadingBorrowStatus = false;
+      });
+      
+      // Nếu đã đạt giới hạn, hiển thị thông báo
+      if (activeCount >= _maxBorrowLimit && mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            NotificationService.showInfo(
+              context,
+              message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển sách. Vui lòng trả sách trước khi mượn thêm.',
+            );
+          }
+        });
+      }
+    } catch (e) {
+      log.e('Failed to check borrow count', e, 'CartPage');
+      setState(() => _isLoadingBorrowStatus = false);
+    }
   }
 
   @override
@@ -35,24 +97,62 @@ class _CartPageState extends State<CartPage>
     super.dispose();
   }
 
-  Future<void> _submitReservation() async {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+  void _toggleItemSelection(int documentId, bool isCurrentlySelected) {
+    setState(() {
+      if (isCurrentlySelected) {
+        _selectedItems.remove(documentId);
+      } else {
+        // Kiểm tra tổng số sách (đang mượn + sẽ chọn)
+        final totalAfterSelect = _activeBorrowCount + _selectedItems.length + 1;
+        
+        if (totalAfterSelect > _maxBorrowLimit) {
+          NotificationService.showInfo(
+            context,
+            message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển. Hiện đang mượn $_activeBorrowCount quyển.',
+          );
+        } else if (_selectedItems.length >= 3) {
+          NotificationService.showInfo(
+            context,
+            message: 'Chỉ được chọn tối đa 3 quyển mỗi lần.',
+          );
+        } else {
+          _selectedItems.add(documentId);
+          _animationController.forward(from: 0);
+        }
+      }
+    });
+  }
 
-    final selected = cartProvider.items
+  Future<void> _submitReservation() async {
+    final cartState = context.read<CartBloc>().state;
+    if (cartState is! CartLoaded) return;
+
+    final selected = cartState.items
         .where((i) => _selectedItems.contains(i.documentId))
         .toList();
 
     if (selected.isEmpty) {
       NotificationService.showInfo(
         context,
-        message: 'Vui lòng chọn sách (tối đa 3) để đăng ký.',
+        message: 'Vui lòng chọn sách để đăng ký.',
       );
       return;
     }
+    
+    // Kiểm tra giới hạn tổng số sách
+    final totalAfterSubmit = _activeBorrowCount + selected.length;
+    if (totalAfterSubmit > _maxBorrowLimit) {
+      NotificationService.showInfo(
+        context,
+        message: 'Vượt quá giới hạn $_maxBorrowLimit quyển. Bạn đang mượn $_activeBorrowCount quyển, không thể mượn thêm ${selected.length} quyển nữa.',
+      );
+      return;
+    }
+    
     if (selected.length > 3) {
       NotificationService.showInfo(
         context,
-        message: 'Chỉ được chọn tối đa 3 sách.',
+        message: 'Chỉ được chọn tối đa 3 quyển mỗi lần.',
       );
       return;
     }
@@ -80,16 +180,32 @@ class _CartPageState extends State<CartPage>
 
       // Clear chỉ các sách đã chọn khỏi giỏ
       for (final it in selected) {
-        cartProvider.removeItem(it.documentId);
+        context.read<CartBloc>().add(CartItemRemoved(it.documentId));
       }
       _selectedItems.clear();
 
       if (mounted) {
+        // Show overlay notification giống Messenger
+        OverlayNotificationService.show(
+          context,
+          title: 'Đặt mượn thành công! 🎉',
+          message: 'Đã gửi yêu cầu mượn ${selected.length} quyển sách. Chờ thư viện duyệt.',
+          icon: Icons.check_circle_rounded,
+          iconColor: Colors.green,
+          duration: const Duration(seconds: 5),
+          onTap: () {
+            // Navigate to notifications page nếu user click vào notification
+            Navigator.pushNamed(context, '/notifications');
+          },
+        );
+        
+        // Show snackbar phụ
         NotificationService.showSuccess(
           context,
           message: result['message'] ?? 'Đăng ký mượn thành công!',
         );
-        // Tránh Navigator đang locked khi Flushbar đang push route
+        
+        // Tránh Navigator đang locked
         await Future.delayed(const Duration(milliseconds: 300));
         if (!mounted) return;
         if (Navigator.of(context).canPop()) {
@@ -139,7 +255,7 @@ class _CartPageState extends State<CartPage>
               ),
             ),
             title: Text(
-              'Giỏ hàng',
+              'Giỏ sách',
               style: TextStyle(
                 color: Color(0xFF1A202C),
                 fontSize: 24,
@@ -150,9 +266,9 @@ class _CartPageState extends State<CartPage>
             centerTitle: true,
             titleSpacing: 0,
             actions: [
-              Consumer<CartProvider>(
-                builder: (context, cart, _) {
-                  if (cart.items.isEmpty) return const SizedBox.shrink();
+              BlocBuilder<CartBloc, CartState>(
+                builder: (context, state) {
+                  if (state is! CartLoaded || state.items.isEmpty) return const SizedBox.shrink();
                   return Container(
                     margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
                     decoration: BoxDecoration(
@@ -195,13 +311,10 @@ class _CartPageState extends State<CartPage>
                               ),
                               ElevatedButton(
                                 onPressed: () {
-                                  Provider.of<CartProvider>(
-                                    context,
-                                    listen: false,
-                                  ).clear();
+                                  context.read<CartBloc>().add(const CartCleared());
                                   _selectedItems.clear();
                                   Navigator.pop(context);
-                                  setState(() {});
+                                  // CartBloc will emit new state and trigger rebuild
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFE53E3E),
@@ -225,13 +338,13 @@ class _CartPageState extends State<CartPage>
 
           // Body content
           SliverToBoxAdapter(
-            child: Consumer<CartProvider>(
-              builder: (context, cart, _) {
-                if (cart.items.isEmpty) {
+            child: BlocBuilder<CartBloc, CartState>(
+              builder: (context, state) {
+                if (state is! CartLoaded || state.items.isEmpty) {
                   return _buildEmptyState();
                 }
 
-                final selectedItems = cart.items
+                final selectedItems = state.items
                     .where((i) => _selectedItems.contains(i.documentId))
                     .toList();
                 final totalMin = selectedItems.fold<int>(
@@ -245,6 +358,10 @@ class _CartPageState extends State<CartPage>
 
                 return Column(
                   children: [
+                    // Warning banner về số sách đang mượn
+                    if (!_isLoadingBorrowStatus && _activeBorrowCount > 0)
+                      _buildBorrowStatusBanner(),
+                    
                     // Items list
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -254,9 +371,9 @@ class _CartPageState extends State<CartPage>
                       child: ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: cart.items.length,
+                        itemCount: state.items.length,
                         itemBuilder: (context, index) {
-                          final item = cart.items[index];
+                          final item = state.items[index];
                           final isSelected = _selectedItems.contains(
                             item.documentId,
                           );
@@ -294,6 +411,82 @@ class _CartPageState extends State<CartPage>
                   ],
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Banner hiển thị số sách đang mượn
+  Widget _buildBorrowStatusBanner() {
+    final remainingSlots = _maxBorrowLimit - _activeBorrowCount;
+    final isAtLimit = _activeBorrowCount >= _maxBorrowLimit;
+    
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isAtLimit
+              ? [
+                  Colors.red.withOpacity(0.15),
+                  Colors.red.withOpacity(0.05),
+                ]
+              : [
+                  Colors.orange.withOpacity(0.15),
+                  Colors.orange.withOpacity(0.05),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isAtLimit ? Colors.red.withOpacity(0.3) : Colors.orange.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isAtLimit 
+                  ? Colors.red.withOpacity(0.2) 
+                  : Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isAtLimit ? Icons.block_rounded : Icons.info_outline_rounded,
+              color: isAtLimit ? Colors.red : Colors.orange.shade700,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isAtLimit 
+                      ? 'Đã đạt giới hạn mượn sách'
+                      : 'Thông tin mượn sách',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isAtLimit ? Colors.red.shade700 : Colors.orange.shade800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isAtLimit
+                      ? 'Bạn đang mượn $_activeBorrowCount/$_maxBorrowLimit quyển. Vui lòng trả sách trước khi mượn thêm.'
+                      : 'Đang mượn: $_activeBorrowCount/$_maxBorrowLimit quyển. Còn lại: $remainingSlots quyển.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -365,23 +558,7 @@ class _CartPageState extends State<CartPage>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            setState(() {
-              if (isSelected) {
-                _selectedItems.remove(item.documentId);
-              } else {
-                if (_selectedItems.length >= 3) {
-                  NotificationService.showInfo(
-                    context,
-                    message: 'Bạn chỉ được mượn tối đa 3 quyển sách.',
-                  );
-                } else {
-                  _selectedItems.add(item.documentId);
-                  _animationController.forward(from: 0);
-                }
-              }
-            });
-          },
+          onTap: () => _toggleItemSelection(item.documentId, isSelected),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -454,38 +631,6 @@ class _CartPageState extends State<CartPage>
                       ),
                       const SizedBox(height: 12),
 
-                      // Quantity badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDF2F7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.layers_rounded,
-                              size: 14,
-                              color: Colors.grey[700],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Số lượng: ${item.quantity}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
                       // Deposit info
                       if (item.minDeposit != null && item.maxDeposit != null)
                         Container(
@@ -547,23 +692,7 @@ class _CartPageState extends State<CartPage>
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedItems.remove(item.documentId);
-                              } else {
-                                if (_selectedItems.length >= 3) {
-                                  NotificationService.showInfo(
-                                    context,
-                                    message:
-                                        'Bạn chỉ được mượn tối đa 3 quyển sách.',
-                                  );
-                                } else {
-                                  _selectedItems.add(item.documentId);
-                                }
-                              }
-                            });
-                          },
+                          onTap: () => _toggleItemSelection(item.documentId, isSelected),
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
                             width: 28,
@@ -594,11 +723,10 @@ class _CartPageState extends State<CartPage>
                           onTap: () {
                             setState(() {
                               _selectedItems.remove(item.documentId);
-                              Provider.of<CartProvider>(
-                                context,
-                                listen: false,
-                              ).removeItem(item.documentId);
                             });
+                            context.read<CartBloc>().add(
+                              CartItemRemoved(item.documentId),
+                            );
                           },
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
@@ -730,52 +858,7 @@ class _CartPageState extends State<CartPage>
 
               // Total price
               if (selectedCount > 0)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFFFF6B35).withOpacity(0.1),
-                        const Color(0xFFFF6B35).withOpacity(0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.account_balance_wallet_rounded,
-                            color: const Color(0xFFFF6B35),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tổng cọc',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '${_formatCurrency(totalMin)} - ${_formatCurrency(totalMax)}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFFF6B35),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                
 
               if (selectedCount > 0) const SizedBox(height: 16),
 
@@ -806,9 +889,9 @@ class _CartPageState extends State<CartPage>
                             color: Colors.white,
                           ),
                         )
-                      : Row(
+                      : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Icon(Icons.check_circle_outline_rounded, size: 22),
                             SizedBox(width: 8),
                             Text(

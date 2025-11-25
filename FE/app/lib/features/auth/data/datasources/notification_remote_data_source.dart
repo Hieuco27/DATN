@@ -154,6 +154,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required String accessToken,
   }) async {
     try {
+      // Try the correct endpoint path
       final response = await dio.put(
         '/notifications/mark-all-read',
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
@@ -166,6 +167,13 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       } else {
         throw Exception('Failed to mark all as read: ${response.statusCode}');
       }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception(
+          'Chức năng "Đọc tất cả" chưa được hỗ trợ bởi server. Vui lòng đánh dấu từng thông báo.',
+        );
+      }
+      throw Exception('Error marking all as read: ${e.message}');
     } catch (e) {
       throw Exception('Error marking all as read: $e');
     }

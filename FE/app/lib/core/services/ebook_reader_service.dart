@@ -86,7 +86,6 @@ class EbookReaderService {
     // Tạo thư mục nếu chưa tồn tại
     if (!await ebooksDir.exists()) {
       await ebooksDir.create(recursive: true);
-      print('📂 Đã tạo thư mục ebooks: ${ebooksDir.path}');
     }
 
     return ebooksDir;
@@ -141,18 +140,11 @@ class EbookReaderService {
 
     // ✅ Kiểm tra file đã tồn tại chưa (nếu có thì không cần tải lại)
     if (await file.exists()) {
-      print('📖 File đã tồn tại, sử dụng file cũ: $filePath');
       return file.path;
     }
 
     // ✅ Ghi file vào thư mục Documents
     await file.writeAsBytes(response.bodyBytes);
-
-    // ✅ Log đường dẫn file đã lưu
-    print('📁 File được lưu tại: ${file.path}');
-    print('📂 Thư mục ebooks: ${ebooksDirectory.path}');
-    print('📄 Tên file: $fileName');
-    print('💾 File được lưu lâu dài, không bị xóa khi app đóng');
 
     return file.path;
   }
@@ -163,12 +155,11 @@ class EbookReaderService {
       final file = File(filePath);
       if (await file.exists()) {
         await file.delete();
-        print('🗑️ Đã xóa file: $filePath');
         return true;
       }
       return false;
     } catch (e) {
-      print('❌ Lỗi khi xóa file: $e');
+      // Silently fail
       return false;
     }
   }
@@ -186,7 +177,6 @@ class EbookReaderService {
       }
       return [];
     } catch (e) {
-      print('❌ Lỗi khi lấy danh sách ebooks: $e');
       return [];
     }
   }
@@ -201,13 +191,11 @@ class EbookReaderService {
           await ebook.delete();
           deletedCount++;
         } catch (e) {
-          print('⚠️ Không thể xóa file: ${ebook.path} - $e');
+          // Silently continue
         }
       }
-      print('🗑️ Đã xóa $deletedCount file ebook');
       return deletedCount;
     } catch (e) {
-      print('❌ Lỗi khi xóa tất cả ebooks: $e');
       return 0;
     }
   }

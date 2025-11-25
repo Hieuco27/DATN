@@ -13,6 +13,7 @@ abstract class AuthenticationRemoteDataSource {
   Future<Map<String, dynamic>> registerComplete(
     Map<String, dynamic> completeData,
   );
+  Future<Map<String, dynamic>> checkPaymentStatus(String accessToken);
 
   Future<LoginResponseModel> refreshToken(String refreshToken);
   Future<void> logout(String accessToken);
@@ -193,6 +194,30 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       throw Exception('Có lỗi xảy ra khi xác thực OTP: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> checkPaymentStatus(String accessToken) async {
+    try {
+      print('📤 Checking if MemberCard has been created via profile...');
+      final profile = await getProfile(accessToken);
+      
+      // Check if memberCard exists in profile
+      final hasMemberCard = profile.memberCard != null;
+      print('📥 Profile checked - Has MemberCard: $hasMemberCard');
+      
+      return {
+        'paid': hasMemberCard,
+        'status': hasMemberCard ? 'PAID' : 'PENDING',
+        'profile': profile.toJson(),
+      };
+    } catch (e) {
+      print('⚠️ Error checking profile: $e');
+      return {
+        'paid': false,
+        'status': 'PENDING',
+      };
     }
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:book_tech/core/services/socket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
 import 'package:book_tech/core/theme/app_palette.dart';
@@ -34,7 +36,28 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
   int? _selectedCardTypeId; // 1 = FREE, 2 = PREMIUM
   bool _isLoading = false;
   bool _showPaymentQR = false;
+  bool _isPaymentSuccess = false;
   Map<String, dynamic>? _paymentData;
+  dynamic _currentOrderCode;
+  Timer? _paymentCheckTimer;
+  bool _socketListenerSetup = false;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      SocketService().initSocket(userId: widget.readerId);
+    } catch (e) {
+      // Socket initialization error is not critical, continue without it
+    }
+  }
+
+  @override
+  void dispose() {
+    _paymentCheckTimer?.cancel();
+    SocketService().disconnect();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,117 +65,164 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text(
-          'Thanh toán thẻ thư viện',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+          'Chọn gói thành viên',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppPalette.gradient1, AppPalette.gradient2],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _showPaymentQR
-          ? _buildPaymentQRView()
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Chọn loại thẻ thành viên',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildCardTypeOption(
-                              1,
-                              'FREE',
-                              'Miễn phí',
-                              'Sử dụng dịch vụ cơ bản miễn phí',
-                              '0',
-                            ),
-                            const SizedBox(height: 12),
-                            _buildCardTypeOption(
-                              2,
-                              'PREMIUM',
-                              'Premium',
-                              'Hưởng nhiều ưu đãi và quyền lợi đặc biệt',
-                              '150000',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _isLoading || _selectedCardTypeId == null
-                            ? null
-                            : _completeRegistration,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppPalette.gradient2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 4,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Text(
-                                'Hoàn tất đăng ký',
+      body: _isPaymentSuccess
+          ? _buildPaymentSuccessView()
+          : _showPaymentQR
+              ? _buildPaymentQRView()
+              : Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppPalette.gradient2.withOpacity(0.05),
+                      Colors.white,
+                    ],
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Column(
+                            children: [
+                              
+                              const SizedBox(height: 12),
+                              Text(
+                                'Lựa chọn gói phù hợp với bạn',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () {
-                        if (widget.isFromRegistration) {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => const SignInPage(),
+                            ],
+                          ),
+                        ),
+                        _buildCardTypeOption(
+                          1,
+                          'FREE',
+                          'Miễn phí',
+                          '0',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCardTypeOption(
+                          2,
+                          'PREMIUM',
+                          'Premium',
+                          '150000',
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppPalette.gradient1, AppPalette.gradient2],
                             ),
-                          );
-                        } else {
-                          Navigator.of(context).pop();
-                        }
-                      },
-                      child: const Text(
-                        'Bỏ qua, đăng ký sau',
-                        style: TextStyle(color: Colors.grey),
-                      ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppPalette.gradient2.withOpacity(0.4),
+                                blurRadius: 15,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _isLoading || _selectedCardTypeId == null
+                                ? null
+                                : _completeRegistration,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              minimumSize: const Size(double.infinity, 52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.check_circle_outline, size: 20, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Hoàn tất đăng ký',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              if (widget.isFromRegistration) {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignInPage(),
+                                  ),
+                                );
+                              } else {
+                                Navigator.of(context).pop();
+                              }
+                            },
+                            icon: Icon(
+                              Icons.arrow_forward,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            label: Text(
+                              'Bỏ qua, đăng ký sau',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
     );
   }
 
@@ -160,89 +230,281 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
     int cardTypeId,
     String type,
     String name,
-    String description,
     String price,
   ) {
     final isSelected = _selectedCardTypeId == cardTypeId;
-    return InkWell(
+    final isFree = cardTypeId == 1;
+    
+    return GestureDetector(
       onTap: () {
         setState(() {
           _selectedCardTypeId = cardTypeId;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.all(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppPalette.gradient2.withOpacity(0.1)
-              : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    isFree
+                        ? Colors.green.shade50
+                        : AppPalette.gradient1.withOpacity(0.1),
+                    isFree
+                        ? Colors.green.shade100
+                        : AppPalette.gradient2.withOpacity(0.1),
+                  ],
+                )
+              : null,
+          color: isSelected ? null : Colors.white,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppPalette.gradient2 : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
+            color: isSelected
+                ? (isFree ? Colors.green : AppPalette.gradient2)
+                : Colors.grey.shade200,
+            width: isSelected ? 3 : 1.5,
           ),
-        ),
-        child: Row(
-          children: [
-            Radio<int>(
-              value: cardTypeId,
-              groupValue: _selectedCardTypeId,
-              onChanged: (value) {
-                setState(() {
-                  _selectedCardTypeId = value;
-                });
-              },
-              activeColor: AppPalette.gradient2,
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? AppPalette.gradient2
-                              : Colors.black87,
-                        ),
-                      ),
-                      if (cardTypeId == 2) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppPalette.gradient2,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            '150k/năm',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? (isFree ? Colors.green : AppPalette.gradient2).withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.1),
+              blurRadius: isSelected ? 20 : 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Icon
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isFree
+                            ? [Colors.green.shade400, Colors.green.shade600]
+                            : [AppPalette.gradient1, AppPalette.gradient2],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isFree ? Colors.green : AppPalette.gradient2)
+                              .withOpacity(0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      isFree ? Icons.card_giftcard : Icons.workspace_premium,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Title & Badge
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? (isFree ? Colors.green.shade700 : AppPalette.gradient1)
+                                    : Colors.black87,
+                              ),
+                            ),
+                            if (!isFree) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFFD700), Color(0xFFFF8C00)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'HOT',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        
+                      ],
+                    ),
+                  ),
+                  // Checkbox
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? (isFree ? Colors.green : AppPalette.gradient2)
+                            : Colors.grey.shade300,
+                        width: 2,
+                      ),
+                      color: isSelected
+                          ? (isFree ? Colors.green : AppPalette.gradient2)
+                          : Colors.transparent,
+                    ),
+                    child: Icon(
+                      Icons.check,
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Features
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.7)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    _buildFeature(
+                      isFree ? Icons.menu_book : Icons.auto_stories,
+                      isFree ? 'Mượn sách cơ bản' : 'Mượn sách không giới hạn',
+                      isFree,
+                    ),
+                    const SizedBox(height: 6),
+                    _buildFeature(
+                      isFree ? Icons.access_time : Icons.schedule,
+                      isFree ? 'Thời gian: 7 ngày' : 'Thời gian: 30 ngày',
+                      isFree,
+                    ),
+                    if (!isFree) ...[
+                      const SizedBox(height: 6),
+                      _buildFeature(
+                        Icons.star,
+                        'Ưu tiên sách mới',
+                        false,
+                      ),
+                      const SizedBox(height: 6),
+                      _buildFeature(
+                        Icons.support_agent,
+                        'Hỗ trợ 24/7',
+                        false,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Giá:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          isFree ? 'MIỄN PHÍ' : '150k/năm',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isFree ? Colors.green.shade700 : AppPalette.gradient2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildFeature(IconData icon, String text, bool isFree) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 15,
+          color: isFree ? Colors.green.shade600 : AppPalette.gradient2,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentSuccessView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 80,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Thanh toán thành công!',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Bạn đã trở thành thành viên Premium',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -376,6 +638,16 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
             ],
             const SizedBox(height: 24),
             TextButton(
+              onPressed: _checkPaymentStatus,
+              child: const Text(
+                'Đã thanh toán nhưng chưa thấy phản hồi?',
+                style: TextStyle(
+                  color: AppPalette.gradient2,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            TextButton(
               onPressed: () {
                 if (widget.isFromRegistration) {
                   Navigator.of(context).pushReplacement(
@@ -423,9 +695,6 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
 
       final response = await repository.registerComplete(completeData);
 
-      // Debug: In ra response để kiểm tra
-
-      // Kiểm tra response có hợp lệ không
       if (response['ok'] == true) {
         // Trường hợp 1: SKIP/FREE card - có free: true và memberCard
         if (response['free'] == true) {
@@ -464,39 +733,31 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
             final payos = response['payos'] as Map<String, dynamic>;
             if (payos['checkoutUrl'] != null || payos['qrCode'] != null) {
               // Cần thanh toán - hiển thị payment link
-              print('💳 Payment required, showing payment link');
-              print('💳 PaymentId: ${response['paymentId']}');
-              print('💳 OrderCode: ${response['orderCode']}');
-              print('💳 Amount: ${response['amount']}');
-              print('💳 PayOS checkoutUrl: ${payos['checkoutUrl']}');
               setState(() {
                 _paymentData = response;
                 _showPaymentQR = true;
                 _isLoading = false;
               });
+
+              final orderCode = response['orderCode'];
+              if (orderCode != null) {
+                _currentOrderCode = orderCode;
+                _setupSocketListener();
+                _startPaymentPolling();
+              }
             } else {
-              print('⚠️ payos exists but checkoutUrl and qrCode are null');
               throw Exception(
                 'Không thể tạo link thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.',
               );
             }
           } else {
             // Có paymentId nhưng không có payos hoặc payos không hợp lệ
-            print('⚠️ paymentId exists but payos is null or invalid');
-            print('   paymentId: ${response['paymentId']}');
-            print('   payos: ${response['payos']}');
             throw Exception(
               'Không thể tạo link thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.',
             );
           }
         } else {
           // Response có ok: true nhưng không match với cả 2 trường hợp trên
-          print('❌ Invalid response structure:');
-          print('   - ok: ${response['ok']}');
-          print('   - free: ${response['free']}');
-          print('   - memberCard: ${response['memberCard']}');
-          print('   - paymentId: ${response['paymentId']}');
-          print('   - payos: ${response['payos']}');
           throw Exception(
             'Phản hồi từ server không hợp lệ. Vui lòng thử lại hoặc liên hệ hỗ trợ.',
           );
@@ -507,8 +768,6 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
             response['message'] ??
             response['error'] ??
             'Hoàn tất đăng ký thất bại';
-        print('❌ Registration failed: $errorMessage');
-        print('❌ Full response: $response');
         throw Exception(errorMessage);
       }
     } catch (e) {
@@ -520,6 +779,158 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
           context,
           message: e.toString().replaceFirst('Exception: ', ''),
         );
+      }
+    }
+  }
+
+  void _setupSocketListener() {
+    if (_currentOrderCode == null || _socketListenerSetup) {
+      return;
+    }
+
+    try {
+      SocketService().off('payment_success');
+      
+      SocketService().on('payment_success', (data) async {
+        try {
+          final transactionCode = data?['transactionCode']?.toString();
+          if (data != null && transactionCode != null &&
+              transactionCode == _currentOrderCode.toString()) {
+            if (mounted) {
+              setState(() {
+                _isPaymentSuccess = true;
+              });
+
+              NotificationService.showSuccess(
+                context,
+                message: 'Thanh toán thành công! Vui lòng đăng nhập để tiếp tục.',
+              );
+
+              await Future.delayed(const Duration(seconds: 2));
+
+              if (mounted) {
+                if (widget.isFromRegistration) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const SignInPage()),
+                    (route) => false,
+                  );
+                } else {
+                  widget.onMembershipUpdated?.call();
+                  Navigator.of(context).pop(true);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Handle socket event processing error silently
+        }
+      });
+      
+      _socketListenerSetup = true;
+    } catch (e) {
+      // Handle socket listener setup error silently
+    }
+  }
+
+  void _startPaymentPolling() {
+    _paymentCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!mounted || _isPaymentSuccess || _currentOrderCode == null) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final localStorageDataSource = LocalStorageDataSourceImpl();
+        final accessToken = await localStorageDataSource.getAccessToken();
+        
+        if (accessToken == null || accessToken.isEmpty) {
+          return;
+        }
+        
+        final remoteDataSource = AuthenticationRemoteDataSourceImpl();
+        final result = await remoteDataSource.checkPaymentStatus(accessToken);
+        
+        if (result['status'] == 'PAID' || result['paid'] == true) {
+          timer.cancel();
+          await _handlePaymentSuccess(result);
+        }
+      } catch (e) {
+        // Continue polling on error
+      }
+    });
+  }
+
+  Future<void> _handlePaymentSuccess(Map<String, dynamic> data) async {
+    if (!mounted || _isPaymentSuccess) return;
+
+    try {
+      setState(() {
+        _isPaymentSuccess = true;
+      });
+
+      NotificationService.showSuccess(
+        context,
+        message: 'Thanh toán thành công! Vui lòng đăng nhập để tiếp tục.',
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (mounted) {
+        if (widget.isFromRegistration) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const SignInPage()),
+            (route) => false,
+          );
+        } else {
+          widget.onMembershipUpdated?.call();
+          Navigator.of(context).pop(true);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: 'Có lỗi xảy ra khi xử lý thanh toán.',
+        );
+      }
+    }
+  }
+
+  Future<void> _checkPaymentStatus() async {
+    if (_currentOrderCode == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      SocketService().disconnect();
+      await Future.delayed(const Duration(seconds: 1));
+      SocketService().initSocket(userId: widget.readerId);
+      
+      await Future.delayed(const Duration(seconds: 2));
+      _setupSocketListener();
+
+      await Future.delayed(const Duration(seconds: 1));
+      
+      if (mounted && !_isPaymentSuccess) {
+        NotificationService.showInfo(
+          context,
+          message: 'Đang kiểm tra kết nối... Vui lòng đợi thêm chút nữa.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: 'Không thể kết nối. Vui lòng thử lại.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }

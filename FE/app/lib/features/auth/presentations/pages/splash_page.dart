@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
+import 'package:book_tech/main.dart';
 
 class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
 
   void _goToLogin(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SignInPage()));
+    // Use pushReplacement to prevent going back to splash
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+    );
   }
 
   @override

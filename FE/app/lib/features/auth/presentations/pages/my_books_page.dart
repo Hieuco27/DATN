@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:book_tech/features/auth/presentations/providers/wishlist_provider.dart';
-import 'package:book_tech/features/auth/presentations/providers/cart_provider.dart';
-import 'package:book_tech/features/auth/presentations/providers/reading_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/cart_bloc.dart';
+import '../bloc/cart_state.dart';
+import '../bloc/wishlist_bloc.dart';
+import '../bloc/wishlist_event.dart';
+import '../bloc/wishlist_state.dart';
+import '../bloc/reading_bloc.dart';
+import '../bloc/reading_event.dart';
+import '../bloc/reading_state.dart';
 import 'package:book_tech/core/widgets/gradient_background.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -136,9 +141,9 @@ class _MyBooksPageState extends State<MyBooksPage>
               ),
             ),
           ] else ...[
-            Consumer<CartProvider>(
-              builder: (context, cart, _) {
-                final count = cart.totalItems;
+            BlocBuilder<CartBloc, CartState>(
+              builder: (context, state) {
+                final count = state is CartLoaded ? state.totalItems : 0;
                 return Container(
                   margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
                   decoration: BoxDecoration(
@@ -322,45 +327,59 @@ class _MyBooksPageState extends State<MyBooksPage>
   }
 
   Widget _buildReadingList() {
-    return Consumer<ReadingProvider>(
-      builder: (context, reading, _) {
-        if (reading.items.isEmpty) {
+    return BlocBuilder<ReadingBloc, ReadingState>(
+      builder: (context, state) {
+        if (state is! ReadingData || state.items.isEmpty) {
           return _buildEmptyState(
             'Chưa có sách đang đọc',
             Icons.menu_book_outlined,
           );
         }
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 0.52,
-          ),
-          itemCount: reading.items.length,
-          itemBuilder: (context, index) {
-            final item = reading.items[index];
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 300 + (index * 50)),
-              curve: Curves.easeOut,
-              builder: (context, value, child) {
-                return Transform.translate(
-                  offset: Offset(0, 20 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: _buildBookCard(
-                      item.documentId,
-                      item.title,
-                      item.coverPhoto,
-                      onTap: () => Navigator.pushNamed(
-                        context,
-                        '/document-detail',
-                        arguments: item.documentId,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = constraints.maxWidth;
+            final isSmallScreen = screenWidth < 360;
+            final isMediumScreen = screenWidth < 380;
+            
+            // Responsive values
+            final padding = isSmallScreen ? 12.0 : 16.0;
+            final spacing = isSmallScreen ? 12.0 : 16.0;
+            final crossAxisCount = isSmallScreen ? 2 : 3;
+            final childAspectRatio = isSmallScreen ? 0.54 : (isMediumScreen ? 0.53 : 0.52);
+            
+            return GridView.builder(
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.55,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: state.items.length,
+              itemBuilder: (context, index) {
+                final item = state.items[index];
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 300 + (index * 50)),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 20 * (1 - value)),
+                      child: Opacity(
+                        opacity: value,
+                        child: _buildBookCard(
+                          item.documentId,
+                          item.title,
+                          item.coverPhoto,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/document-detail',
+                            arguments: item.documentId,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -371,45 +390,59 @@ class _MyBooksPageState extends State<MyBooksPage>
   }
 
   Widget _buildWishlist() {
-    return Consumer<WishlistProvider>(
-      builder: (context, wishlist, _) {
-        if (wishlist.items.isEmpty) {
+    return BlocBuilder<WishlistBloc, WishlistState>(
+      builder: (context, state) {
+        if (state is! WishlistData || state.items.isEmpty) {
           return _buildEmptyState(
             'Chưa có sách muốn đọc',
             Icons.bookmark_border,
           );
         }
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 0.52,
-          ),
-          itemCount: wishlist.items.length,
-          itemBuilder: (context, index) {
-            final item = wishlist.items[index];
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 300 + (index * 50)),
-              curve: Curves.easeOut,
-              builder: (context, value, child) {
-                return Transform.translate(
-                  offset: Offset(0, 20 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: _buildBookCard(
-                      item.documentId,
-                      item.title,
-                      item.coverPhoto,
-                      onTap: () => Navigator.pushNamed(
-                        context,
-                        '/document-detail',
-                        arguments: item.documentId,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = constraints.maxWidth;
+            final isSmallScreen = screenWidth < 360;
+            final isMediumScreen = screenWidth < 380;
+            
+            // Responsive values
+            final padding = isSmallScreen ? 12.0 : 16.0;
+            final spacing = isSmallScreen ? 12.0 : 16.0;
+            final crossAxisCount = isSmallScreen ? 2 : 3;
+            final childAspectRatio = isSmallScreen ? 0.54 : (isMediumScreen ? 0.53 : 0.52);
+            
+            return GridView.builder(
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.55,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: state.items.length,
+              itemBuilder: (context, index) {
+                final item = state.items[index];
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 300 + (index * 50)),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 20 * (1 - value)),
+                      child: Opacity(
+                        opacity: value,
+                        child: _buildBookCard(
+                          item.documentId,
+                          item.title,
+                          item.coverPhoto,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/document-detail',
+                            arguments: item.documentId,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -578,86 +611,113 @@ class _MyBooksPageState extends State<MyBooksPage>
   }
 
   Widget _buildEmptyState(String message, IconData icon) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7FAFC),
-                shape: BoxShape.circle,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxHeight < 400;
+        
+        return Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 20 : 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 20 : 28),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FAFC),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      size: isSmallScreen ? 54 : 72,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : 28),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 18 : 22,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: isSmallScreen ? 8 : 12),
+                  Text(
+                    'Hãy thêm sách vào thư viện của bạn',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 13 : 15,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: isSmallScreen ? 24 : 40),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Có thể navigate đến trang tìm kiếm
+                    },
+                    icon: Icon(
+                      Icons.explore_rounded,
+                      size: isSmallScreen ? 18 : 20,
+                    ),
+                    label: Text(
+                      'Khám phá sách',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 8,
+                      shadowColor: _primaryColor.withOpacity(0.4),
+                    ),
+                  ),
+                ],
               ),
-              child: Icon(icon, size: 72, color: Colors.grey[400]),
             ),
-            const SizedBox(height: 28),
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey[800],
-                letterSpacing: -0.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Hãy thêm sách vào thư viện của bạn',
-              style: TextStyle(fontSize: 15, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Có thể navigate đến trang tìm kiếm
-              },
-              icon: const Icon(Icons.explore_rounded, size: 20),
-              label: const Text(
-                'Khám phá sách',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 8,
-                shadowColor: _primaryColor.withOpacity(0.4),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   void _selectAll() {
     setState(() {
       if (_selectedTabIndex == 0) {
-        final reading = context.read<ReadingProvider>();
-        if (_selectedItems.length == reading.items.length) {
-          _selectedItems.clear();
-        } else {
-          _selectedItems = reading.items.map((e) => e.documentId).toSet();
+        final readingState = context.read<ReadingBloc>().state;
+        if (readingState is ReadingData) {
+          if (_selectedItems.length == readingState.items.length) {
+            _selectedItems.clear();
+          } else {
+            _selectedItems = readingState.items.map((e) => e.documentId).toSet();
+          }
         }
       } else {
-        final wishlist = context.read<WishlistProvider>();
-        if (_selectedItems.length == wishlist.items.length) {
-          _selectedItems.clear();
-        } else {
-          _selectedItems = wishlist.items.map((e) => e.documentId).toSet();
+        final wishlistState = context.read<WishlistBloc>().state;
+        if (wishlistState is WishlistData) {
+          if (_selectedItems.length == wishlistState.items.length) {
+            _selectedItems.clear();
+          } else {
+            _selectedItems = wishlistState.items.map((e) => e.documentId).toSet();
+          }
         }
       }
     });
@@ -722,14 +782,14 @@ class _MyBooksPageState extends State<MyBooksPage>
             onPressed: () {
               final count = _selectedItems.length;
               if (_selectedTabIndex == 0) {
-                final reading = context.read<ReadingProvider>();
+                // Remove from reading list
                 for (final id in _selectedItems) {
-                  reading.remove(id);
+                  context.read<ReadingBloc>().add(ReadingItemRemoved(id));
                 }
               } else {
-                final wishlist = context.read<WishlistProvider>();
+                // Remove from wishlist
                 for (final id in _selectedItems) {
-                  wishlist.remove(id);
+                  context.read<WishlistBloc>().add(WishlistItemRemoved(id));
                 }
               }
               setState(() {

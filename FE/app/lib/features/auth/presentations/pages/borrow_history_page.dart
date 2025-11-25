@@ -209,6 +209,9 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     switch (s.toUpperCase()) {
       case 'PENDING':
         return Colors.orange;
+      case 'WAITING_FOR_PICKUP':
+      case 'APPROVED':
+        return Colors.purple;
       case 'BORROWING':
         return Colors.blue;
       case 'RETURNED':
@@ -224,6 +227,9 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     switch (s.toUpperCase()) {
       case 'PENDING':
         return Icons.pending_outlined;
+      case 'WAITING_FOR_PICKUP':
+      case 'APPROVED':
+        return Icons.task_alt_outlined;
       case 'BORROWING':
         return Icons.book_outlined;
       case 'RETURNED':
@@ -239,6 +245,9 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     switch (s.toUpperCase()) {
       case 'PENDING':
         return 'Chờ duyệt';
+      case 'WAITING_FOR_PICKUP':
+      case 'APPROVED':
+        return 'Chờ lấy sách';
       case 'BORROWING':
         return 'Đang mượn';
       case 'RETURNED':
@@ -344,6 +353,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                       ? _formatMonthYear(_selectedMonth)
                       : 'Lọc theo tháng',
                   isActive: _isFilterByMonth,
+                  
                   onTap: _selectMonth,
                 ),
               ),
@@ -355,6 +365,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                       ? _formatDateOnly(_selectedDate)
                       : 'Lọc theo ngày',
                   isActive: _isFilterByDate,
+                  
                   onTap: _selectDate,
                 ),
               ),
@@ -371,45 +382,55 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppPalette.gradient1.withOpacity(0.1)
-              : Colors.grey[100],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 160;
+        
+        return InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? AppPalette.gradient1 : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isActive ? AppPalette.gradient1 : Colors.grey[700],
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 8 : 12,
+              vertical: isSmallScreen ? 10 : 12,
             ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                  color: isActive ? AppPalette.gradient1 : Colors.grey[700],
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppPalette.gradient1.withOpacity(0.1)
+                  : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isActive ? AppPalette.gradient1 : Colors.transparent,
+                width: 1.5,
               ),
             ),
-          ],
-        ),
-      ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: isSmallScreen ? 16 : 18,
+                  color: isActive ? AppPalette.gradient1 : Colors.grey[700],
+                ),
+                SizedBox(width: isSmallScreen ? 4 : 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 11 : 13,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: isActive ? AppPalette.gradient1 : Colors.grey[700],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -560,33 +581,44 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         'Phiếu #${loan.loanSlipId}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _statusLabel(loan.status),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _statusLabel(loan.status),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -660,15 +692,17 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                               color: AppPalette.gradient1,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              note.isEmpty
-                                  ? 'Mã: ${d.loanDetailId}'
-                                  : note.length > 30
-                                  ? '${note.substring(0, 30)}...'
-                                  : note,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black87,
+                            Flexible(
+                              child: Text(
+                                note.isEmpty
+                                    ? 'Mã: ${d.loanDetailId}'
+                                    : note,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                ),
                               ),
                             ),
                           ],
@@ -700,14 +734,19 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

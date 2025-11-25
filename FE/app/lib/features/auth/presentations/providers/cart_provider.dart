@@ -21,13 +21,8 @@ class CartProvider with ChangeNotifier {
       (i) => i.documentId == item.documentId,
     );
     if (existingIndex >= 0) {
-      _items[existingIndex] = CartItemModel(
-        documentId: item.documentId,
-        title: item.title,
-        coverPhoto: item.coverPhoto,
+      _items[existingIndex] = _items[existingIndex].copyWith(
         quantity: _items[existingIndex].quantity + item.quantity,
-        minDeposit: item.minDeposit,
-        maxDeposit: item.maxDeposit,
       );
     } else {
       _items.add(item);
@@ -42,14 +37,7 @@ class CartProvider with ChangeNotifier {
     }
     final index = _items.indexWhere((i) => i.documentId == documentId);
     if (index >= 0) {
-      _items[index] = CartItemModel(
-        documentId: _items[index].documentId,
-        title: _items[index].title,
-        coverPhoto: _items[index].coverPhoto,
-        quantity: quantity,
-        minDeposit: _items[index].minDeposit,
-        maxDeposit: _items[index].maxDeposit,
-      );
+      _items[index] = _items[index].copyWith(quantity: quantity);
       notifyListeners();
     }
   }

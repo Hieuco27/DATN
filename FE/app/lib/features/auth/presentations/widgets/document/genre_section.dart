@@ -77,15 +77,20 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              widget.genre.name,
-              style: GoogleFonts.montserrat(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1E1E1E),
-                letterSpacing: 0.2,
+            Expanded(
+              child: Text(
+                widget.genre.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.montserrat(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1E1E1E),
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             TextButton(
               onPressed: () {
                 Navigator.push(
@@ -100,11 +105,11 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
               },
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 10,
+                  vertical: 6,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 foregroundColor: const Color(0xFFFF1744),
                 backgroundColor: const Color(0x1AFF1744),
@@ -115,6 +120,7 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
                   Text(
                     'Tất cả',
                     style: GoogleFonts.montserrat(
+                      fontSize: 12,
                       color: const Color(0xFFFF1744),
                       fontWeight: FontWeight.w600,
                     ),
@@ -178,7 +184,7 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
                         );
                       },
                       child: Container(
-                        width: 124,
+                        width: 110,
                         margin: const EdgeInsets.only(right: 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -190,7 +196,7 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
-                                  height: 156,
+                                  height: 140,
                                   width: 124,
                                   decoration: const BoxDecoration(
                                     boxShadow: [
@@ -244,7 +250,7 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
                               textAlign: TextAlign.center,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.montserrat(
-                                fontSize: 12,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1E1E1E),
                                 height: 1.2,
