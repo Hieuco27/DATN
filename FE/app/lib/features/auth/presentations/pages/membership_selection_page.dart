@@ -105,21 +105,6 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Center(
-                          child: Column(
-                            children: [
-                              
-                              const SizedBox(height: 12),
-                              Text(
-                                'Đăng ký thẻ thư viện để truy cập đầy đủ tính năng',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         _buildCardTypeOption(
                           2,
                           'PREMIUM',
@@ -393,7 +378,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                     const SizedBox(height: 6),
                     _buildFeature(
                       isFree ? Icons.access_time : Icons.schedule,
-                      isFree ? 'Thời gian: 7 ngày' : 'Thời gian: 30 ngày',
+                      isFree ? 'Thời gian: 7 ngày' : 'Thời gian: 35 ngày',
                       isFree,
                     ),
                     if (!isFree) ...[

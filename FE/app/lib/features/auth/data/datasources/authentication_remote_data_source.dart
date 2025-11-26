@@ -22,6 +22,9 @@ abstract class AuthenticationRemoteDataSource {
     String accessToken,
     Map<String, dynamic> profileData,
   );
+  
+  // FCM Token Registration
+  Future<void> registerFcmToken(String accessToken, String fcmToken);
 }
 
 class AuthenticationRemoteDataSourceImpl
@@ -488,6 +491,29 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       throw Exception('Lỗi không xác định khi cập nhật profile: $e');
+    }
+  }
+
+  @override
+  Future<void> registerFcmToken(String accessToken, String fcmToken) async {
+    try {
+      print('📤 [AuthRemoteDataSource] Registering FCM Token...');
+      final response = await dio.post(
+        '/fcm/register',
+        data: {'fcmToken': fcmToken},
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ [AuthRemoteDataSource] FCM Token registered successfully');
+      } else {
+        print('⚠️ [AuthRemoteDataSource] Failed to register FCM Token: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      print('❌ [AuthRemoteDataSource] Error registering FCM Token: ${e.message}');
+      // Không throw exception vì FCM token registration không nên làm gián đoạn flow chính
+    } catch (e) {
+      print('❌ [AuthRemoteDataSource] Unexpected error registering FCM Token: $e');
     }
   }
 }

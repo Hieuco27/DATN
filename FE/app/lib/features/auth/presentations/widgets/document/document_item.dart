@@ -24,15 +24,20 @@ class DocumentItem extends StatelessWidget {
         );
       },
       child: Container(
-        width: 120,
-        margin: const EdgeInsets.only(right: 12),
+        // width: 120, // Remove fixed width
+        margin: const EdgeInsets.only(right: 12), // Có thể giữ margin nếu dùng trong ListView horizontal, nhưng trong GridView thì nên cẩn thận. Tuy nhiên DocumentItem có thể dùng chung. 
+        // Nếu dùng trong GridView thì margin right này có thể làm lệch layout. 
+        // Tốt nhất là bỏ margin ở đây và để parent quản lý spacing (như GridView đã có mainAxisSpacing/crossAxisSpacing).
+        // Tuy nhiên GenreSectionWidget dùng ListView horizontal nên cần margin.
+        // Để an toàn, ta bỏ width nhưng giữ margin, hoặc tốt hơn là để width double.infinity
+        width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Hình ảnh bìa sách
             Container(
               height: 150,
-              width: 120,
+              width: double.infinity, // Fill width
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [

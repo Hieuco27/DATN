@@ -1,4 +1,3 @@
-import 'package:book_tech/features/auth/data/models/document_response_model.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:flutter/material.dart';
@@ -115,37 +114,23 @@ class _GenreBooksPageState extends State<GenreBooksPage> {
                 final padding = isSmallScreen ? 12.0 : 16.0;
                 final spacing = isSmallScreen ? 10.0 : 12.0;
                 final crossAxisCount = isSmallScreen ? 2 : 3;
-                final childAspectRatio = isSmallScreen ? 0.60 : (isMediumScreen ? 0.59 : 0.58);
+                // Điều chỉnh childAspectRatio để tránh overflow (giảm tỷ lệ width/height => tăng chiều cao)
+                final childAspectRatio = isSmallScreen ? 0.48 : (isMediumScreen ? 0.45 : 0.42);
                 
-                return GridView.builder(
-                  padding: EdgeInsets.all(padding),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: childAspectRatio,
-                    mainAxisSpacing: spacing,
-                    crossAxisSpacing: spacing,
+                return SafeArea(
+                  child: GridView.builder(
+                    padding: EdgeInsets.all(padding),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: childAspectRatio,
+                      mainAxisSpacing: spacing,
+                      crossAxisSpacing: spacing,
+                    ),
+                    itemCount: _documents.length,
+                    itemBuilder: (context, index) {
+                      return DocumentItem(document: _documents[index]);
+                    },
                   ),
-                  itemCount: _documents.length,
-                  itemBuilder: (context, index) {
-                    // Thay vì cast, tạo DocumentResponseModel từ DocumentEntity
-                    final document = _documents[index];
-                    final responseModel = DocumentResponseModel(
-                      documentId: document.documentId,
-                      title: document.title,
-                      coverPhoto: document.coverPhoto,
-                      minDeposit: 0, // Default value
-                      maxDeposit: 0, // Default value
-                      coverPrice: document.coverPrice ?? 0,
-                      categoryName: '', // Default value
-                      depositRate: 0.0, // Default value
-                      totalCopies: document.numberOfCopy,
-                      availableCopies: document.numberOfCopy,
-                      documentType: 'book', // Default value
-                      borrowCount: 0, // Default value
-                    );
-
-                    return DocumentItem.fromReader(responseModel);
-                  },
                 );
               },
             ),

@@ -180,11 +180,11 @@ class ProfileDetailPage extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Thẻ thành viên thư viện',
+                                      'Thẻ thư viện',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.black87,
                                       ),
@@ -192,16 +192,7 @@ class ProfileDetailPage extends StatelessWidget {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        Text(
-                                          cardType?.typeName ?? 'N/A',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.blue.shade800,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
+                                        
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
@@ -292,12 +283,9 @@ class ProfileDetailPage extends StatelessWidget {
                                   const SizedBox(height: 8),
                                   if (cardType.canBorrowHome)
                                     _benefitItem('Mượn sách về nhà'),
-                                  if (cardType.canReadOnsite)
-                                    _benefitItem('Đọc sách tại chỗ'),
                                   if (cardType.canReadEbook)
                                     _benefitItem('Đọc sách điện tử (Ebook)'),
                                   if (cardType.canSearchCatalog)
-                                    _benefitItem('Tra cứu, tìm kiếm danh mục'),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Giới hạn: ${cardType.maxBorrowLimit} quyển / ${cardType.borrowDuration} ngày',
@@ -397,39 +385,39 @@ class ProfileDetailPage extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Thông tin bổ sung (nếu có)
-            if (profile.createdAt != null || profile.updatedAt != null)
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 2,
-                color: Colors.white,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      child: Text(
-                        'Thông tin hệ thống',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    if (profile.createdAt != null)
-                      _systemInfo('Ngày tạo', profile.createdAt),
-                    if (profile.createdAt != null && profile.updatedAt != null)
-                      _divider(),
-                    if (profile.updatedAt != null)
-                      _systemInfo('Ngày cập nhật', profile.updatedAt),
-                  ],
-                ),
-              ),
+            // if (profile.createdAt != null || profile.updatedAt != null)
+            //   Card(
+            //     shape: RoundedRectangleBorder(
+            //       borderRadius: BorderRadius.circular(20),
+            //     ),
+            //     elevation: 2,
+            //     color: Colors.white,
+            //     child: Column(
+            //       crossAxisAlignment: CrossAxisAlignment.start,
+            //       children: [
+            //         const Padding(
+            //           padding: EdgeInsets.symmetric(
+            //             horizontal: 16,
+            //             vertical: 10,
+            //           ),
+            //           child: Text(
+            //             'Thông tin hệ thống',
+            //             style: TextStyle(
+            //               fontSize: 16,
+            //               fontWeight: FontWeight.w700,
+            //               color: Colors.black87,
+            //             ),
+            //           ),
+            //         ),
+            //         if (profile.createdAt != null)
+            //           _systemInfo('Ngày tạo', profile.createdAt),
+            //         if (profile.createdAt != null && profile.updatedAt != null)
+            //           _divider(),
+            //         if (profile.updatedAt != null)
+            //           _systemInfo('Ngày cập nhật', profile.updatedAt),
+            //       ],
+            //     ),
+            //   ),
           ],
         ),
       ),

@@ -9,6 +9,7 @@ import '../models/register_response_model.dart';
 import '../datasources/authentication_remote_data_source.dart';
 import '../datasources/local_storage_data_source.dart';
 import '../models/reader_model.dart';
+import '../../../../core/services/notification_service.dart';
 
 class AuthenticationRepositoryImpl implements AuthenticationRepository {
   final AuthenticationRemoteDataSource remoteDataSource;
@@ -56,9 +57,12 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
         ]);
 
         print(
-          ' Login successful, tokens and account saved for: ${response.data!.email}',
+          '✅ Login successful, tokens and account saved for: ${response.data!.email}',
         );
-        print(' User role: ${response.data!.roleId}');
+        print('👤 User role: ${response.data!.roleId}');
+        
+        // 🔔 Đăng ký FCM Token lên server
+        // _registerFcmTokenAfterLogin(response.data!.accessToken);
       } else {
         print(' Login failed: ${response.message}');
       }

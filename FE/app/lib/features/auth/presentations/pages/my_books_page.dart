@@ -341,17 +341,18 @@ class _MyBooksPageState extends State<MyBooksPage>
             final isSmallScreen = screenWidth < 360;
             final isMediumScreen = screenWidth < 380;
             
+
             // Responsive values
             final padding = isSmallScreen ? 12.0 : 16.0;
             final spacing = isSmallScreen ? 12.0 : 16.0;
             final crossAxisCount = isSmallScreen ? 2 : 3;
-            final childAspectRatio = isSmallScreen ? 0.54 : (isMediumScreen ? 0.53 : 0.52);
+            final childAspectRatio = isSmallScreen ? 0.5 : (isMediumScreen ? 0.48 : 0.45);
             
             return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              padding: const EdgeInsets.all(14),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                childAspectRatio: 0.55,
+                childAspectRatio: 0.48, // Giảm tỷ lệ để tăng chiều cao
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 16,
               ),
@@ -408,13 +409,13 @@ class _MyBooksPageState extends State<MyBooksPage>
             final padding = isSmallScreen ? 12.0 : 16.0;
             final spacing = isSmallScreen ? 12.0 : 16.0;
             final crossAxisCount = isSmallScreen ? 2 : 3;
-            final childAspectRatio = isSmallScreen ? 0.54 : (isMediumScreen ? 0.53 : 0.52);
+            final childAspectRatio = isSmallScreen ? 0.5 : (isMediumScreen ? 0.48 : 0.45);
             
             return GridView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                childAspectRatio: 0.55,
+                childAspectRatio: 0.48,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 16,
               ),
@@ -587,23 +588,23 @@ class _MyBooksPageState extends State<MyBooksPage>
                   ),
               ],
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 10.0),
-                child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: _textColor,
-                    height: 1.2,
-                    letterSpacing: -0.2,
-                  ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 10.0),
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13, // Tăng kích thước font nhẹ
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87, // Chuyển sang màu đen đậm rõ hơn
+                  height: 1.3, // Tăng khoảng cách dòng để dễ đọc
+                  letterSpacing: -0.2,
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),

@@ -9,6 +9,7 @@ import '../../domain/usecases/register_usecase.dart';
 import '../../domain/core/result.dart';
 import '../../domain/core/failure.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:book_tech/core/services/notification_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthenticationRepository _authRepository;
@@ -51,6 +52,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('has_logged_in_before', true);
             emit(AuthAuthenticated(account: response.data!));
+            
+            // 🔔 Đăng ký FCM token lên server sau khi login thành công
+            if (response.data!.accessToken != null) {
+              _registerFcmToken(response.data!.accessToken!);
+            }
           } else {
             emit(AuthError(message: "Ứng dụng này chỉ dành cho độc giả"));
           }
@@ -91,6 +97,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('has_logged_in_before', true);
           emit(AuthAuthenticated(account: response.data!));
+          
+          // 🔔 Đăng ký FCM token lên server sau khi đăng ký thành công
+          if (response.data!.accessToken != null) {
+            _registerFcmToken(response.data!.accessToken!);
+          }
         } else {
           emit(AuthError(message: response.message));
         }
@@ -160,6 +171,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           // ✅ KIỂM TRA ROLEID KHI CHECK LOGIN STATUS
           if (account.roleId == 3) {
             emit(AuthAuthenticated(account: account));
+            
+            // 🔔 Đăng ký lại FCM token khi app restart
+            if (account.accessToken != null) {
+              _registerFcmToken(account.accessToken!);
+            }
           } else {
             print(
               '❌ [AuthBloc] Saved user is not a reader (roleId=${account.roleId}). Clearing data.',
@@ -188,6 +204,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthUnauthenticated());
       }
     }
+  }
+  
+  /// Đăng ký FCM token lên server (chạy background, không block UI)
+  void _registerFcmToken(String accessToken) {
+    Future.microtask(() async {
+      try {
+        await NotificationService().registerTokenOnServer(accessToken);
+        print('✅ [AuthBloc] FCM token registered successfully');
+      } catch (e) {
+        print('⚠️ [AuthBloc] Failed to register FCM token: $e');
+        // Không throw error - đây chỉ là tính năng phụ
+      }
+    });
   }
 }
 

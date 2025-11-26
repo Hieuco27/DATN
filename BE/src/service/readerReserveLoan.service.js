@@ -438,6 +438,29 @@ try {
       }
     });
 
+    // -----------------------------
+    // SEND FCM (mới thêm)
+    // -----------------------------
+    try {
+      const payload = buildFcmPayload({
+        title: `Đặt mượn thành công — Phiếu #${slip.loanSlipId}`,
+        body: `Yêu cầu mượn ${detailPreview.length} tài liệu đã được gửi và đang chờ duyệt.`,
+        data: {
+          type: 'RESERVATION_CREATED',
+          slipId: String(slip.loanSlipId),
+          itemsCount: String(detailPreview.length),
+          notificationId: createdNotification ? String(createdNotification.notificationID || createdNotification.id || '') : '',
+          link: `/loan/${slip.loanSlipId}`
+        }
+      });
+      
+      // sendFcmToReader được định nghĩa ở cuối file
+      await sendFcmToReader(reader.readerId, payload);
+      console.log('✅ reserveLoanForReaderService: FCM sent to reader', reader.readerId);
+    } catch (fcmErr) {
+      console.error('❌ reserveLoanForReaderService: FCM failed', fcmErr.message);
+    }
+
     return {
       slip: {
         loanSlipId: slip.loanSlipId,
@@ -462,3 +485,68 @@ try {
 }
 
 module.exports = { reserveLoanForReaderService, getReaderBorrowSnapshot };
+
+// ============================================================
+// FCM HELPERS (Copy từ adminLoanSlip.service.js)
+// ============================================================
+
+function stringifyDataValuesForFcm(data = {}) {
+  const out = {};
+  for (const k of Object.keys(data || {})) {
+    try {
+      out[k] = typeof data[k] === 'string' ? data[k] : JSON.stringify(data[k]);
+    } catch (e) {
+      out[k] = String(data[k]);
+    }
+  }
+  return out;
+}
+
+function buildFcmPayload({ title, body, data = {} } = {}) {
+  const payload = {};
+  if (title || body) payload.notification = { title: title || '', body: body || '' };
+  const dataStr = stringifyDataValuesForFcm(data);
+  if (Object.keys(dataStr).length) payload.data = dataStr;
+  return payload;
+}
+
+async function sendFcmToReader(readerId, payload = {}) {
+  if (!readerId) return { success: false, error: new Error('Missing readerId') };
+  let fcmService;
+  try {
+    fcmService = require('./fcm.service');
+  } catch (e) {
+    console.error('[FCM Helper] cannot require fcm.service:', e?.message || e);
+    return { success: false, error: e };
+  }
+
+  try {
+    // Reader, Account models đã được require ở đầu file
+    // Tuy nhiên để chắc chắn, ta require lại hoặc dùng biến global nếu có
+    // Ở đây ta dùng Reader, Account từ closure của module (dòng đầu file)
+    
+    const reader = await Reader.findByPk(readerId, { attributes: ['readerId', 'accountId'] });
+    let accountId = reader?.accountId || null;
+
+    if (!accountId) {
+       // Fallback tìm account theo readerId
+       const acct = await Account.findOne({ where: { readerId }, attributes: ['accountId'] });
+       accountId = acct?.accountId || null;
+    }
+
+    if (!accountId) {
+      console.warn(`[FCM Helper] No accountId found for readerId=${readerId}`);
+      return { success: false, message: 'NO_ACCOUNT_FOR_READER' };
+    }
+    
+    if (payload && payload.data) {
+      payload.data = stringifyDataValuesForFcm(payload.data);
+    }
+
+    const resp = await fcmService.sendToAccounts([accountId], payload);
+    return resp;
+  } catch (err) {
+    console.error('[FCM Helper] sendFcmToReader error:', err?.message || err);
+    return { success: false, error: err };
+  }
+}

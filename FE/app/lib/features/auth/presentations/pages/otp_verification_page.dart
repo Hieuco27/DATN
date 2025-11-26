@@ -140,9 +140,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       _isResending = true;
     });
 
-    try {
-      print('🔄 [RESEND OTP] Đang gửi lại OTP...');
-      
+    try {      
       final repository = AuthenticationRepositoryImpl(
         remoteDataSource: AuthenticationRemoteDataSourceImpl(),
         localStorageDataSource: LocalStorageDataSourceImpl(),

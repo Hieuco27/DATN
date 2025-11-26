@@ -3,6 +3,8 @@ import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.da
 import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:book_tech/core/services/notification_service.dart';
 import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
 import 'package:book_tech/core/theme/theme.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
@@ -34,6 +36,14 @@ final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Khởi tạo Firebase
+  await Firebase.initializeApp();
+  print('🔥 Firebase initialized');
+  
+  // Khởi tạo Notification Service
+  await NotificationService().initialize();
+  print('🔔 NotificationService initialized');
   
   final prefs = await SharedPreferences.getInstance();
   final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;

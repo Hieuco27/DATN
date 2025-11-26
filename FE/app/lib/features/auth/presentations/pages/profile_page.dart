@@ -466,27 +466,36 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                           ],
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: _navigateToEditProfile,
+                        child: Icon(
+                          Icons.drive_file_rename_outline_rounded,
+                          size: 14,
+                          color: _primaryColor,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Xem hồ sơ',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _primaryColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 11,
-                            color: _primaryColor,
-                          ),
-                        ],
+                        // children: [
+                        //   Text(
+                        //     'Xem hồ sơ',
+                        //     maxLines: 1,
+                        //     overflow: TextOverflow.ellipsis,
+                        //     style: TextStyle(
+                        //       fontSize: 13,
+                        //       color: _primaryColor,
+                        //       fontWeight: FontWeight.w600,
+                        //     ),
+                        //   ),
+                        //   const SizedBox(width: 4),
+                        //   Icon(
+                        //     Icons.arrow_forward_ios_rounded,
+                        //     size: 11,
+                        //     color: _primaryColor,
+                        //   ),
+                        // ],
                       ),
                       // Hiển thị trạng thái thành viên hoặc nút nâng cấp
                       const SizedBox(height: 6),
@@ -564,10 +573,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildMenuItem(
-                icon: Icons.edit_rounded,
-                title: 'Chỉnh sửa thông tin',
+                icon: Icons.person_search_rounded,
+                title: 'Xem thông tin tài khoản',
                 isFirst: true,
-                onTap: _navigateToEditProfile,
+                onTap: _navigateToProfileDetail,
               ),
               _buildMenuItem(
                 icon: Icons.history_rounded,
@@ -708,9 +717,63 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
     );
   }
 
+  void _navigateToProfileDetail() {
+    final state = context.read<ProfileBloc>().state;
+    if (state is ProfileLoaded) {
+      _pushProfileDetail(state.profile);
+    } else if (state is ProfileUpdated) {
+      _pushProfileDetail(state.profile);
+    } else {
+      NotificationService.showInfo(
+        context,
+        message: 'Vui lòng đợi tải thông tin profile',
+      );
+    }
+  }
+
+  void _pushProfileDetail(dynamic profile) {
+    // final profileBloc = context.read<ProfileBloc>(); // Không cần thiết nếu ProfileDetailPage không dùng
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => ProfileDetailPage(
+              profile: profile,
+            ),
+          ),
+        )
+        .then((_) {
+          // Reload profile khi quay lại để cập nhật các thay đổi (nếu có) trên ProfilePage
+          final authState = context.read<AuthBloc>().state;
+          if (authState is AuthAuthenticated &&
+              (authState.account.accessToken?.isNotEmpty ?? false)) {
+            context.read<ProfileBloc>().add(ProfileLoadRequested());
+          }
+        });
+  }
+
   void _navigateToEditProfile() {
     final state = context.read<ProfileBloc>().state;
     if (state is ProfileLoaded) {
+      final profileBloc = context.read<ProfileBloc>();
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (_) => BlocProvider.value(
+                value: profileBloc,
+                child: EditProfilePage(profile: state.profile),
+              ),
+            ),
+          )
+          .then((updatedProfile) {
+            if (updatedProfile != null) {
+              final authState = context.read<AuthBloc>().state;
+              if (authState is AuthAuthenticated &&
+                  (authState.account.accessToken?.isNotEmpty ?? false)) {
+                context.read<ProfileBloc>().add(ProfileLoadRequested());
+              }
+            }
+          });
+    } else if (state is ProfileUpdated) {
       final profileBloc = context.read<ProfileBloc>();
       Navigator.of(context)
           .push(
@@ -946,7 +1009,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             const SizedBox(width: 5),
             Flexible(
               child: Text(
-                cardType.typeName,
+                cardType.typeName.toLowerCase() == 'premium' ? 'Thẻ thư viện' : cardType.typeName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -962,10 +1025,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
     }
 
     final label = memberCard == null
-        ? 'Chưa có thẻ thành viên'
+        ? 'Chưa có thẻ thư viện'
         : 'Thẻ miễn phí';
     final subtitle = memberCard == null
-        ? 'Nhấn để đăng ký và mượn sách'
+        ? 'Nhấn để đăng ký'
         : 'Nâng cấp để mượn sách mang về';
 
     return InkWell(

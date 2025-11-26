@@ -16,6 +16,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -31,7 +32,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -47,6 +48,11 @@ flutter {
     source = "../.."
 }
 dependencies {
+  implementation("androidx.multidex:multidex:2.0.1")
+  
+  // Core Library Desugaring (cần cho flutter_local_notifications)
+  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+  
   // Import the Firebase BoM
   implementation ( platform ( "com.google.firebase:firebase-bom:34.1.0" ))
 
