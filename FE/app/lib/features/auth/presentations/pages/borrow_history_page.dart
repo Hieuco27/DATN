@@ -4,6 +4,7 @@ import 'package:book_tech/features/auth/data/datasources/loan_remote_data_source
 import 'package:book_tech/features/auth/data/repositories/loan_repository.dart';
 import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
 import 'package:book_tech/features/auth/data/models/loan_history_models.dart';
+import 'package:book_tech/core/services/socket_service.dart';
 
 class BorrowHistoryPage extends StatefulWidget {
   const BorrowHistoryPage({super.key});
@@ -21,8 +22,13 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
   String _searchQuery = '';
   DateTime? _selectedMonth;
   DateTime? _selectedDate;
+  DateTime? _startDate;
+  DateTime? _endDate;
   bool _isFilterByMonth = false;
   bool _isFilterByDate = false;
+  bool _isFilterByDateRange = false;
+  int? _readerId;
+  bool _socketListenerInitialized = false;
 
   @override
   void initState() {
@@ -30,6 +36,12 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     final local = LocalStorageDataSourceImpl();
     _repo = LoanRepository(remote: LoanRemoteDataSourceImpl.create(local));
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    SocketService().off('loan_status_updated');
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -43,14 +55,61 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
       setState(() {
         _allItems = response.data;
         _filteredItems = response.data;
+        _readerId = response.reader?.readerId;
         _isLoading = false;
       });
+
+      if (_readerId != null && !_socketListenerInitialized) {
+        _setupSocketListener();
+      }
     } catch (e) {
       setState(() {
         _error = 'Lỗi tải dữ liệu: $e';
         _isLoading = false;
       });
     }
+  }
+
+  void _setupSocketListener() {
+    if (_readerId == null) return;
+
+    try {
+      SocketService().initSocket(userId: _readerId);
+
+      SocketService().off('loan_status_updated');
+      SocketService().on('loan_status_updated', (data) {
+        if (!mounted) return;
+
+        try {
+          final loanSlipId = data?['loanSlipId'];
+          final status = data?['status'];
+
+          if (loanSlipId == null || status == null) {
+            return;
+          }
+
+          setState(() {
+            _allItems = _allItems.map((loan) {
+              if (loan.loanSlipId == loanSlipId) {
+                return LoanItem(
+                  loanSlipId: loan.loanSlipId,
+                  readerId: loan.readerId,
+                  loanDate: loan.loanDate,
+                  dueDate: loan.dueDate,
+                  status: status.toString(),
+                  details: loan.details,
+                );
+              }
+              return loan;
+            }).toList();
+
+            _applyFilters();
+          });
+        } catch (_) {}
+      });
+
+      _socketListenerInitialized = true;
+    } catch (_) {}
   }
 
   void _applyFilters() {
@@ -84,6 +143,16 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
         return loanDate.year == _selectedDate!.year &&
             loanDate.month == _selectedDate!.month &&
             loanDate.day == _selectedDate!.day;
+      }).toList();
+    }
+
+    // Filter by date range
+    if (_isFilterByDateRange && _startDate != null && _endDate != null) {
+      filtered = filtered.where((loan) {
+        final loanDate = _parseDate(loan.loanDate);
+        if (loanDate == null) return false;
+        return loanDate.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
+            loanDate.isBefore(_endDate!.add(const Duration(days: 1)));
       }).toList();
     }
 
@@ -170,11 +239,303 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
       setState(() {
         _selectedDate = picked;
         _selectedMonth = null;
+        _startDate = null;
+        _endDate = null;
         _isFilterByDate = true;
         _isFilterByMonth = false;
+        _isFilterByDateRange = false;
       });
       _applyFilters();
     }
+  }
+
+  Future<void> _selectDateRange() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildDateRangeBottomSheet(),
+    );
+  }
+
+  Widget _buildDateRangeBottomSheet() {
+    DateTime? tempStartDate = _startDate;
+    DateTime? tempEndDate = _endDate;
+
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Title
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppPalette.gradient1.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.date_range,
+                        color: AppPalette.gradient1,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width:12),
+                    const Text(
+                      'Chọn khoảng thời gian',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    // Start Date Button
+                    _buildDateSelectionCard(
+                      icon: Icons.calendar_today,
+                      label: 'Từ ngày',
+                      date: tempStartDate,
+                      color: Colors.blue,
+                      onTap: () async {
+                        final picked = await _showDatePickerDialog(
+                          initialDate: tempStartDate,
+                          lastDate: tempEndDate ?? DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            tempStartDate = picked;
+                            if (tempEndDate != null && picked.isAfter(tempEndDate!)) {
+                              tempEndDate = picked;
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // Arrow indicator
+                    Icon(
+                      Icons.arrow_downward_rounded,
+                      color: Colors.grey[400],
+                      size: 20,
+                    ),
+                    const SizedBox(height: 12),
+                    // End Date Button
+                    _buildDateSelectionCard(
+                      icon: Icons.event,
+                      label: 'Đến ngày',
+                      date: tempEndDate,
+                      color: Colors.orange,
+                      onTap: () async {
+                        final picked = await _showDatePickerDialog(
+                          initialDate: tempEndDate,
+                          firstDate: tempStartDate,
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            tempEndDate = picked;
+                            if (tempStartDate != null && picked.isBefore(tempStartDate!)) {
+                              tempStartDate = picked;
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Hủy',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: tempStartDate != null && tempEndDate != null
+                                ? () {
+                                    setState(() {
+                                      _startDate = tempStartDate;
+                                      _endDate = tempEndDate;
+                                      _selectedMonth = null;
+                                      _selectedDate = null;
+                                      _isFilterByDateRange = true;
+                                      _isFilterByMonth = false;
+                                      _isFilterByDate = false;
+                                    });
+                                    _applyFilters();
+                                    Navigator.pop(context);
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppPalette.gradient1,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Áp dụng',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDateSelectionCard({
+    required IconData icon,
+    required String label,
+    required DateTime? date,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: date != null ? color.withOpacity(0.3) : Colors.grey[300]!,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    date != null ? _formatDateOnly(date) : 'Chọn ngày',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: date != null ? Colors.black87 : Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey[400],
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<DateTime?> _showDatePickerDialog({
+    DateTime? initialDate,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) async {
+    final now = DateTime.now();
+    return await showDatePicker(
+      context: context,
+      initialDate: initialDate ?? now,
+      firstDate: firstDate ?? DateTime(2020),
+      lastDate: lastDate ?? now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppPalette.gradient1,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
   }
 
   void _clearFilters() {
@@ -182,8 +543,11 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
       _searchQuery = '';
       _selectedMonth = null;
       _selectedDate = null;
+      _startDate = null;
+      _endDate = null;
       _isFilterByMonth = false;
       _isFilterByDate = false;
+      _isFilterByDateRange = false;
       _filteredItems = _allItems;
     });
   }
@@ -203,6 +567,11 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
   String _formatDateOnly(DateTime? date) {
     if (date == null) return '';
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _formatDateRange() {
+    if (_startDate == null || _endDate == null) return '';
+    return '${_formatDateOnly(_startDate)} - ${_formatDateOnly(_endDate)}';
   }
 
   Color _statusColor(String s) {
@@ -276,7 +645,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
-          if (_isFilterByMonth || _isFilterByDate || _searchQuery.isNotEmpty)
+          if (_isFilterByMonth || _isFilterByDate || _isFilterByDateRange || _searchQuery.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.clear_all, color: Colors.black87),
               onPressed: _clearFilters,
@@ -351,26 +720,120 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                   icon: Icons.calendar_month,
                   label: _isFilterByMonth
                       ? _formatMonthYear(_selectedMonth)
-                      : 'Lọc theo tháng',
+                      : 'Theo tháng',
                   isActive: _isFilterByMonth,
                   
                   onTap: _selectMonth,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildFilterButton(
                   icon: Icons.calendar_today,
                   label: _isFilterByDate
                       ? _formatDateOnly(_selectedDate)
-                      : 'Lọc theo ngày',
+                      : 'Theo ngày',
                   isActive: _isFilterByDate,
                   
                   onTap: _selectDate,
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFilterButton(
+                  icon: Icons.date_range,
+                  label: _isFilterByDateRange
+                      ? 'Khoảng TG'
+                      : 'Khoảng TG',
+                  isActive: _isFilterByDateRange,
+                  
+                  onTap: _selectDateRange,
+                ),
+              ),
             ],
           ),
+          if (_isFilterByDateRange && _startDate != null && _endDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppPalette.gradient1.withOpacity(0.1),
+                      AppPalette.gradient2.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppPalette.gradient1.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.date_range,
+                        size: 18,
+                        color: AppPalette.gradient1,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Khoảng thời gian đã chọn',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatDateRange(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _startDate = null;
+                          _endDate = null;
+                          _isFilterByDateRange = false;
+                          _filteredItems = _allItems;
+                        });
+                        _applyFilters();
+                      },
+                      tooltip: 'Xóa lọc',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -570,7 +1033,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -655,60 +1118,99 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                 if (loan.details.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Divider(color: Colors.grey[300]),
-                  const SizedBox(height: 12),
                   Text(
-                    'Chi tiết sách:',
+                    'Danh sách tài liệu:',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[700],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: loan.details.map((d) {
-                      final note = d.note ?? '';
+                const SizedBox(height: 8),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: loan.details.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final detail = loan.details[index];
+                      final book = detail.bookInfo;
+                      
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.grey[200]!,
-                            width: 1,
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.book_outlined,
-                              size: 14,
-                              color: AppPalette.gradient1,
+                            // Cover Image
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: book?.coverPhoto != null
+                                  ? Image.network(
+                                      book!.coverPhoto!,
+                                      width: 50,
+                                      height: 75,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 50,
+                                        height: 75,
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.book, color: Colors.grey),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 50,
+                                      height: 75,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.book, color: Colors.grey),
+                                    ),
                             ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                note.isEmpty
-                                    ? 'Mã: ${d.loanDetailId}'
-                                    : note,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black87,
-                                ),
+                            const SizedBox(width: 12),
+                            // Book Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    book?.title ?? 'Sách không xác định',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, 
+                                      vertical: 2
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _statusColor(detail.status).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      _statusLabel(detail.status),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: _statusColor(detail.status),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       );
-                    }).toList(),
+                    },
                   ),
                 ],
               ],
@@ -728,29 +1230,27 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 18, color: color),
+          child: Icon(icon, size: 14, color: color),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
               Text(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
             ],

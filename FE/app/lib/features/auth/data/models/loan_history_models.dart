@@ -92,12 +92,14 @@ class LoanDetail {
   final String? returnDate; // có thể null
   final String status;
   final String? note;
+  final BookInfo? bookInfo;
 
   LoanDetail({
     required this.loanDetailId,
     required this.returnDate,
     required this.status,
     required this.note,
+    this.bookInfo,
   });
 
   factory LoanDetail.fromJson(Map<String, dynamic> json) {
@@ -106,6 +108,35 @@ class LoanDetail {
       returnDate: json['returnDate'],
       status: json['status'] ?? '',
       note: json['note'],
+      bookInfo: json['bookInfo'] != null
+          ? BookInfo.fromJson(json['bookInfo'])
+          : null,
+    );
+  }
+}
+
+class BookInfo {
+  final int documentId;
+  final String title;
+  final String? coverPhoto;
+  final String? shelfLocation;
+  final String? ebookUrl;
+
+  BookInfo({
+    required this.documentId,
+    required this.title,
+    this.coverPhoto,
+    this.shelfLocation,
+    this.ebookUrl,
+  });
+
+  factory BookInfo.fromJson(Map<String, dynamic> json) {
+    return BookInfo(
+      documentId: json['documentId'],
+      title: json['title'] ?? '',
+      coverPhoto: json['coverPhoto'],
+      shelfLocation: json['shelfLocation'],
+      ebookUrl: json['ebookUrl'],
     );
   }
 }

@@ -30,6 +30,10 @@ import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:book_tech/features/auth/presentations/bloc/cart_bloc.dart';
+import 'package:book_tech/features/auth/presentations/bloc/cart_event.dart';
+
+
 
 // Global RouteObserver để track navigation trong app
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
@@ -107,7 +111,7 @@ class MyApp extends StatelessWidget {
         
         // ✅ BLoC implementations (simple features done)
         BlocProvider(
-          create: (_) => CartBloc(),
+  create: (_) => CartBloc()..add(const CartStarted()),
         ),
         BlocProvider(
           create: (_) => WishlistBloc(),

@@ -140,9 +140,6 @@ class DocumentDetailViewModel extends ChangeNotifier {
       documentId: id,
       title: _document!.title,
       coverPhoto: _document!.coverPhoto,
-      quantity: _quantity,
-      minDeposit: _document!.minDeposit,
-      maxDeposit: _document!.maxDeposit,
     );
   }
 

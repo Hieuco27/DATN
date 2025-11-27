@@ -141,25 +141,46 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
           ),
           BlocBuilder<WishlistBloc, WishlistState>(
             builder: (context, wishlistState) {
+              // Check bookmarked status directly from Bloc state for real-time UI update
+              final isBookmarked = _vm.documentId > 0 && 
+                  wishlistState is WishlistData && 
+                  wishlistState.contains(_vm.documentId);
+              
+              print('🎨 UI: BlocBuilder rebuilt for documentId=${_vm.documentId}');
+              print('🎨 UI: wishlistState type: ${wishlistState.runtimeType}');
+              if (wishlistState is WishlistData) {
+                print('🎨 UI: Wishlist has ${wishlistState.items.length} items');
+                print('🎨 UI: Wishlist IDs: ${wishlistState.items.map((e) => e.documentId).toList()}');
+                print('🎨 UI: Contains documentId=${_vm.documentId}? $isBookmarked');
+              }
+              print('🎨 UI: Icon color will be: ${isBookmarked ? "RED" : "GREY"}');
+              
               return IconButton(
                 icon: Icon(
-                  _vm.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                  color: _vm.isBookmarked ? _primaryColor : Colors.grey,
+                  isBookmarked ? Icons.favorite : Icons.favorite_border,
+                  color: isBookmarked ? Colors.red : Colors.grey,
                 ),
                 onPressed: () {
                   final item = _vm.getWishlistItem();
                   if (item != null) {
+                    // Lưu trạng thái trước khi toggle
+                    final wasBookmarked = isBookmarked;
+                    
+                    print('👆 UI: User tapped favorite icon, wasBookmarked=$wasBookmarked');
                     context.read<WishlistBloc>().add(WishlistItemToggled(item));
-                    // Update local state after toggle
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      _vm.updateBookmarkStatus(context.read<WishlistBloc>().state);
+                    
+                    // Hiển thị thông báo dựa trên trạng thái cũ
+                    if (wasBookmarked) {
                       NotificationService.showInfo(
                         context,
-                        message: _vm.isBookmarked
-                            ? 'Đã thêm vào muốn đọc'
-                            : 'Đã bỏ khỏi muốn đọc',
+                        message: 'Đã bỏ khỏi yêu thích',
                       );
-                    });
+                    } else {
+                      NotificationService.showSuccess(
+                        context,
+                        message: 'Đã thêm vào yêu thích',
+                      );
+                    }
                   }
                 },
               );
@@ -863,7 +884,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
     
     NotificationService.showSuccess(
       context,
-      message: 'Đã thêm ${cartItem.quantity} sách vào giỏ hàng',
+      message: 'Đã thêm sách vào giỏ hàng',
     );
   }
 }

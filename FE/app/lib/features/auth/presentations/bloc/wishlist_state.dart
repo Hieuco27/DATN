@@ -26,7 +26,7 @@ class WishlistData extends WishlistState {
   }
 
   @override
-  List<Object?> get props => [items];
+  List<Object?> get props => [items.map((e) => e.documentId).toList()];
 
   WishlistData copyWith({List<WishlistItem>? items}) {
     return WishlistData(items: items ?? this.items);

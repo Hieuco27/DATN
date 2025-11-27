@@ -15,18 +15,7 @@ class CartLoaded extends CartState {
 
   const CartLoaded({required this.items});
 
-  /// Computed getters (business logic giữ nguyên)
-  int get totalItems => items.fold(0, (sum, item) => sum + item.quantity);
-
-  int get totalMinDeposit => items.fold(
-        0,
-        (sum, item) => sum + ((item.minDeposit ?? 0) * item.quantity),
-      );
-
-  int get totalMaxDeposit => items.fold(
-        0,
-        (sum, item) => sum + ((item.maxDeposit ?? 0) * item.quantity),
-      );
+  
 
   bool hasItem(int documentId) {
     return items.any((item) => item.documentId == documentId);

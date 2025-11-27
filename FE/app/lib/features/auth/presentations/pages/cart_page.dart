@@ -347,14 +347,8 @@ class _CartPageState extends State<CartPage>
                 final selectedItems = state.items
                     .where((i) => _selectedItems.contains(i.documentId))
                     .toList();
-                final totalMin = selectedItems.fold<int>(
-                  0,
-                  (s, i) => s + ((i.minDeposit ?? 0) * i.quantity),
-                );
-                final totalMax = selectedItems.fold<int>(
-                  0,
-                  (s, i) => s + ((i.maxDeposit ?? 0) * i.quantity),
-                );
+                
+               
 
                 return Column(
                   children: [
@@ -402,12 +396,45 @@ class _CartPageState extends State<CartPage>
                     ),
                     const SizedBox(height: 16),
 
-                    // Summary section
-                    _buildSummarySection(
-                      selectedItems.length,
-                      totalMin,
-                      totalMax,
-                    ),
+                    // Checkout Button
+                    if (selectedItems.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: SafeArea(
+                          top: false,
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _isSubmitting ? null : _submitReservation,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF6B35),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 4,
+                              ),
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Đăng ký mượn (${selectedItems.length})',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 );
               },
@@ -631,42 +658,7 @@ class _CartPageState extends State<CartPage>
                       ),
                       const SizedBox(height: 12),
 
-                      // Deposit info
-                      if (item.minDeposit != null && item.maxDeposit != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFFFF6B35).withOpacity(0.1),
-                                const Color(0xFFFF6B35).withOpacity(0.05),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.account_balance_wallet_rounded,
-                                size: 14,
-                                color: const Color(0xFFFF6B35),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Cọc: ${_formatCurrency(item.minDeposit!)} - ${_formatCurrency(item.maxDeposit!)}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFF6B35),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      // Quantity removed
                     ],
                   ),
                 ),
@@ -750,170 +742,5 @@ class _CartPageState extends State<CartPage>
         ),
       ),
     );
-  }
-
-  Widget _buildSummarySection(int selectedCount, int totalMin, int totalMax) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              // Progress indicator
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEDF2F7),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Đã chọn',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Text(
-                                '$selectedCount',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFFFF6B35),
-                                ),
-                              ),
-                              Text(
-                                '/3',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 60,
-                      height: 60,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 60,
-                            height: 60,
-                            child: CircularProgressIndicator(
-                              value: selectedCount / 3,
-                              strokeWidth: 6,
-                              backgroundColor: Colors.grey[200],
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFFFF6B35),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${(selectedCount / 3 * 100).toInt()}%',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFFF6B35),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Total price
-              if (selectedCount > 0)
-                
-
-              if (selectedCount > 0) const SizedBox(height: 16),
-
-              // Submit button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: (_isSubmitting || _selectedItems.isEmpty)
-                      ? null
-                      : _submitReservation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B35),
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey[300],
-                    elevation: _selectedItems.isEmpty ? 0 : 8,
-                    shadowColor: const Color(0xFFFF6B35).withOpacity(0.4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_circle_outline_rounded, size: 22),
-                            SizedBox(width: 8),
-                            Text(
-                              'Đăng ký mượn',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatCurrency(int amount) {
-    return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} đ';
   }
 }

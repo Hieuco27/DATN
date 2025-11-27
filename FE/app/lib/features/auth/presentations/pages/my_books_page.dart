@@ -143,7 +143,7 @@ class _MyBooksPageState extends State<MyBooksPage>
           ] else ...[
             BlocBuilder<CartBloc, CartState>(
               builder: (context, state) {
-                final count = state is CartLoaded ? state.totalItems : 0;
+                final count = state is CartLoaded ? state.items.length : 0;
                 return Container(
                   margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
                   decoration: BoxDecoration(
@@ -258,7 +258,7 @@ class _MyBooksPageState extends State<MyBooksPage>
             child: _buildTabButton('Đang đọc', 0, Icons.menu_book_rounded),
           ),
           Expanded(
-            child: _buildTabButton('Muốn đọc', 1, Icons.bookmark_rounded),
+            child: _buildTabButton('Yêu thích', 1, Icons.bookmark_rounded),
           ),
         ],
       ),
@@ -395,7 +395,7 @@ class _MyBooksPageState extends State<MyBooksPage>
       builder: (context, state) {
         if (state is! WishlistData || state.items.isEmpty) {
           return _buildEmptyState(
-            'Chưa có sách muốn đọc',
+            'Chưa có sách yêu thích',
             Icons.bookmark_border,
           );
         }

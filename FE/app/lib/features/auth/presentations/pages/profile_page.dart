@@ -374,174 +374,108 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
               : accountId;
           // Navigate to profile detail page
           return InkWell(
-            onTap: () {
-              if (state is ProfileLoaded) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ProfileDetailPage(profile: state.profile),
-                  ),
-                );
-              } else if (state is ProfileUpdated) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ProfileDetailPage(profile: state.profile),
-                  ),
-                );
-              }
-            },
+            onTap: _navigateToProfileDetail,
             child: Row(
-              children: [
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primaryColor.withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    size: 32,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        userName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: _textColor,
-                          letterSpacing: -0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDF2F7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.badge_rounded,
-                              size: 12,
-                              color: Colors.grey[700],
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                'ID: $displayId',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: _navigateToEditProfile,
-                        child: Icon(
-                          Icons.drive_file_rename_outline_rounded,
-                          size: 14,
-                          color: _primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        // children: [
-                        //   Text(
-                        //     'Xem hồ sơ',
-                        //     maxLines: 1,
-                        //     overflow: TextOverflow.ellipsis,
-                        //     style: TextStyle(
-                        //       fontSize: 13,
-                        //       color: _primaryColor,
-                        //       fontWeight: FontWeight.w600,
-                        //     ),
-                        //   ),
-                        //   const SizedBox(width: 4),
-                        //   Icon(
-                        //     Icons.arrow_forward_ios_rounded,
-                        //     size: 11,
-                        //     color: _primaryColor,
-                        //   ),
-                        // ],
-                      ),
-                      // Hiển thị trạng thái thành viên hoặc nút nâng cấp
-                      const SizedBox(height: 6),
-                      _buildMembershipStatus(state),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    // Avatar
+    Container(
+      width: 65,
+      height: 65,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Icon(Icons.person_rounded, size: 30, color: Colors.white),
+    ),
 
-                      // Text(
-                      //   userEmail,
-                      //   style: TextStyle(
-                      //     fontSize: 14,
-                      //     color: Colors.grey.shade600,
-                      //   ),
-                      //   maxLines: 1,
-                      //   overflow: TextOverflow.ellipsis, // Đã có
-                      // ),
-                      // Text(
-                      //   userPhoneNumber,
-                      //   style: TextStyle(
-                      //     fontSize: 14,
-                      //     color: Colors.grey.shade600,
-                      //   ),
-                      //   maxLines: 1,
-                      //   overflow: TextOverflow.ellipsis, // Đã có
-                      // ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        // decoration: BoxDecoration(
-                        //   color: AppPalette.gradient1.withOpacity(0.1),
-                        //   borderRadius: BorderRadius.circular(12),
-                        // ),
-                        // child: Text(
-                        //   'Độc giả',
-                        //   style: TextStyle(
-                        //     fontSize: 12,
-                        //     color: AppPalette.gradient1,
-                        //     fontWeight: FontWeight.w500,
-                        //   ),
-                        // ),
-                      ),
-                    ],
-                  ),
+    const SizedBox(width: 12),
+
+    Expanded(
+      child: Stack(
+        children: [
+          // Nội dung chính của profile
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                userName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _textColor,
+                  letterSpacing: -0.3,
                 ),
-              ],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 4),
+
+              // ID
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Color(0xFFEDF2F7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.badge_rounded,
+                        size: 12, color: Colors.grey[700]),
+                    const SizedBox(width: 3),
+                    Text(
+                      'ID: $displayId',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 4),
+
+              _buildMembershipStatus(state),
+            ],
+          ),
+
+          // 🔥 ICON CHỈNH SỬA Ở GÓC PHẢI
+          Positioned(
+            right: 0,
+            top: 0,
+            child: GestureDetector(
+              onTap: _navigateToEditProfile,
+              child: Icon(
+                Icons.drive_file_rename_outline_rounded,
+                size: 24,
+                color: _primaryColor,
+              ),
             ),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
           );
         },
       ),
@@ -718,37 +652,16 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
   }
 
   void _navigateToProfileDetail() {
-    final state = context.read<ProfileBloc>().state;
-    if (state is ProfileLoaded) {
-      _pushProfileDetail(state.profile);
-    } else if (state is ProfileUpdated) {
-      _pushProfileDetail(state.profile);
-    } else {
-      NotificationService.showInfo(
-        context,
-        message: 'Vui lòng đợi tải thông tin profile',
-      );
-    }
-  }
-
-  void _pushProfileDetail(dynamic profile) {
-    // final profileBloc = context.read<ProfileBloc>(); // Không cần thiết nếu ProfileDetailPage không dùng
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (_) => ProfileDetailPage(
-              profile: profile,
-            ),
-          ),
-        )
-        .then((_) {
-          // Reload profile khi quay lại để cập nhật các thay đổi (nếu có) trên ProfilePage
-          final authState = context.read<AuthBloc>().state;
-          if (authState is AuthAuthenticated &&
-              (authState.account.accessToken?.isNotEmpty ?? false)) {
-            context.read<ProfileBloc>().add(ProfileLoadRequested());
-          }
-        });
+    final profileBloc = context.read<ProfileBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: profileBloc,
+          child: const ProfileDetailPage(),
+        ),
+      ),
+    );
+    // Không cần reload khi quay về vì ProfileDetailPage đã tự load
   }
 
   void _navigateToEditProfile() {

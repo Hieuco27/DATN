@@ -5,39 +5,14 @@ class CartProvider with ChangeNotifier {
   final List<CartItemModel> _items = [];
 
   List<CartItemModel> get items => List.unmodifiable(_items);
-  int get totalItems => _items.fold(0, (sum, item) => sum + item.quantity);
-  int get totalMinDeposit => _items.fold(
-    0,
-    (sum, item) => sum + ((item.minDeposit ?? 0) * item.quantity),
-  );
-
-  int get totalMaxDeposit => _items.fold(
-    0,
-    (sum, item) => sum + ((item.maxDeposit ?? 0) * item.quantity),
-  );
+  int get totalItems => _items.length;
 
   void addItem(CartItemModel item) {
     final existingIndex = _items.indexWhere(
       (i) => i.documentId == item.documentId,
     );
-    if (existingIndex >= 0) {
-      _items[existingIndex] = _items[existingIndex].copyWith(
-        quantity: _items[existingIndex].quantity + item.quantity,
-      );
-    } else {
+    if (existingIndex < 0) {
       _items.add(item);
-    }
-    notifyListeners();
-  }
-
-  void updateQuantity(int documentId, int quantity) {
-    if (quantity <= 0) {
-      removeItem(documentId);
-      return;
-    }
-    final index = _items.indexWhere((i) => i.documentId == documentId);
-    if (index >= 0) {
-      _items[index] = _items[index].copyWith(quantity: quantity);
       notifyListeners();
     }
   }

@@ -1,18 +1,23 @@
-import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'wishlist_event.dart';
 import 'wishlist_state.dart';
-import '../providers/wishlist_provider.dart'; // Re-use WishlistItem model
+import '../../domain/repositories/favorite_repository.dart';
+import '../../data/repositories/favorite_repository_impl.dart';
+import '../../data/datasources/favorite_remote_data_source.dart';
+import '../providers/wishlist_provider.dart'; // Keep for WishlistItem compatibility
 
 /// WishlistBloc - Manages wishlist state
 /// 
-/// Replaces WishlistProvider with BLoC pattern
-/// Business logic giữ nguyên 100%
+/// Uses FavoriteRepository with backend API
 class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
-  static const String _storageKey = 'wishlist_items_v1';
+  final FavoriteRepository _repository;
 
-  WishlistBloc() : super(const WishlistLoading()) {
+  WishlistBloc()
+      : _repository = FavoriteRepositoryImpl(
+          remoteDataSource: FavoriteRemoteDataSourceImpl(),
+        ),
+        super(const WishlistLoading()) {
+    print('❤️ WishlistBloc initialized with repository: $_repository');
     on<WishlistLoaded>(_onLoaded);
     on<WishlistItemToggled>(_onItemToggled);
     on<WishlistItemRemoved>(_onItemRemoved);
@@ -22,33 +27,37 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
     add(const WishlistLoaded());
   }
 
-  /// Handle: Load wishlist from storage
-  /// Logic giữ nguyên từ WishlistProvider._load()
+  /// Handle: Load favorites from backend
   Future<void> _onLoaded(
     WishlistLoaded event,
     Emitter<WishlistState> emit,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-
-    if (raw == null) {
-      emit(const WishlistData(items: []));
-      return;
-    }
-
     try {
-      final List list = json.decode(raw) as List;
-      final items = list
-          .map((e) => WishlistItem.fromJson(e as Map<String, dynamic>))
-          .toList();
-      emit(WishlistData(items: items));
-    } catch (_) {
+      print('📚 WishlistBloc: Loading favorites from server...');
+      final favorites = await _repository.getFavorites();
+      print('📚 WishlistBloc: Received ${favorites.length} favorites');
+      // Convert FavoriteItemModel to WishlistItem for compatibility
+      final items = favorites.map((f) => WishlistItem(
+        documentId: f.documentId,
+        title: f.title,
+        coverPhoto: f.coverPhoto,
+      )).toList();
+      final newState = WishlistData(items: items);
+      print('📚 WishlistBloc: About to emit state with ${items.length} items');
+      print('📚 WishlistBloc: Document IDs: ${items.map((e) => e.documentId).toList()}');
+      emit(newState);
+      print('📚 WishlistBloc: State emitted successfully');
+      print('📚 WishlistBloc: Current state is: ${state.runtimeType}');
+      if (state is WishlistData) {
+        print('📚 WishlistBloc: Current state has ${(state as WishlistData).items.length} items');
+      }
+    } catch (e) {
+      print('❌ WishlistBloc: Error loading favorites: $e');
       emit(const WishlistData(items: []));
     }
   }
 
-  /// Handle: Toggle item in wishlist
-  /// Logic giữ nguyên từ WishlistProvider.toggle()
+  /// Handle: Toggle item in favorites
   Future<void> _onItemToggled(
     WishlistItemToggled event,
     Emitter<WishlistState> emit,
@@ -56,51 +65,64 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
     if (state is! WishlistData) return;
 
     final currentState = state as WishlistData;
-    final items = List<WishlistItem>.from(currentState.items);
+    final exists = currentState.items.any((e) => e.documentId == event.item.documentId);
 
-    final idx = items.indexWhere((e) => e.documentId == event.item.documentId);
-    if (idx >= 0) {
-      items.removeAt(idx);
-    } else {
-      items.insert(0, event.item);
+    try {
+      print('🔄 WishlistBloc: Toggling favorite for documentId=${event.item.documentId}, exists=$exists');
+      print('🔄 WishlistBloc: Repository status: $_repository');
+      
+      // OPTIMISTIC UPDATE: Update UI immediately before API call
+      final updatedItems = exists
+          ? currentState.items.where((e) => e.documentId != event.item.documentId).toList()
+          : [...currentState.items, event.item];
+      
+      print('🔄 WishlistBloc: Optimistic update - new count: ${updatedItems.length}');
+      emit(WishlistData(items: updatedItems));
+      print('🔄 WishlistBloc: Optimistic state emitted');
+      
+      // Then make API call
+      if (exists) {
+        await _repository.removeFromFavorite(event.item.documentId);
+        print('✅ WishlistBloc: Removed from favorites on server');
+      } else {
+        await _repository.addToFavorite(event.item.documentId);
+        print('✅ WishlistBloc: Added to favorites on server');
+      }
+      
+      // Reload from server to sync and get accurate data
+      print('🔄 WishlistBloc: Reloading favorites from server...');
+      await _onLoaded(const WishlistLoaded(), emit);
+    } catch (e, stackTrace) {
+      print('❌ WishlistBloc: Error toggling favorite: $e');
+      print('❌ StackTrace: $stackTrace');
+      // On error, reload from server to restore accurate state
+      await _onLoaded(const WishlistLoaded(), emit);
     }
-
-    emit(WishlistData(items: items));
-    await _persist(items);
   }
 
-  /// Handle: Remove item from wishlist
-  /// Logic giữ nguyên từ WishlistProvider.remove()
+  /// Handle: Remove item from favorites
   Future<void> _onItemRemoved(
     WishlistItemRemoved event,
     Emitter<WishlistState> emit,
   ) async {
-    if (state is! WishlistData) return;
-
-    final currentState = state as WishlistData;
-    final items = List<WishlistItem>.from(currentState.items);
-
-    items.removeWhere((e) => e.documentId == event.documentId);
-
-    emit(WishlistData(items: items));
-    await _persist(items);
+    try {
+      await _repository.removeFromFavorite(event.documentId);
+      add(const WishlistLoaded());
+    } catch (e) {
+      // Handle error
+    }
   }
 
-  /// Handle: Clear wishlist
-  /// Logic giữ nguyên từ WishlistProvider.clear()
+  /// Handle: Clear favorites
   Future<void> _onCleared(
     WishlistCleared event,
     Emitter<WishlistState> emit,
   ) async {
-    emit(const WishlistData(items: []));
-    await _persist([]);
-  }
-
-  /// Persist to SharedPreferences
-  /// Logic giữ nguyên từ WishlistProvider._persist()
-  Future<void> _persist(List<WishlistItem> items) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = json.encode(items.map((e) => e.toJson()).toList());
-    await prefs.setString(_storageKey, raw);
+    try {
+      await _repository.clearFavorites();
+      emit(const WishlistData(items: []));
+    } catch (e) {
+      // Handle error
+    }
   }
 }

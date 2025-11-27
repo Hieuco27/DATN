@@ -43,20 +43,22 @@ class ProfileLoading extends ProfileState {}
 
 class ProfileLoaded extends ProfileState {
   final ReaderEntity profile;
+  final DateTime timestamp;
 
-  const ProfileLoaded(this.profile);
+  ProfileLoaded(this.profile) : timestamp = DateTime.now();
 
   @override
-  List<Object?> get props => [profile];
+  List<Object?> get props => [profile, timestamp];
 }
 
 class ProfileUpdated extends ProfileState {
   final ReaderEntity profile;
+  final DateTime timestamp;
 
-  const ProfileUpdated(this.profile);
+  ProfileUpdated(this.profile) : timestamp = DateTime.now();
 
   @override
-  List<Object?> get props => [profile];
+  List<Object?> get props => [profile, timestamp];
 }
 
 class ProfileError extends ProfileState {
@@ -100,9 +102,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(ProfileLoading());
       print('🔄 ProfileBloc: Loading profile...');
 
-      // Gọi qua AuthenticationRepository để có auto refresh token
-      final profile = await _authRepository.getProfile();
-      print('✅ ProfileBloc: Profile loaded successfully');
+      // Đảm bảo loading hiển thị ít nhất 300ms để UX mượt mà
+      final results = await Future.wait([
+        _authRepository.getProfile(),
+        Future.delayed(const Duration(milliseconds: 300)),
+      ]);
+      
+      final profile = results[0] as ReaderEntity;
       emit(ProfileLoaded(profile));
     } catch (e) {
       emit(ProfileError('Lỗi lấy profile: ${e.toString()}'));

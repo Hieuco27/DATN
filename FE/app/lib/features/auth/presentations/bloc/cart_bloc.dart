@@ -1,79 +1,73 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'cart_event.dart';
 import 'cart_state.dart';
-import '../../data/models/cart_item_model.dart';
+import '../../domain/repositories/cart_repository.dart';
+import '../../data/repositories/cart_repository_impl.dart';
+import '../../data/datasources/cart_remote_data_source.dart';
 
-/// CartBloc - Manages shopping cart state
-/// 
-/// Replaces CartProvider with BLoC pattern
-/// Business logic giữ nguyên 100%
+/// CartBloc - Manages shopping cart state via Backend API
 class CartBloc extends Bloc<CartEvent, CartState> {
-  CartBloc() : super(const CartLoaded(items: [])) {
+  final CartRepository _repository;
+
+  CartBloc()
+      : _repository = CartRepositoryImpl(
+          remoteDataSource: CartRemoteDataSourceImpl(),
+        ),
+        super(const CartLoaded(items: [])) {
+    on<CartStarted>(_onStarted);
     on<CartItemAdded>(_onItemAdded);
     on<CartItemQuantityUpdated>(_onQuantityUpdated);
     on<CartItemRemoved>(_onItemRemoved);
     on<CartCleared>(_onCartCleared);
   }
 
-  /// Handle: Add item to cart
-  /// Logic giữ nguyên từ CartProvider.addItem()
-  void _onItemAdded(CartItemAdded event, Emitter<CartState> emit) {
-    final currentState = state as CartLoaded;
-    final items = List<CartItemModel>.from(currentState.items);
-
-    final existingIndex = items.indexWhere(
-      (i) => i.documentId == event.item.documentId,
-    );
-
-    if (existingIndex >= 0) {
-      // Update existing item quantity
-      items[existingIndex] = items[existingIndex].copyWith(
-        quantity: items[existingIndex].quantity + event.item.quantity,
-      );
-    } else {
-      // Add new item
-      items.add(event.item);
+  Future<void> _onStarted(CartStarted event, Emitter<CartState> emit) async {
+    try {
+      final items = await _repository.getCart();
+      emit(CartLoaded(items: items));
+    } catch (e) {
+      // Giữ state hiện tại hoặc handle error
     }
-
-    emit(CartLoaded(items: items));
   }
 
-  /// Handle: Update item quantity
-  /// Logic giữ nguyên từ CartProvider.updateQuantity()
-  void _onQuantityUpdated(
+  Future<void> _onItemAdded(
+      CartItemAdded event, Emitter<CartState> emit) async {
+    try {
+      await _repository.addToCart(event.item.documentId);
+      add(const CartStarted()); // Reload to sync
+    } catch (e) {
+    }
+  }
+
+  Future<void> _onQuantityUpdated(
     CartItemQuantityUpdated event,
     Emitter<CartState> emit,
-  ) {
+  ) async {
+    // Backend hiện tại chưa hỗ trợ update quantity trực tiếp
+    // Nếu quantity <= 0 -> remove
     if (event.quantity <= 0) {
-      // Remove if quantity <= 0
       add(CartItemRemoved(event.documentId));
-      return;
     }
+    // Nếu cần logic tăng giảm, có thể implement gọi add/remove nhiều lần
+    // hoặc giữ logic ở client. Tạm thời chỉ reload để đảm bảo đúng data server
+    add(const CartStarted());
+  }
 
-    final currentState = state as CartLoaded;
-    final items = List<CartItemModel>.from(currentState.items);
-
-    final index = items.indexWhere((i) => i.documentId == event.documentId);
-    if (index >= 0) {
-      items[index] = items[index].copyWith(quantity: event.quantity);
-      emit(CartLoaded(items: items));
+  Future<void> _onItemRemoved(
+      CartItemRemoved event, Emitter<CartState> emit) async {
+    try {
+      await _repository.removeFromCart(event.documentId);
+      add(const CartStarted());
+    } catch (e) {
     }
   }
 
-  /// Handle: Remove item from cart
-  /// Logic giữ nguyên từ CartProvider.removeItem()
-  void _onItemRemoved(CartItemRemoved event, Emitter<CartState> emit) {
-    final currentState = state as CartLoaded;
-    final items = List<CartItemModel>.from(currentState.items);
-
-    items.removeWhere((item) => item.documentId == event.documentId);
-
-    emit(CartLoaded(items: items));
-  }
-
-  /// Handle: Clear all items
-  /// Logic giữ nguyên từ CartProvider.clear()
-  void _onCartCleared(CartCleared event, Emitter<CartState> emit) {
-    emit(const CartLoaded(items: []));
+  Future<void> _onCartCleared(
+      CartCleared event, Emitter<CartState> emit) async {
+    try {
+      await _repository.clearCart();
+      emit(const CartLoaded(items: []));
+    } catch (e) {
+    }
   }
 }

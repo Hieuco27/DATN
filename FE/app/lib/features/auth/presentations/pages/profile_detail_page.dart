@@ -1,9 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/reader_entity.dart';
+import '../bloc/profile_bloc.dart';
 
-class ProfileDetailPage extends StatelessWidget {
-  final ReaderEntity profile;
-  const ProfileDetailPage({Key? key, required this.profile}) : super(key: key);
+class ProfileDetailPage extends StatefulWidget {
+  const ProfileDetailPage({Key? key}) : super(key: key);
+
+  @override
+  State<ProfileDetailPage> createState() => _ProfileDetailPageState();
+}
+
+class _ProfileDetailPageState extends State<ProfileDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Load profile mới khi mở trang
+    context.read<ProfileBloc>().add(const ProfileLoadRequested());
+  }
 
   String _formatGender(String? gender) {
     if (gender == null || gender.isEmpty) return 'Chưa cập nhật';
@@ -16,6 +29,72 @@ class ProfileDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, state) {
+        if (state is ProfileLoading) {
+          return Scaffold(
+            backgroundColor: Colors.grey.shade100,
+            appBar: AppBar(
+              title: const Text(
+                'Thông tin tài khoản',
+                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 1,
+              iconTheme: const IconThemeData(color: Colors.black87),
+            ),
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (state is ProfileError) {
+          return Scaffold(
+            backgroundColor: Colors.grey.shade100,
+            appBar: AppBar(
+              title: const Text(
+                'Thông tin tài khoản',
+                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 1,
+              iconTheme: const IconThemeData(color: Colors.black87),
+            ),
+            body: Center(
+              child: Text(state.message),
+            ),
+          );
+        }
+
+        final profile = state is ProfileLoaded
+            ? state.profile
+            : (state is ProfileUpdated ? state.profile : null);
+
+        if (profile == null) {
+          return Scaffold(
+            backgroundColor: Colors.grey.shade100,
+            appBar: AppBar(
+              title: const Text(
+                'Thông tin tài khoản',
+                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 1,
+              iconTheme: const IconThemeData(color: Colors.black87),
+            ),
+            body: const Center(
+              child: Text('Không có dữ liệu'),
+            ),
+          );
+        }
+
+        return _buildDetailContent(profile);
+      },
+    );
+  }
+
+  Widget _buildDetailContent(ReaderEntity profile) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(

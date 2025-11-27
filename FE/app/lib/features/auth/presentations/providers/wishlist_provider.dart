@@ -24,6 +24,16 @@ class WishlistItem {
     title: json['title'] as String? ?? '',
     coverPhoto: json['coverPhoto'] as String? ?? '',
   );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WishlistItem &&
+          runtimeType == other.runtimeType &&
+          documentId == other.documentId;
+
+  @override
+  int get hashCode => documentId.hashCode;
 }
 
 class WishlistProvider with ChangeNotifier {

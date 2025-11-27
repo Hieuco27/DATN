@@ -9,6 +9,11 @@ abstract class CartEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+/// Event: Load cart from server
+class CartStarted extends CartEvent {
+  const CartStarted();
+}
+
 /// Event: Add item to cart
 class CartItemAdded extends CartEvent {
   final CartItemModel item;
