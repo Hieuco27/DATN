@@ -66,10 +66,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } else {
         final err = result.error;
         final message = err is Failure ? err.message : err.toString();
-        emit(AuthError(message: message));
+        emit(AuthError(message: message.replaceFirst('Exception: ', '')));
       }
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      emit(AuthError(message: e.toString().replaceFirst('Exception: ', '')));
     }
   }
 
@@ -108,10 +108,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } else {
         final err = result.error;
         final message = err is Failure ? err.message : err.toString();
-        emit(AuthError(message: message));
+        emit(AuthError(message: message.replaceFirst('Exception: ', '')));
       }
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      emit(AuthError(message: e.toString().replaceFirst('Exception: ', '')));
     }
   }
 

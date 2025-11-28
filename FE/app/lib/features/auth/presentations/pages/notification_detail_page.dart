@@ -52,6 +52,14 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
 
         // Auto mark as read if not read
         if (!_notification!.isRead) {
+          // Update UI immediately to "Read"
+          setState(() {
+            _notification = _notification!.copyWith(
+              isRead: true,
+              readAt: DateTime.now(),
+            );
+          });
+          // Call API in background
           await _markAsRead();
         }
       }
@@ -71,8 +79,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Future<void> _markAsRead() async {
-    if (_notification?.isRead == true) return;
-
     try {
       final authState = context.read<AuthBloc>().state;
       if (authState is! AuthAuthenticated ||
@@ -84,14 +90,18 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         accessToken: authState.account.accessToken!,
         notificationId: widget.notificationId,
       );
-
-      if (mounted) {
+      
+      // UI đã được cập nhật ở _loadNotificationDetail, không cần setState lại
+    } catch (e) {
+      // Revert nếu lỗi
+      if (mounted && _notification != null) {
         setState(() {
-          _notification = _notification!.copyWith(isRead: true);
+          _notification = _notification!.copyWith(
+            isRead: false, 
+            readAt: null
+          );
         });
       }
-    } catch (e) {
-      // Ignore error
     }
   }
 
@@ -124,7 +134,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     } catch (e) {
       Flushbar(
         title: 'Lỗi',
-        message: 'Lỗi: ${e.toString()}',
+        message: e.toString().replaceFirst('Exception: ', ''),
         duration: const Duration(seconds: 3),
         backgroundColor: Colors.red,
       ).show(context);
@@ -319,10 +329,21 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
     
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _notification?.isRead ?? false);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context, _notification?.isRead ?? false);
+            },
+          ),
+          title: const Text(
           'Thông báo',
           style: TextStyle(
             color: Color(0xFF1E293B),
@@ -645,6 +666,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                 ],
               ),
             ),
+      ),
     );
   }
 

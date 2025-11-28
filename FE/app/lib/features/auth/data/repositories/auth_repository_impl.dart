@@ -63,23 +63,25 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
         
         // 🔔 Đăng ký FCM Token lên server
         // _registerFcmTokenAfterLogin(response.data!.accessToken);
+        
+        return response.toEntity();
       } else {
-        print(' Login failed: ${response.message}');
+        // Nếu login không thành công, throw exception thay vì chỉ print
+        throw Exception(response.message.isNotEmpty 
+          ? response.message 
+          : 'Đăng nhập thất bại');
       }
-
-      return response.toEntity();
     } catch (e) {
-      print('Login error: $e');
-
       // Phân loại lỗi để xử lý phù hợp
-      if (e.toString().contains('Network') || e.toString().contains('mạng')) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      
+      if (errorMessage.contains('Network') || errorMessage.contains('mạng')) {
         throw Exception('Lỗi kết nối mạng. Vui lòng kiểm tra internet');
-      } else if (e.toString().contains('Format')) {
+      } else if (errorMessage.contains('Format')) {
         throw Exception('Lỗi xử lý dữ liệu từ server');
       } else {
-        throw Exception(
-          'Đăng nhập thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
-        );
+        // Rethrow với message gốc, không thêm prefix
+        rethrow;
       }
     }
   }
@@ -422,6 +424,50 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       }
       throw Exception(
         'Lỗi cập nhật profile: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String accessToken,
+    required String email,
+    required String phoneNumber,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await remoteDataSource.changePassword(
+        accessToken: accessToken,
+        email: email,
+        phoneNumber: phoneNumber,
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+    } catch (e) {
+      // Kiểm tra nếu lỗi là do token hết hạn (401)
+      if (e.toString().contains('Token không hợp lệ hoặc đã hết hạn') ||
+          e.toString().contains('401')) {
+        final refreshSuccess = await _handleTokenExpiration();
+        if (refreshSuccess) {
+          final newAccessToken = await localStorageDataSource.getAccessToken();
+          if (newAccessToken != null && newAccessToken.isNotEmpty) {
+            await remoteDataSource.changePassword(
+              accessToken: newAccessToken,
+              email: email,
+              phoneNumber: phoneNumber,
+              oldPassword: oldPassword,
+              newPassword: newPassword,
+            );
+            return;
+          }
+        }
+        throw Exception(
+          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        );
+      }
+      throw Exception(
+        'Lỗi đổi mật khẩu: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
   }

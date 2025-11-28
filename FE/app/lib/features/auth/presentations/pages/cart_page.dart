@@ -7,6 +7,7 @@ import '../bloc/cart_state.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 import '../../domain/repositories/document_repository.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../../data/repositories/loan_repository.dart';
 // removed unused model import
 import 'package:book_tech/core/ui/notification_service.dart';
@@ -55,13 +56,14 @@ class _CartPageState extends State<CartPage>
       // Lấy tất cả borrow history (page 1, limit lớn để lấy hết)
       final response = await loanRepo.getMyLoans(page: 1, limit: 100);
       
-      // Đếm số sách đang active (không phải RETURNED)
+      // Đếm số sách đang active (không phải RETURNED, CANCELLED, REJECTED)
       int activeCount = 0;
       for (final loan in response.data) {
         final status = loan.status.toUpperCase();
         // Các trạng thái tính là "đang mượn":
         // PENDING, WAITING_FOR_PICKUP, APPROVED, BORROWING, OVERDUE
-        if (status != 'RETURNED') {
+        // Loại trừ: RETURNED, CANCELLED, REJECTED
+        if (status != 'RETURNED' && status != 'CANCELLED' && status != 'REJECTED') {
           // Mỗi loan có thể có nhiều details (nhiều sách)
           activeCount += loan.details.length;
         }
@@ -78,9 +80,10 @@ class _CartPageState extends State<CartPage>
       if (activeCount >= _maxBorrowLimit && mounted) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
-            NotificationService.showInfo(
+            NotificationService.showWarning(
               context,
-              message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển sách. Vui lòng trả sách trước khi mượn thêm.',
+              message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển sách. Vui lòng trả sách đã mượn trước khi đăng ký mượn thêm.',
+              duration: const Duration(seconds: 4),
             );
           }
         });
@@ -106,9 +109,10 @@ class _CartPageState extends State<CartPage>
         final totalAfterSelect = _activeBorrowCount + _selectedItems.length + 1;
         
         if (totalAfterSelect > _maxBorrowLimit) {
-          NotificationService.showInfo(
+          NotificationService.showWarning(
             context,
-            message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển. Hiện đang mượn $_activeBorrowCount quyển.',
+            message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển. Hiện đang mượn $_activeBorrowCount quyển. Vui lòng trả sách trước khi mượn thêm.',
+            duration: const Duration(seconds: 4),
           );
         } else if (_selectedItems.length >= 3) {
           NotificationService.showInfo(
@@ -139,12 +143,75 @@ class _CartPageState extends State<CartPage>
       return;
     }
     
-    // Kiểm tra giới hạn tổng số sách
+    // ✅ KIỂM TRA THẺ THƯ VIỆN
+    try {
+      final authRepo = context.read<AuthenticationRepository>();
+      log.i('Fetching profile to check member card...', 'CartPage');
+      
+      final profile = await authRepo.getProfile();
+      log.i('Profile fetched successfully. MemberCard: ${profile.memberCard != null ? "exists" : "null"}', 'CartPage');
+      
+      if (profile.memberCard == null) {
+        log.w('User does not have a member card', 'CartPage');
+        NotificationService.showWarning(
+          context,
+          message: 'Bạn chưa đăng ký thẻ thư viện. Vui lòng đăng ký thẻ để được mượn sách về nhà.',
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+      
+      final cardStatus = profile.memberCard!.status.toUpperCase();
+      log.i('Member card status: $cardStatus', 'CartPage');
+      
+      if (cardStatus != 'ACTIVE') {
+        log.w('Member card is not active: $cardStatus', 'CartPage');
+        NotificationService.showWarning(
+          context,
+          message: 'Thẻ thư viện của bạn chưa kích hoạt hoặc đã hết hạn. Vui lòng gia hạn thẻ.',
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+      
+      // Lấy giới hạn từ loại thẻ (nếu có)
+      final memberCardLimit = profile.memberCard!.cardType?.maxBorrowLimit ?? 3;
+      log.i('Member card limit: $memberCardLimit (CardType: ${profile.memberCard!.cardType?.typeName ?? "unknown"})', 'CartPage');
+      
+      // Kiểm tra giới hạn từ thẻ thành viên
+      final totalAfterSubmit = _activeBorrowCount + selected.length;
+      if (totalAfterSubmit > memberCardLimit) {
+        log.w('Borrow limit exceeded: $totalAfterSubmit > $memberCardLimit', 'CartPage');
+        NotificationService.showWarning(
+          context,
+          message: 'Bạn đã đạt giới hạn $memberCardLimit quyển của thẻ "${profile.memberCard!.cardType?.typeName ?? "thành viên"}". Đang mượn: $_activeBorrowCount quyển.',
+          duration: const Duration(seconds: 5),
+        );
+        return;
+      }
+      
+      log.i('Member card validation passed. Proceeding with reservation...', 'CartPage');
+    } catch (e, stackTrace) {
+      log.e('Failed to check member card status: ${e.toString()}', e, 'CartPage');
+      print('❌ [CartPage] Member card check error: $e');
+      print('📍 [CartPage] Stack trace: $stackTrace');
+      
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      NotificationService.showError(
+        context,
+        message: 'Lỗi kiểm tra thẻ: $errorMessage',
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+    
+    // Kiểm tra giới hạn tổng số sách (fallback - double check)
     final totalAfterSubmit = _activeBorrowCount + selected.length;
     if (totalAfterSubmit > _maxBorrowLimit) {
-      NotificationService.showInfo(
+      NotificationService.showWarning(
         context,
-        message: 'Vượt quá giới hạn $_maxBorrowLimit quyển. Bạn đang mượn $_activeBorrowCount quyển, không thể mượn thêm ${selected.length} quyển nữa.',
+        message: 'Vượt quá giới hạn $_maxBorrowLimit quyển. Bạn đang mượn $_activeBorrowCount quyển, không thể mượn thêm ${selected.length} quyển. Vui lòng trả sách trước khi mượn thêm.',
+        duration: const Duration(seconds: 4),
       );
       return;
     }
@@ -160,6 +227,8 @@ class _CartPageState extends State<CartPage>
     setState(() => _isSubmitting = true);
 
     try {
+      log.i('Starting book reservation process...', 'CartPage');
+      
       final authState = context.read<AuthBloc>().state;
       if (authState is! AuthAuthenticated ||
           authState.account.accessToken?.isEmpty == true) {
@@ -172,11 +241,15 @@ class _CartPageState extends State<CartPage>
       );
 
       final items = selected.map((item) => item.toJson()).toList();
+      log.i('Reserving ${items.length} books...', 'CartPage');
+      print('📚 Items to reserve: $items');
 
       final result = await repository.reserveBooks(
         accessToken: authState.account.accessToken!,
         items: items,
       );
+      
+      log.i('Reservation successful! Result: $result', 'CartPage');
 
       // Clear chỉ các sách đã chọn khỏi giỏ
       for (final it in selected) {
@@ -212,9 +285,19 @@ class _CartPageState extends State<CartPage>
           Navigator.of(context).pop();
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      log.e('Book reservation failed: ${e.toString()}', e, 'CartPage');
+      print('❌ [CartPage] Reservation error: $e');
+      print('📍 [CartPage] Stack trace: $stackTrace');
+      
       if (mounted) {
-        NotificationService.showError(context, message: 'Lỗi: ${e.toString()}');
+        // Loại bỏ prefix "Exception: " để hiển thị message gốc
+        final errorMessage = e.toString().replaceFirst('Exception: ', '');
+        NotificationService.showError(
+          context, 
+          message: errorMessage,
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

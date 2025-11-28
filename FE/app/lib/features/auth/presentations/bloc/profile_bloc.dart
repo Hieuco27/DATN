@@ -29,6 +29,25 @@ class ProfileUpdateRequested extends ProfileEvent {
 
 class ProfileClearError extends ProfileEvent {}
 
+class PasswordChangeRequested extends ProfileEvent {
+  final String accessToken;
+  final String email;
+  final String phoneNumber;
+  final String oldPassword;
+  final String newPassword;
+  
+  const PasswordChangeRequested({
+    required this.accessToken,
+    required this.email,
+    required this.phoneNumber,
+    required this.oldPassword,
+    required this.newPassword,
+  });
+  
+  @override
+  List<Object?> get props => [accessToken, email, phoneNumber, oldPassword, newPassword];
+}
+
 // States
 abstract class ProfileState extends Equatable {
   const ProfileState();
@@ -71,6 +90,15 @@ class ProfileError extends ProfileState {
   List<Object?> get props => [message, previousState];
 }
 
+class PasswordChanged extends ProfileState {
+  final DateTime timestamp;
+
+  PasswordChanged() : timestamp = DateTime.now();
+
+  @override
+  List<Object?> get props => [timestamp];
+}
+
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final AuthenticationRepository _authRepository;
   // Unused now (kept for constructor compatibility); consider removing wiring later
@@ -91,6 +119,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ProfileLoadRequested>(_onProfileLoadRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfileClearError>(_onProfileClearError);
+    on<PasswordChangeRequested>(_onPasswordChangeRequested);
   }
 
   // Trong ProfileBloc, thay đổi:
@@ -149,13 +178,48 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     ProfileClearError event,
     Emitter<ProfileState> emit,
   ) {
+    
+    print('🧹 ProfileClearError received, current state: ${state.runtimeType}');
+    
     if (state is ProfileError) {
-      final previousState = (state as ProfileError).previousState;
-      if (previousState != null) {
-        emit(previousState);
+      final errorState = state as ProfileError;
+      if (errorState.previousState != null) {
+        print('↩️ Restoring to previous state: ${errorState.previousState.runtimeType}');
+        emit(errorState.previousState!);
       } else {
+        print('🔄 Emitting ProfileInitial (no previous state)');
         emit(ProfileInitial());
       }
+    } else if (state is PasswordChanged) {
+      // Nếu state là PasswordChanged, reset về ProfileInitial
+      print('🔄 PasswordChanged -> ProfileInitial');
+      emit(ProfileInitial());
+    } else {
+      print('ℹ️ State is ${state.runtimeType}, no action needed');
+    }
+  }
+
+  Future<void> _onPasswordChangeRequested(
+    PasswordChangeRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    try {
+      emit(ProfileLoading());
+      
+      await _authRepository.changePassword(
+        accessToken: event.accessToken,
+        email: event.email,
+        phoneNumber: event.phoneNumber,
+        oldPassword: event.oldPassword,
+        newPassword: event.newPassword,
+      );
+      
+      emit(PasswordChanged());
+    } catch (e) {
+      emit(ProfileError(
+        'Lỗi đổi mật khẩu: ${e.toString()}',
+        previousState: state,
+      ));
     }
   }
 }

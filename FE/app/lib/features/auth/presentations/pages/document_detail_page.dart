@@ -884,7 +884,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
     
     NotificationService.showSuccess(
       context,
-      message: 'Đã thêm sách vào giỏ hàng',
+      message: 'Đã thêm sách vào giỏ',
     );
   }
 }

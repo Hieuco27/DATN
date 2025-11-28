@@ -47,9 +47,9 @@ class ReaderModel extends ReaderEntity {
     final account = json['account'] as Map<String, dynamic>? ?? {};
     final memberCard = json['memberCard'] as Map<String, dynamic>?;
 
-    print('🔍 Reader data: $reader');
-    print('🔍 Account data: $account');
-    print('🔍 MemberCard data: $memberCard');
+    // print('🔍 Reader data: $reader');
+    // print('🔍 Account data: $account');
+    // print('🔍 MemberCard data: $memberCard');
 
     return ReaderModel(
       readerId: _parseInt(reader['readerId']),

@@ -23,6 +23,14 @@ abstract class AuthenticationRemoteDataSource {
     Map<String, dynamic> profileData,
   );
   
+  Future<void> changePassword({
+    required String accessToken,
+    required String email,
+    required String phoneNumber,
+    required String oldPassword,
+    required String newPassword,
+  });
+  
   // FCM Token Registration
   Future<void> registerFcmToken(String accessToken, String fcmToken);
 }
@@ -491,6 +499,63 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       throw Exception('Lỗi không xác định khi cập nhật profile: $e');
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String accessToken,
+    required String email,
+    required String phoneNumber,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      print('📤 [AuthRemoteDataSource] Changing password...');
+      final response = await dio.put(
+        '/profile/account',
+        data: {
+          'email': email,
+          'phoneNumber': phoneNumber,
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ [AuthRemoteDataSource] Password changed successfully');
+      } else {
+        final errorMessage = response.data is Map<String, dynamic>
+            ? response.data['message'] ?? 'Không thể đổi mật khẩu'
+            : 'HTTP ${response.statusCode}';
+        throw Exception(errorMessage);
+      }
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final resp = e.response?.data;
+      print('❌ Dio changePassword error: status=$status data=$resp');
+
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw Exception(
+          'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+        );
+      } else if (status == 401) {
+        throw Exception(
+          'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+        );
+      } else if (status == 400) {
+        final msg = resp is Map<String, dynamic>
+            ? resp['message'] ?? 'Dữ liệu không hợp lệ'
+            : 'Dữ liệu không hợp lệ';
+        throw Exception(msg);
+      } else {
+        throw Exception('Lỗi đổi mật khẩu: ${e.message}');
+      }
+    } catch (e) {
+      throw Exception('Lỗi không xác định khi đổi mật khẩu: $e');
     }
   }
 

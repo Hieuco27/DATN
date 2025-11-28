@@ -133,7 +133,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         }
         // Thêm log để debug document types
         for (var doc in documents) {
-          print('📄 Document: ${doc['title']} - Type: ${doc['documentType']}');
         }
         return documents
             .map((item) => DocumentResponseModel.fromJson(item))
@@ -182,7 +181,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         }
 
         for (var genre in genres) {
-          print('🎭 Genre: ${genre['name']} - ID: ${genre['genreId']}');
         }
 
         return genres.map((item) => GenreModel.fromJson(item)).toList();
@@ -489,14 +487,26 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         },
         body: json.encode({'items': items}),
       );
-
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body) as Map<String, dynamic>;
       } else {
-        throw Exception('Failed to reserve books: ${response.body}');
+        try {
+          final errorData = json.decode(response.body) as Map<String, dynamic>;
+          final errorMessage = errorData['message'] ?? 'Không thể đăng ký mượn sách';
+          throw Exception(errorMessage);
+        } catch (parseError) {
+          final rawMessage = response.body.isNotEmpty 
+            ? response.body 
+            : 'Không thể đăng ký mượn sách (HTTP ${response.statusCode})';
+          throw Exception(rawMessage);
+        }
       }
     } catch (e) {
-      throw Exception('Error reserving books: $e');
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Lỗi kết nối khi đăng ký mượn sách');
     }
   }
 

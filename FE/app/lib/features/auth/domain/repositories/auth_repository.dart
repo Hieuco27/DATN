@@ -21,4 +21,11 @@ abstract class AuthenticationRepository {
   Future<String?> getAccessToken();
   Future<ReaderEntity> getProfile();
   Future<ReaderEntity> updateProfile(Map<String, dynamic> profileData);
+  Future<void> changePassword({
+    required String accessToken,
+    required String email,
+    required String phoneNumber,
+    required String oldPassword,
+    required String newPassword,
+  });
 }

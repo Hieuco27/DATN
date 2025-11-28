@@ -75,7 +75,6 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
 
     try {
       SocketService().initSocket(userId: _readerId);
-
       SocketService().off('loan_status_updated');
       SocketService().on('loan_status_updated', (data) {
         if (!mounted) return;

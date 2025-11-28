@@ -7,6 +7,7 @@ import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/presentations/bloc/profile_bloc.dart';
 import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
 import 'package:book_tech/features/auth/presentations/pages/edit_profile_page.dart';
+import 'package:book_tech/features/auth/presentations/pages/change_password_page.dart';
 import 'package:book_tech/features/auth/domain/entities/profile_usecase.dart';
 import 'package:book_tech/features/auth/data/repositories/profile_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/profile_remote_datasource.dart';
@@ -72,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
           if (state is ProfileError) {
             NotificationService.showError(
               context,
-              message: 'Lỗi: ${state.message}',
+              message: state.message.replaceFirst('Exception: ', ''),
             );
           }
         },
@@ -526,9 +527,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
               ),
               _buildDivider(),
               _buildMenuItem(
-                icon: Icons.security_rounded,
-                title: 'Bảo mật',
-                onTap: () {},
+                icon: Icons.lock_reset_rounded,
+                title: 'Đổi mật khẩu',
+                onTap: _navigateToChangePassword,
               ),
               _buildDivider(),
               _buildMenuItem(
@@ -872,6 +873,53 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
     context.read<AuthBloc>().add(AuthLogoutRequested());
   }
 
+  void _navigateToChangePassword() async {
+    final profileBloc = context.read<ProfileBloc>();
+    print('📍 Navigating to ChangePasswordPage...');
+    
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: profileBloc,
+          child: const ChangePasswordPage(),
+        ),
+      ),
+    );
+    
+    print('📍 Returned from ChangePasswordPage with result: $result');
+    
+    // Nếu đổi mật khẩu thành công, reload profile
+    if (result == true && mounted) {
+      print('✅ Password change successful, reloading profile...');
+      
+      // Clear error state trước
+      context.read<ProfileBloc>().add(ProfileClearError());
+      print('🧹 Dispatched ProfileClearError');
+      
+      // Reload profile
+      final authState = context.read<AuthBloc>().state;
+      print('🔐 AuthState: ${authState.runtimeType}');
+      
+      if (authState is AuthAuthenticated &&
+          (authState.account.accessToken?.isNotEmpty ?? false)) {
+        print('🔄 Dispatching ProfileLoadRequested after 100ms...');
+        // Đợi một chút để clear state xong rồi mới load
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            print('🚀 Dispatching ProfileLoadRequested now!');
+            context.read<ProfileBloc>().add(ProfileLoadRequested());
+          } else {
+            print('⚠️ Widget not mounted, skipping reload');
+          }
+        });
+      } else {
+        print('❌ Auth state is not valid for reload');
+      }
+    } else {
+      print('ℹ️ Password change cancelled or failed, result: $result, mounted: $mounted');
+    }
+  }
+
   void _navigateToBorrowHistory() {
     Navigator.of(
       context,
@@ -942,7 +990,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
         : 'Thẻ miễn phí';
     final subtitle = memberCard == null
         ? 'Nhấn để đăng ký'
-        : 'Nâng cấp để mượn sách mang về';
+        : 'Đăng ký để mượn sách mang về';
 
     return InkWell(
       onTap: _navigateToUpgradeMembership,

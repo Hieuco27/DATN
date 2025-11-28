@@ -113,28 +113,50 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _markAllAsRead() async {
+    // Lưu trạng thái cũ để có thể revert nếu lỗi
+    final oldNotifications = List<NotificationModel>.from(_notifications);
+    
     try {
       final authState = context.read<AuthBloc>().state;
       if (authState is! AuthAuthenticated ||
           authState.account.accessToken?.isEmpty == true) {
         throw Exception('User not authenticated');
       }
+      
+      // Cập nhật UI ngay lập tức - đánh dấu tất cả là đã đọc
+      setState(() {
+        _notifications = _notifications.map((notification) {
+          if (!notification.isRead) {
+            return notification.copyWith(
+              isRead: true,
+              readAt: DateTime.now(),
+            );
+          }
+          return notification;
+        }).toList();
+      });
 
+      // Gọi API trong background
       final response = await _repository.markAllAsRead(
         accessToken: authState.account.accessToken!,
       );
 
+      // Hiển thị thông báo thành công
       if (mounted) {
         Flushbar(
           title: 'Thành công',
           message: 'Đã đánh dấu ${response.updated} thông báo là đã đọc',
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 2),
           backgroundColor: Colors.green,
         ).show(context);
-        _loadNotifications(refresh: true);
       }
     } catch (e) {
+      // Revert lại trạng thái cũ nếu lỗi
       if (mounted) {
+        setState(() {
+          _notifications = oldNotifications;
+        });
+        
         final errorMessage = e.toString().replaceFirst('Exception: ', '');
         Flushbar(
           title: 'Lỗi',
@@ -149,12 +171,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<void> _handleNotificationTap(NotificationModel notification) async {
     // Prevent double tap
     if (_isHandlingTap) {
-      print('⚠️ Ignoring tap - already handling');
       return;
     }
     
     _isHandlingTap = true;
-    print('👆 Handling tap for notification ${notification.notificationID}');
     
     // Auto mark as read nếu chưa đọc
     if (!notification.isRead) {
@@ -168,12 +188,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
               (n) => n.notificationID == notification.notificationID,
             );
             if (index != -1) {
-              print('🔄 Marking notification ${notification.notificationID} as read');
               _notifications[index] = notification.copyWith(
                 isRead: true,
                 readAt: DateTime.now(),
               );
-              print('✅ Updated notification ${notification.notificationID}: isRead = ${_notifications[index].isRead}');
             }
           });
 
@@ -204,8 +222,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
     // Navigate to detail
     if (mounted) {
-      print('📱 Navigating to detail page for notification ${notification.notificationID}');
-      await Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => NotificationDetailPage(
@@ -213,15 +230,32 @@ class _NotificationsPageState extends State<NotificationsPage> {
           ),
         ),
       );
-      print('🔙 Back from detail page');
-      // Không refresh toàn bộ để giữ trạng thái "đã đọc"
       _isHandlingTap = false; // Reset flag
+      
+      // Nếu có kết quả trả về (ví dụ: đã đọc), cập nhật lại list
+      if (result != null && result is bool && result == true) {
+        setState(() {
+          final index = _notifications.indexWhere(
+            (n) => n.notificationID == notification.notificationID,
+          );
+          if (index != -1) {
+             _notifications[index] = _notifications[index].copyWith(
+                isRead: true,
+                readAt: DateTime.now(),
+             );
+          }
+        });
+      } else {
+         // Fallback: Reload lại danh sách nếu không có kết quả trả về nhưng logic trước đó đã mark read
+         if (mounted) {
+            _loadNotifications(refresh: true); 
+         }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    print('🏗️ Building NotificationsPage - notifications count: ${_notifications.length}');
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -372,7 +406,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         }
 
                         final notification = _notifications[index];
-                        print('📦 ItemBuilder index=$index: notification ${notification.notificationID}, isRead=${notification.isRead}');
                         return _NotificationItem(
                           key: ValueKey('${notification.notificationID}_${notification.isRead}'),
                           notification: notification,
@@ -492,7 +525,6 @@ class _NotificationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('🎨 Building notification ${notification.notificationID}: isRead = ${notification.isRead}');
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -552,17 +584,17 @@ class _NotificationItem extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (!notification.isRead) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF6B35),
-                            shape: BoxShape.circle,
-                          ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: !notification.isRead 
+                              ? const Color(0xFFFF6B35) // Màu cam khi chưa đọc
+                              : Colors.grey.shade300,   // Màu xám khi đã đọc
+                          shape: BoxShape.circle,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),

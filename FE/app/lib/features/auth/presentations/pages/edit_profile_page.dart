@@ -84,7 +84,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             if (mounted) {
               NotificationService.showError(
                 context,
-                message: 'Lỗi: ${state.message}',
+                message: state.message.replaceFirst('Exception: ', ''),
               );
             }
           });
@@ -574,7 +574,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
         throw Exception('Không có token xác thực');
       }
     } catch (e) {
-      NotificationService.showError(context, message: 'Lỗi: ${e.toString()}');
+      NotificationService.showError(
+        context, 
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
       setState(() {
         _isLoading = false;
       });

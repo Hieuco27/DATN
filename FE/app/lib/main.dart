@@ -1,4 +1,5 @@
 import 'package:book_tech/features/auth/domain/repositories/document_repository.dart';
+import 'package:book_tech/features/auth/domain/repositories/auth_repository.dart';
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,8 @@ import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.d
 import 'package:provider/provider.dart';
 import 'package:book_tech/features/auth/data/datasources/document_remote_data_source.dart';
 import 'package:book_tech/features/auth/data/repositories/document_repository_impl.dart';
+import 'package:book_tech/features/auth/data/datasources/loan_remote_data_source.dart';
+import 'package:book_tech/features/auth/data/repositories/loan_repository.dart';
 import 'package:book_tech/features/auth/presentations/providers/document_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/search_provider.dart';
 import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
@@ -30,7 +33,6 @@ import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 import 'package:book_tech/core/navigation/detail_route.dart';
 import 'package:animations/animations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:book_tech/features/auth/presentations/bloc/cart_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/cart_event.dart';
 
 
@@ -63,17 +65,23 @@ void main() async {
   );
   
   runApp(
-    MyApp(authRepository: authRepository, showSplashOnStart: !hasLoggedInBefore),
+    MyApp(
+      authRepository: authRepository,
+      localStorageDataSource: localStorageDataSource,
+      showSplashOnStart: !hasLoggedInBefore,
+    ),
   );
 }
 
 class MyApp extends StatelessWidget {
   final AuthenticationRepositoryImpl authRepository;
+  final LocalStorageDataSourceImpl localStorageDataSource;
   final bool showSplashOnStart;
 
   const MyApp({
     super.key,
     required this.authRepository,
+    required this.localStorageDataSource,
     required this.showSplashOnStart,
   });
 
@@ -81,6 +89,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // ✅ Provide AuthenticationRepository để có thể dùng context.read<AuthenticationRepository>()
+        Provider<AuthenticationRepositoryImpl>.value(
+          value: authRepository,
+        ),
+        Provider<AuthenticationRepository>.value(
+          value: authRepository,
+        ),
         BlocProvider(
           create: (context) =>
               AuthBloc(authRepository: authRepository)
@@ -97,6 +112,15 @@ class MyApp extends StatelessWidget {
         Provider<DocumentRepository>(
           create: (context) => context.read<DocumentRepositoryImpl>(),
         ),
+        // Loan Repository for borrow history
+        Provider<LoanRemoteDataSource>(
+          create: (_) => LoanRemoteDataSourceImpl.create(localStorageDataSource),
+        ),
+        Provider<LoanRepository>(
+          create: (context) => LoanRepository(
+            remote: context.read<LoanRemoteDataSource>(),
+          ),
+        ),
         // ✅ Migration to BLoC-only: Replace all Providers with BLoCs
         // SearchProvider → SearchBloc (TODO: implement SearchBloc)
         ChangeNotifierProvider(
@@ -111,7 +135,7 @@ class MyApp extends StatelessWidget {
         
         // ✅ BLoC implementations (simple features done)
         BlocProvider(
-  create: (_) => CartBloc()..add(const CartStarted()),
+          create: (_) => CartBloc()..add(const CartStarted()),
         ),
         BlocProvider(
           create: (_) => WishlistBloc(),

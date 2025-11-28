@@ -10,7 +10,7 @@ import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_book_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/document_detail_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
+// dang sách sách trong trang chủ 
 class GenreSectionWidget extends StatefulWidget {
   final GenreModel genre;
   final DocumentProvider documentProvider;
