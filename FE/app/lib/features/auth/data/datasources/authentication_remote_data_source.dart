@@ -33,6 +33,17 @@ abstract class AuthenticationRemoteDataSource {
   
   // FCM Token Registration
   Future<void> registerFcmToken(String accessToken, String fcmToken);
+  
+  // Forgot Password
+  Future<Map<String, dynamic>> forgotPasswordSendOtp(String email);
+  Future<Map<String, dynamic>> forgotPasswordVerifyOtp({
+    required String email,
+    required String otp,
+  });
+  Future<Map<String, dynamic>> forgotPasswordResetPassword({
+    required String email,
+    required String newPassword,
+  });
 }
 
 class AuthenticationRemoteDataSourceImpl
@@ -579,6 +590,169 @@ class AuthenticationRemoteDataSourceImpl
       // Không throw exception vì FCM token registration không nên làm gián đoạn flow chính
     } catch (e) {
       print('❌ [AuthRemoteDataSource] Unexpected error registering FCM Token: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> forgotPasswordSendOtp(String email) async {
+    final startTime = DateTime.now();
+    print('🔵 [Forgot Password] Gửi OTP đến: $email');
+    
+    try {
+      final response = await dio.post(
+        '/auth/forgot/send-otp',
+        data: {'email': email.trim()},
+      );
+      
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('✅ [Forgot Password] Phản hồi từ server sau ${elapsed}ms');
+      print('📊 [Forgot Password] Status: ${response.statusCode}');
+      print('📊 [Forgot Password] Data: ${response.data}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ [Forgot Password] Gửi OTP thành công!');
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Không thể gửi mã OTP';
+        print('❌ [Forgot Password] Thất bại: $message');
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('❌ [Forgot Password] Lỗi sau ${elapsed}ms - Type: ${e.type}');
+      
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Không thể gửi mã OTP';
+          throw Exception(message);
+        case DioExceptionType.connectionError:
+          throw Exception('Không thể kết nối đến server. Kiểm tra internet.');
+        default:
+          throw Exception('Không thể kết nối đến server. Vui lòng thử lại.');
+      }
+    } catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('🔴 [Forgot Password] Exception sau ${elapsed}ms: ${e.toString()}');
+      throw Exception('Có lỗi xảy ra khi gửi mã OTP: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> forgotPasswordVerifyOtp({
+    required String email,
+    required String otp,
+  }) async {
+    final startTime = DateTime.now();
+    print('🔵 [Forgot Password] Xác thực OTP');
+    
+    try {
+      final response = await dio.post(
+        '/auth/forgot/verify-otp',
+        data: {
+          'email': email.trim(),
+          'otp': otp.trim(),
+        },
+      );
+      
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('✅ [Forgot Password] Phản hồi từ server sau ${elapsed}ms');
+      print('📊 [Forgot Password] Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ [Forgot Password] Xác thực OTP thành công!');
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Xác thực OTP thất bại';
+        print('❌ [Forgot Password] Thất bại: $message');
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('❌ [Forgot Password] Lỗi sau ${elapsed}ms - Type: ${e.type}');
+      
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Xác thực OTP thất bại';
+          throw Exception(message);
+        case DioExceptionType.connectionError:
+          throw Exception('Không thể kết nối đến server. Kiểm tra internet.');
+        default:
+          throw Exception('Không thể kết nối đến server. Vui lòng thử lại.');
+      }
+    } catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('🔴 [Forgot Password] Exception sau ${elapsed}ms: ${e.toString()}');
+      throw Exception('Có lỗi xảy ra khi xác thực OTP: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> forgotPasswordResetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    final startTime = DateTime.now();
+    print('🔵 [Forgot Password] Đặt lại mật khẩu');
+    
+    try {
+      final response = await dio.post(
+        '/auth/forgot/reset-password',
+        data: {
+          'email': email.trim(),
+          'newPassword': newPassword,
+        },
+      );
+      
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('✅ [Forgot Password] Phản hồi từ server sau ${elapsed}ms');
+      print('📊 [Forgot Password] Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ [Forgot Password] Đặt lại mật khẩu thành công!');
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Đặt lại mật khẩu thất bại';
+        print('❌ [Forgot Password] Thất bại: $message');
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('❌ [Forgot Password] Lỗi sau ${elapsed}ms - Type: ${e.type}');
+      
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Đặt lại mật khẩu thất bại';
+          throw Exception(message);
+        case DioExceptionType.connectionError:
+          throw Exception('Không thể kết nối đến server. Kiểm tra internet.');
+        default:
+          throw Exception('Không thể kết nối đến server. Vui lòng thử lại.');
+      }
+    } catch (e) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      print('🔴 [Forgot Password] Exception sau ${elapsed}ms: ${e.toString()}');
+      throw Exception('Có lỗi xảy ra khi đặt lại mật khẩu: ${e.toString()}');
     }
   }
 }

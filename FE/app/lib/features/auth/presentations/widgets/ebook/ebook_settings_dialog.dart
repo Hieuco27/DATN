@@ -21,16 +21,16 @@ class EbookSettingsDialog extends StatefulWidget {
 
 class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
   late EbookSettings _settings;
-  final List<String> _fontFamilies = [
-    'Roboto',
-    'Lora',
-    'Merriweather',
-    'Nunito',
-    'Open Sans',
-    'Source Serif Pro',
-    'Lexend Deca',
-    'Noto Serif',
-  ];
+  // final List<String> _fontFamilies = [
+  //   'Roboto',
+  //   'Lora',
+  //   'Merriweather',
+  //   'Nunito',
+  //   'Open Sans',
+  //   'Source Serif Pro',
+  //   'Lexend Deca',
+  //   'Noto Serif',
+  // ];
   static const List<_HighlightColorOption> _highlightColors = [
     _HighlightColorOption(
       label: 'Vàng',
@@ -169,38 +169,38 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
           ],
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: _fontFamilies.map((font) {
-            final bool isSelected = _settings.fontFamily == font;
-            final Color background = isSelected
-                ? Colors.black.withOpacity(0.15)
-                : Colors.grey.withOpacity(0.1);
-            final Color foreground = isSelected ? Colors.black : Colors.black87;
-            return ChoiceChip(
-              label: Text(
-                font,
-                style: _fontPreviewStyle(font).copyWith(
-                  fontSize: 13,
-                  color: foreground,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-              selected: isSelected,
-              backgroundColor: background,
-              selectedColor: background,
-              elevation: isSelected ? 2 : 0,
-              pressElevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              onSelected: (selected) {
-                if (selected) {
-                  _updateSettingsRealTime(_settings.copyWith(fontFamily: font));
-                }
-              },
-            );
-          }).toList(),
-        ),
+        // Wrap(
+        //   spacing: 10,
+        //   runSpacing: 10,
+        //   children: _fontFamilies.map((font) {
+        //     final bool isSelected = _settings.fontFamily == font;
+        //     final Color background = isSelected
+        //         ? Colors.black.withOpacity(0.15)
+        //         : Colors.grey.withOpacity(0.1);
+        //     final Color foreground = isSelected ? Colors.black : Colors.black87;
+        //     return ChoiceChip(
+        //       label: Text(
+        //         font,
+        //         style: _fontPreviewStyle(font).copyWith(
+        //           fontSize: 13,
+        //           color: foreground,
+        //           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+        //         ),
+        //       ),
+        //       selected: isSelected,
+        //       backgroundColor: background,
+        //       selectedColor: background,
+        //       elevation: isSelected ? 2 : 0,
+        //       pressElevation: 0,
+        //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        //       onSelected: (selected) {
+        //         if (selected) {
+        //           _updateSettingsRealTime(_settings.copyWith(fontFamily: font));
+        //         }
+        //       },
+        //     );
+        //   }).toList(),
+        // ),
       ],
     );
   }

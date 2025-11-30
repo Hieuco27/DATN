@@ -9,6 +9,7 @@ import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dar
 import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
+import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,6 +26,7 @@ class _HomePageState extends State<HomePage> {
     const GenresListPage(),
     const MyBooksPage(),
     const ProfilePage(),
+    // const CartPage(),
   ];
 
   @override
@@ -102,6 +104,7 @@ class _HomePageState extends State<HomePage> {
                       GButton(icon: Icons.grid_view_rounded, text: 'Thể loại'),
                       GButton(icon: Icons.library_books_rounded, text: 'Thư viện'),
                       GButton(icon: Icons.person_rounded, text: 'Tôi'),
+                      // GButton(icon: Icons.history_rounded, text: 'Giỏ sách'),
                     ],
                   ),
                 ),

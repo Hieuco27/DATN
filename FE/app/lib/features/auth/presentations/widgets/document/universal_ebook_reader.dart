@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' if (dart.library.html) 'io_stub.dart' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:book_tech/core/services/ebook_reader_service.dart';
@@ -85,7 +86,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       label: 'Xanh lá',
       hex: '#C5E1A5',
       color: Color(0xFFC5E1A5),
-    ),
+    ), 
     _HighlightColorOption(
       label: 'Xanh dương',
       hex: '#AEDFF7',
@@ -517,7 +518,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
               Text(
                 _detectedFormat == EbookFormat.pdf
                     ? 'Chọn văn bản trong PDF và chọn màu để đánh dấu'
-                    : 'Long press vào nội dung EPUB và nhập văn bản để đánh dấu',
+                    : 'Bôi đen văn bản, copy (Ctrl+C), rồi click nút ➕ (màu vàng) bên phải',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -555,10 +556,10 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
                       _buildInstructionRow('3. Thêm ghi chú (tùy chọn)'),
                       _buildInstructionRow('4. Nhấn "Lưu đánh dấu"'),
                     ] else ...[
-                      _buildInstructionRow('1. Long press vào trang EPUB'),
-                      _buildInstructionRow('2. Nhập/paste văn bản muốn đánh dấu'),
-                      _buildInstructionRow('3. Chọn màu highlight'),
-                      _buildInstructionRow('4. Thêm ghi chú và lưu'),
+                      _buildInstructionRow('1. Bôi đen văn bản trong EPUB'),
+                      _buildInstructionRow('2. Copy văn bản (Ctrl+C)'),
+                      _buildInstructionRow('3. Click nút ➕ (màu vàng) bên phải'),
+                      _buildInstructionRow('4. Paste, chọn màu và lưu'),
                     ],
                   ],
                 ),
@@ -726,6 +727,8 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
   }
 
   Future<void> _handleEditHighlight(EbookHighlight highlight) async {
+    if (!mounted) return;
+    
     final noteController = TextEditingController(text: highlight.note ?? '');
     String selectedColorHex = highlight.color;
 
@@ -741,119 +744,121 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             top: false,
             child: StatefulBuilder(
               builder: (context, setModalState) {
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Chỉnh sửa đánh dấu',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Chỉnh sửa đánh dấu',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          highlight.text,
-                          style: const TextStyle(fontSize: 15),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            highlight.text,
+                            style: const TextStyle(fontSize: 15),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Chọn màu:',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 12,
-                        children: _highlightColorOptions.map((option) {
-                          final isSelected = option.hex == selectedColorHex;
-                          return GestureDetector(
-                            onTap: () {
-                              setModalState(
-                                () => selectedColorHex = option.hex,
-                              );
-                            },
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: option.color,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? Colors.black
-                                          : Colors.transparent,
-                                      width: 2,
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Chọn màu:',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          children: _highlightColorOptions.map((option) {
+                            final isSelected = option.hex == selectedColorHex;
+                            return GestureDetector(
+                              onTap: () {
+                                setModalState(
+                                  () => selectedColorHex = option.hex,
+                                );
+                              },
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: option.color,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Colors.black
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
                                     ),
+                                    child: isSelected
+                                        ? const Icon(Icons.check, size: 20)
+                                        : null,
                                   ),
-                                  child: isSelected
-                                      ? const Icon(Icons.check, size: 20)
-                                      : null,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  option.label,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: noteController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Ghi chú (tuỳ chọn)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            final updated = EbookHighlight(
-                              id: highlight.id,
-                              text: highlight.text,
-                              pageNumber: highlight.pageNumber,
-                              note: noteController.text.trim().isEmpty
-                                  ? null
-                                  : noteController.text.trim(),
-                              createdAt: highlight.createdAt,
-                              color: selectedColorHex,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    option.label,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
                             );
-
-                            Navigator.of(context).pop(updated);
-                          },
-                          icon: const Icon(Icons.save),
-                          label: const Text('Lưu thay đổi'),
+                          }).toList(),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: noteController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Ghi chú (tuỳ chọn)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final updated = EbookHighlight(
+                                id: highlight.id,
+                                text: highlight.text,
+                                pageNumber: highlight.pageNumber,
+                                note: noteController.text.trim().isEmpty
+                                    ? null
+                                    : noteController.text.trim(),
+                                createdAt: highlight.createdAt,
+                                color: selectedColorHex,
+                              );
+
+                              Navigator.of(context).pop(updated);
+                            },
+                            icon: const Icon(Icons.save),
+                            label: const Text('Lưu thay đổi'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -1246,18 +1251,23 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
 
     _selectedPdfText = text;
 
-    if (!_isHighlightSheetVisible) {
-      _showCreateHighlightSheet();
+    if (!_isHighlightSheetVisible && mounted) {
+      // Dùng Future.microtask để tránh gọi showModalBottomSheet trong khi đang build
+      Future.microtask(() {
+        if (mounted && !_isHighlightSheetVisible) {
+          _showCreateHighlightSheet();
+        }
+      });
     }
   }
 
   Future<void> _showCreateHighlightSheet({String? initialColorHex}) async {
     final selectedText = _selectedPdfText ?? _selectedEpubText;
-    if (!mounted) return;
     if (selectedText == null || selectedText.isEmpty) {
       return;
     }
 
+    if (!mounted) return;
     setState(() => _isHighlightSheetVisible = true);
 
     final noteController = TextEditingController();
@@ -1277,126 +1287,128 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
               top: false,
               child: StatefulBuilder(
                 builder: (context, setModalState) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Tạo đánh dấu',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                  return SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Tạo đánh dấu',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.close),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
+                              IconButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                icon: const Icon(Icons.close),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            selectedText,
-                            style: const TextStyle(fontSize: 15),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              selectedText,
+                              style: const TextStyle(fontSize: 15),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Chọn màu:',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 12,
-                          children: _highlightColorOptions.map((option) {
-                            final isSelected = option.hex == selectedColorHex;
-                            return GestureDetector(
-                              onTap: () {
-                                setModalState(
-                                  () => selectedColorHex = option.hex,
-                                );
-                              },
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: option.color,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? Colors.black
-                                            : Colors.transparent,
-                                        width: 2,
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Chọn màu:',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 12,
+                            children: _highlightColorOptions.map((option) {
+                              final isSelected = option.hex == selectedColorHex;
+                              return GestureDetector(
+                                onTap: () {
+                                  setModalState(
+                                    () => selectedColorHex = option.hex,
+                                  );
+                                },
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: option.color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? Colors.black
+                                              : Colors.transparent,
+                                          width: 2,
+                                        ),
                                       ),
+                                      child: isSelected
+                                          ? const Icon(Icons.check, size: 20)
+                                          : null,
                                     ),
-                                    child: isSelected
-                                        ? const Icon(Icons.check, size: 20)
-                                        : null,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    option.label,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: noteController,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'Ghi chú (tuỳ chọn)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              final text = selectedText;
-                              if (text.trim().isEmpty) {
-                                Navigator.of(context).pop();
-                                return;
-                              }
-
-                              final highlight = EbookHighlight(
-                                id: DateTime.now().microsecondsSinceEpoch
-                                    .toString(),
-                                text: text,
-                                pageNumber: _currentPage,
-                                note: noteController.text.trim().isEmpty
-                                    ? null
-                                    : noteController.text.trim(),
-                                createdAt: DateTime.now(),
-                                color: selectedColorHex,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      option.label,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
                               );
-
-                              Navigator.of(context).pop(highlight);
-                            },
-                            icon: const Icon(Icons.save),
-                            label: const Text('Lưu đánh dấu'),
+                            }).toList(),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: noteController,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText: 'Ghi chú (tuỳ chọn)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                final text = selectedText;
+                                if (text.trim().isEmpty) {
+                                  Navigator.of(context).pop();
+                                  return;
+                                }
+
+                                final highlight = EbookHighlight(
+                                  id: DateTime.now().microsecondsSinceEpoch
+                                      .toString(),
+                                  text: text,
+                                  pageNumber: _currentPage,
+                                  note: noteController.text.trim().isEmpty
+                                      ? null
+                                      : noteController.text.trim(),
+                                  createdAt: DateTime.now(),
+                                  color: selectedColorHex,
+                                );
+
+                                Navigator.of(context).pop(highlight);
+                              },
+                              icon: const Icon(Icons.save),
+                              label: const Text('Lưu đánh dấu'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1410,64 +1422,63 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       _selectedPdfText = null;
       _selectedEpubText = null;
       _pdfController?.clearSelection();
-      if (mounted) {
-        setState(() => _isHighlightSheetVisible = false);
-      }
     }
 
-    final highlight = createdHighlight;
+    // Kiểm tra mounted trước khi tiếp tục
+    if (!mounted) return;
 
-    if (!mounted || highlight == null) {
-      return;
-    }
-
+    // Gộp tất cả setState vào một lần duy nhất
     setState(() {
-      _highlights.add(highlight);
+      _isHighlightSheetVisible = false;
+      if (createdHighlight != null) {
+        _highlights.add(createdHighlight);
+      }
     });
+
+    // Nếu không có highlight, return ngay
+    if (createdHighlight == null) return;
+
     try {
-      await EbookSettingsService.saveHighlight(widget.title, highlight);
-      if (mounted) {
-        // Refresh để hiển thị highlight màu
-        setState(() {});
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: _colorFromHex(highlight.color),
-                    shape: BoxShape.circle,
-                  ),
+      await EbookSettingsService.saveHighlight(widget.title, createdHighlight);
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: _colorFromHex(createdHighlight.color),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 8),
-                const Text('Đã lưu đánh dấu.'),
-              ],
-            ),
-            duration: const Duration(seconds: 2),
-            action: SnackBarAction(
-              label: 'Xem',
-              onPressed: () {
-                setState(() {
-                  _readerMenuTabIndex = 1;
-                  _showReaderMenu = true;
-                });
-              },
-            ),
+              ),
+              const SizedBox(width: 8),
+              const Text('Đã lưu đánh dấu.'),
+            ],
           ),
-        );
-      }
+          duration: const Duration(seconds: 2),
+          action: SnackBarAction(
+            label: 'Xem',
+            onPressed: () {
+              if (!mounted) return;
+              setState(() {
+                _readerMenuTabIndex = 1;
+                _showReaderMenu = true;
+              });
+            },
+          ),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Không thể lưu đánh dấu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể lưu đánh dấu: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -1629,15 +1640,37 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             backgroundColor: _settings.theme == 'dark'
                 ? Colors.grey[800]
                 : Colors.orange,
-            onPressed: () => setState(() {
-              _readerMenuTabIndex = 1;
-              _showReaderMenu = true;
-            }),
+            onPressed: () {
+              if (!mounted) return;
+              setState(() {
+                _readerMenuTabIndex = 1;
+                _showReaderMenu = true;
+              });
+            },
             child: Icon(
               Icons.highlight,
               color: _settings.theme == 'dark' ? Colors.white : Colors.white,
             ),
           ),
+          if (_detectedFormat == EbookFormat.epub) ...[
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              heroTag: "add_highlight",
+              mini: true,
+              backgroundColor: _settings.theme == 'dark'
+                  ? Colors.grey[800]
+                  : Colors.amber,
+              onPressed: () {
+                if (!mounted) return;
+                // Schedule async call to avoid setState during build
+                Future.microtask(() => _showEpubHighlightDialog());
+              },
+              child: Icon(
+                Icons.add_box,
+                color: _settings.theme == 'dark' ? Colors.white : Colors.white,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           FloatingActionButton(
             heroTag: "toc",
@@ -1645,10 +1678,13 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             backgroundColor: _settings.theme == 'dark'
                 ? Colors.grey[800]
                 : Colors.green,
-            onPressed: () => setState(() {
-              _readerMenuTabIndex = 0;
-              _showReaderMenu = true;
-            }),
+            onPressed: () {
+              if (!mounted) return;
+              setState(() {
+                _readerMenuTabIndex = 0;
+                _showReaderMenu = true;
+              });
+            },
             child: Icon(
               Icons.list,
               color: _settings.theme == 'dark' ? Colors.white : Colors.white,
@@ -1720,72 +1756,59 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
                     ),
                   )
                 else
-                  Stack(
-                    children: [
-                      // HTML content với highlights
-                      Html(
-                        data: _injectHighlightsToHtml(
-                          _injectTextColorToHtml(content, textColor),
-                          textColor,
-                        ),
-                        style: {
-                          'html': Style(
-                            color: textColor,
-                            backgroundColor: backgroundColor,
-                          ),
-                          'body': Style(
-                            fontFamily: _settings.fontFamily,
-                            fontSize: FontSize(_settings.fontSize),
-                            lineHeight: LineHeight(_settings.lineHeight),
-                            color: textColor,
-                            backgroundColor: backgroundColor,
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                          ),
-                          'p': Style(
-                            color: textColor,
-                            margin: Margins.symmetric(vertical: 8),
-                          ),
-                          'div': Style(color: textColor),
-                          'span': Style(color: textColor),
-                          'h1': Style(
-                            color: textColor,
-                            fontSize: FontSize(_settings.fontSize + 8),
-                          ),
-                          'h2': Style(
-                            color: textColor,
-                            fontSize: FontSize(_settings.fontSize + 6),
-                          ),
-                          'h3': Style(
-                            color: textColor,
-                            fontSize: FontSize(_settings.fontSize + 4),
-                          ),
-                          'h4': Style(
-                            color: textColor,
-                            fontSize: FontSize(_settings.fontSize + 2),
-                          ),
-                          'h5': Style(color: textColor),
-                          'h6': Style(color: textColor),
-                          'li': Style(color: textColor),
-                          'td': Style(color: textColor),
-                          'th': Style(color: textColor),
-                          'a': Style(color: textColor),
-                          'strong': Style(color: textColor),
-                          'em': Style(color: textColor),
-                          'b': Style(color: textColor),
-                          'i': Style(color: textColor),
-                        },
+                  SelectionArea(
+                    child: Html(
+                      data: _injectHighlightsToHtml(
+                        _injectTextColorToHtml(content, textColor),
+                        textColor,
                       ),
-                      // Transparent layer để bắt long press
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onLongPressStart: (details) {
-                            _showEpubTextSelectionMenu(details.globalPosition);
-                          },
-                          child: Container(color: Colors.transparent),
+                      style: {
+                        'html': Style(
+                          color: textColor,
+                          backgroundColor: backgroundColor,
                         ),
-                      ),
-                    ],
+                        'body': Style(
+                          fontFamily: _settings.fontFamily,
+                          fontSize: FontSize(_settings.fontSize),
+                          lineHeight: LineHeight(_settings.lineHeight),
+                          color: textColor,
+                          backgroundColor: backgroundColor,
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                        ),
+                        'p': Style(
+                          color: textColor,
+                          margin: Margins.symmetric(vertical: 8),
+                        ),
+                        'div': Style(color: textColor),
+                        'h1': Style(
+                          color: textColor,
+                          fontSize: FontSize(_settings.fontSize + 8),
+                        ),
+                        'h2': Style(
+                          color: textColor,
+                          fontSize: FontSize(_settings.fontSize + 6),
+                        ),
+                        'h3': Style(
+                          color: textColor,
+                          fontSize: FontSize(_settings.fontSize + 4),
+                        ),
+                        'h4': Style(
+                          color: textColor,
+                          fontSize: FontSize(_settings.fontSize + 2),
+                        ),
+                        'h5': Style(color: textColor),
+                        'h6': Style(color: textColor),
+                        'li': Style(color: textColor),
+                        'td': Style(color: textColor),
+                        'th': Style(color: textColor),
+                        'a': Style(color: textColor),
+                        'strong': Style(color: textColor),
+                        'em': Style(color: textColor),
+                        'b': Style(color: textColor),
+                        'i': Style(color: textColor),
+                      },
+                    ),
                   ),
               ],
             ),
@@ -1810,9 +1833,9 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       body, p, div, span, h1, h2, h3, h4, h5, h6, li, td, th, a, strong, em, b, i {
         color: $hexColor !important;
       }
-      .highlight {
-        padding: 2px 0;
-        border-radius: 2px;
+      mark {
+        padding: 2px 4px;
+        border-radius: 3px;
       }
     </style>
     ''';
@@ -1853,17 +1876,17 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
       final pattern = escapedText.replaceAll(RegExp(r'\s+'), r'\\s+');
       
       try {
-        // Wrap text với span có màu highlight
+        // Wrap text với mark tag có màu highlight
         result = result.replaceAll(
           RegExp(pattern, multiLine: true, dotAll: true),
-          '<span class="highlight" style="background-color: ${highlight.color};">$textToHighlight</span>',
+          '<mark style="background-color: ${highlight.color};">$textToHighlight</mark>',
         );
       } catch (e) {
         // Nếu regex fail, thử replace đơn giản
         if (result.contains(textToHighlight)) {
           result = result.replaceFirst(
             textToHighlight,
-            '<span class="highlight" style="background-color: ${highlight.color};">$textToHighlight</span>',
+            '<mark style="background-color: ${highlight.color};">$textToHighlight</mark>',
           );
         }
       }
@@ -1872,28 +1895,51 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
     return result;
   }
 
-  // Hiển thị menu để chọn và highlight text trong EPUB
-  void _showEpubTextSelectionMenu(Offset position) {
-    showDialog(
+  // Show dialog để paste text và tạo highlight cho EPUB
+  Future<void> _showEpubHighlightDialog() async {
+    // Prevent duplicate dialogs
+    if (!mounted || _isHighlightSheetVisible) return;
+    
+    final textController = TextEditingController();
+    
+    // Try to get text from clipboard
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      if (clipboardData?.text != null && clipboardData!.text!.isNotEmpty) {
+        textController.text = clipboardData.text!;
+      }
+    } catch (_) {
+      // Clipboard access failed, continue without pre-filled text
+    }
+
+    if (!mounted) return;
+
+    final result = await showDialog<String>(
       context: context,
       builder: (context) {
-        final textController = TextEditingController();
         return AlertDialog(
-          title: const Text('Tạo highlight'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Nhập đoạn văn bạn muốn đánh dấu:'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: textController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Nhập hoặc paste văn bản...',
-                  border: OutlineInputBorder(),
+          title: const Text('Tạo đánh dấu'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bôi đen và copy văn bản muốn đánh dấu, sau đó paste vào đây:',
+                  style: TextStyle(fontSize: 14),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: textController,
+                  maxLines: 5,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Paste văn bản đã copy...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1903,11 +1949,7 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
             ElevatedButton(
               onPressed: () {
                 final text = textController.text.trim();
-                if (text.isNotEmpty) {
-                  Navigator.pop(context);
-                  _selectedEpubText = text;
-                  _showCreateHighlightSheet();
-                }
+                Navigator.pop(context, text);
               },
               child: const Text('Tiếp tục'),
             ),
@@ -1915,6 +1957,19 @@ class _UniversalEbookReaderState extends State<UniversalEbookReader>
         );
       },
     );
+
+    textController.dispose();
+
+    if (!mounted || result == null || result.isEmpty) {
+      return;
+    }
+
+    _selectedEpubText = result;
+    
+    // Check mounted again before showing highlight sheet
+    if (mounted) {
+      await _showCreateHighlightSheet();
+    }
   }
 
   void _toggleTheme() async {

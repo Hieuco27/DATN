@@ -10,6 +10,11 @@ import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_event.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
+import 'package:book_tech/features/auth/presentations/pages/forgot_password_otp_page.dart';
+import 'package:book_tech/features/auth/data/datasources/authentication_remote_data_source.dart';
+import 'package:book_tech/features/auth/data/datasources/local_storage_data_source.dart';
+import 'package:book_tech/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:book_tech/features/auth/domain/usecases/forgot_password_usecase.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -77,13 +82,7 @@ class _SignInPageState extends State<SignInPage> {
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: GestureDetector(
-                                    onTap: () {
-                                      // TODO: Implement forgot password logic
-                                      NotificationService.showInfo(
-                                        context, 
-                                        message: 'Tính năng đang phát triển'
-                                      );
-                                    },
+                                    onTap: () => _showForgotPasswordDialog(context),
                                     child: Text(
                                       'Quên mật khẩu?',
                                       style: TextStyle(
@@ -289,6 +288,253 @@ class _SignInPageState extends State<SignInPage> {
   static const String _facebookIcon = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#1976D2" d="M24,4C12.954,4,4,12.954,4,24s8.954,20,20,20s20-8.954,20-20S35.046,4,24,4z"/><path fill="#FAFAFA" d="M26.707,29.301h5.176l0.813-5.258h-5.989v-2.874c0-1.67,0.558-2.503,2.206-2.503h2.825V13.87c-0.871-0.135-2.308-0.26-4.125-0.26c-4.324,0-7.151,2.659-7.151,7.406v3.033h-4.809v5.258h4.809c0,6.748,3.99,12.812,9.967,15.853C28.86,43.956,26.707,36.959,26.707,29.301z"/></svg>''';
   
   static const String _appleIcon = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>''';
+
+  // Show Forgot Password Dialog
+  void _showForgotPasswordDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppPalette.gradient1.withOpacity(0.2),
+                      AppPalette.gradient2.withOpacity(0.1),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.lock_reset,
+                  size: 35,
+                  color: AppPalette.gradient2,
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Title
+              const Text(
+                'Quên mật khẩu?',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 10),
+              
+              // Description
+              Text(
+                'Nhập email của bạn để nhận mã OTP khôi phục mật khẩu',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Email Field
+              Form(
+                key: formKey,
+                child: TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Nhập email của bạn',
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: AppPalette.gradient2,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.grey[200]!,
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppPalette.gradient2,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Colors.red,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Vui lòng nhập email';
+                    }
+                    final emailRegex = RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    );
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Email không hợp lệ';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
+                      ),
+                      child: Text(
+                        'Hủy',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          Navigator.of(dialogContext).pop();
+                          _sendOtpToEmail(context, emailController.text.trim());
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppPalette.gradient2,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Gửi OTP',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Send OTP to Email
+  Future<void> _sendOtpToEmail(BuildContext context, String email) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Initialize use case
+      final remoteDataSource = AuthenticationRemoteDataSourceImpl();
+      final localDataSource = LocalStorageDataSourceImpl();
+      final repository = AuthenticationRepositoryImpl(
+        remoteDataSource: remoteDataSource,
+        localStorageDataSource: localDataSource,
+      );
+      final useCase = ForgotPasswordSendOtpUseCase(repository);
+
+      // Call use case
+      final result = await useCase(
+        ForgotPasswordSendOtpParams(email: email),
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!context.mounted) return;
+
+      if (result.isSuccess) {
+        // Show success message
+        NotificationService.showSuccess(
+          context,
+          message: 'Mã OTP đã được gửi đến email của bạn',
+        );
+
+        // Navigate to OTP page
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ForgotPasswordOtpPage(email: email),
+          ),
+        );
+      } else {
+        NotificationService.showError(
+          context,
+          message: result.error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      if (context.mounted) {
+        NotificationService.showError(
+          context,
+          message: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {

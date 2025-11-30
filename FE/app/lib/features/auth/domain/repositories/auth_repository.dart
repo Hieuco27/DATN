@@ -28,4 +28,15 @@ abstract class AuthenticationRepository {
     required String oldPassword,
     required String newPassword,
   });
+  
+  // Forgot Password
+  Future<void> forgotPasswordSendOtp(String email);
+  Future<void> forgotPasswordVerifyOtp({
+    required String email,
+    required String otp,
+  });
+  Future<void> forgotPasswordResetPassword({
+    required String email,
+    required String newPassword,
+  });
 }

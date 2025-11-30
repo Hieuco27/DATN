@@ -533,8 +533,8 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
         final horizontalPadding = isSmallScreen ? 8.0 : 12.0;
         
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 5),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -549,9 +549,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
           child: Row(
             children: [
               Expanded(child: _buildInfoItem('Tổng', '${_vm.totalCopies}', isSmallScreen)),
-              Container(width: 1, height: 38, color: Colors.grey[200]),
+              Container(width: 1, height: 34, color: Colors.grey[200]),
               Expanded(child: _buildInfoItem('Hiện có', '${_vm.availableCopies}', isSmallScreen)),
-              Container(width: 1, height: 38, color: Colors.grey[200]),
+              Container(width: 1, height: 34, color: Colors.grey[200]),
               Expanded(
                 child: _buildInfoItem(
                   'Cho mượn',

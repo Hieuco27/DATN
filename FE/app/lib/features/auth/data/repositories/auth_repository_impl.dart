@@ -471,4 +471,69 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       );
     }
   }
+
+  @override
+  Future<void> forgotPasswordSendOtp(String email) async {
+    try {
+      if (email.isEmpty || !email.contains('@')) {
+        throw Exception('Email không hợp lệ');
+      }
+      
+      await remoteDataSource.forgotPasswordSendOtp(email);
+      print('✅ [Repository] OTP đã được gửi đến $email');
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      throw Exception(errorMessage);
+    }
+  }
+
+  @override
+  Future<void> forgotPasswordVerifyOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      if (email.isEmpty || !email.contains('@')) {
+        throw Exception('Email không hợp lệ');
+      }
+      
+      if (otp.isEmpty || otp.length != 6) {
+        throw Exception('Mã OTP phải có 6 ký tự');
+      }
+      
+      await remoteDataSource.forgotPasswordVerifyOtp(
+        email: email,
+        otp: otp,
+      );
+      print('✅ [Repository] Xác thực OTP thành công');
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      throw Exception(errorMessage);
+    }
+  }
+
+  @override
+  Future<void> forgotPasswordResetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    try {
+      if (email.isEmpty || !email.contains('@')) {
+        throw Exception('Email không hợp lệ');
+      }
+      
+      if (newPassword.length < 6) {
+        throw Exception('Mật khẩu phải có ít nhất 6 ký tự');
+      }
+      
+      await remoteDataSource.forgotPasswordResetPassword(
+        email: email,
+        newPassword: newPassword,
+      );
+      print('✅ [Repository] Đặt lại mật khẩu thành công');
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      throw Exception(errorMessage);
+    }
+  }
 }

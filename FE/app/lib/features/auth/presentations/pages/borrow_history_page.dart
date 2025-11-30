@@ -627,6 +627,492 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     }
   }
 
+  void _showCancelDialog(LoanItem loan) {
+    if (loan.status.toUpperCase() == 'PENDING') {
+      _showPendingCancelDialog(loan);
+    } else if (loan.status.toUpperCase() == 'WAITING_FOR_PICKUP') {
+      _showWaitingForPickupCancelDialog(loan);
+    }
+  }
+
+  void _showPendingCancelDialog(LoanItem loan) {
+    final selectedDetails = <int>{}; // Set of selected loanDetailIds
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Hủy đặt mượn',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn tài liệu muốn hủy:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Phiếu đang ở trạng thái chờ duyệt, bạn có thể hủy trực tiếp.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: loan.details.length,
+                  itemBuilder: (context, index) {
+                    final detail = loan.details[index];
+                    final bookTitle = detail.bookInfo?.title ?? 'Sách không xác định';
+                    final isSelected = selectedDetails.contains(detail.loanDetailId);
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected ? AppPalette.gradient1 : Colors.grey[300]!,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedDetails.add(detail.loanDetailId);
+                            } else {
+                              selectedDetails.remove(detail.loanDetailId);
+                            }
+                          });
+                        },
+                        title: Text(
+                          bookTitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        // subtitle: Text(
+                        //   _statusLabel(detail.status),
+                        //   style: TextStyle(
+                        //     fontSize: 12,
+                        //     color: Colors.black87,
+                        //   ),
+                        // ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        dense: true,
+                        activeColor: AppPalette.gradient1,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        tileColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (selectedDetails.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Đã chọn ${selectedDetails.length} tài liệu',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppPalette.gradient1,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Không',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: selectedDetails.isEmpty
+                ? null
+                : () {
+                    Navigator.pop(context);
+                    _cancelLoans(loan.loanSlipId, selectedDetails.toList(), null);
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(selectedDetails.isEmpty 
+                ? 'Chọn tài liệu' 
+                : 'Hủy ${selectedDetails.length} tài liệu'),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  void _showWaitingForPickupCancelDialog(LoanItem loan) {
+    final reasonController = TextEditingController();
+    final selectedDetails = <int>{}; // Set of selected loanDetailIds
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.info_outline, color: Colors.orange, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Yêu cầu hủy phiếu #${loan.loanSlipId}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn tài liệu muốn yêu cầu hủy:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Phiếu đang chờ lấy sách. Thủ thư sẽ xem xét và xử lý yêu cầu.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: loan.details.length,
+                  itemBuilder: (context, index) {
+                    final detail = loan.details[index];
+                    final bookTitle = detail.bookInfo?.title ?? 'Sách không xác định';
+                    final isSelected = selectedDetails.contains(detail.loanDetailId);
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected ? AppPalette.gradient1 : Colors.grey[300]!,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedDetails.add(detail.loanDetailId);
+                            } else {
+                              selectedDetails.remove(detail.loanDetailId);
+                            }
+                          });
+                        },
+                        title: Text(
+                          bookTitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        // subtitle: Text(
+                        //   _statusLabel(detail.status),
+                        //   style: TextStyle(
+                        //     fontSize: 12,
+                        //     color: Colors.black87,
+                        //   ),
+                        // ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        dense: true,
+                        activeColor: AppPalette.gradient1,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        tileColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (selectedDetails.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Đã chọn ${selectedDetails.length} tài liệu',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppPalette.gradient1,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonController,
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Lý do hủy',
+                  labelStyle: const TextStyle(fontSize: 13),
+
+                  hintText: 'Nhập lý do muốn hủy phiếu...',
+                  hintStyle: const TextStyle(fontSize: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppPalette.gradient1, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  isDense: true,
+                ),
+                maxLines: 2,
+                maxLength: 150,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Hủy bỏ',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: selectedDetails.isEmpty
+                ? null
+                : () {
+                    Navigator.pop(context);
+                    _cancelLoans(loan.loanSlipId, selectedDetails.toList(), reasonController.text);
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppPalette.gradient1,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(selectedDetails.isEmpty 
+                ? 'Chọn tài liệu' 
+                : 'Gửi yêu cầu (${selectedDetails.length})'),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _cancelLoans(int loanSlipId, List<int> loanDetailIds, String? reason) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppPalette.gradient1),
+                ),
+                SizedBox(height: 16),
+                Text('Đang xử lý...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      int successCount = 0;
+      int failCount = 0;
+      String? lastMessage;
+      
+      // Process each selected book
+      for (final loanDetailId in loanDetailIds) {
+        try {
+          final response = await _repo.cancelLoanRequest(
+            loanSlipId: loanSlipId,
+            reason: reason,
+            loanDetailId: loanDetailId,
+          );
+          
+          final success = response['success'] as bool? ?? false;
+          if (success) {
+            successCount++;
+            lastMessage = response['message'] as String?;
+          } else {
+            failCount++;
+          }
+        } catch (e) {
+          failCount++;
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Show result message
+      String message;
+      Color bgColor;
+      IconData icon;
+      
+      if (failCount == 0) {
+        message = successCount > 1 
+            ? 'Đã xử lý $successCount tài liệu thành công'
+            : (lastMessage ?? 'Đã xử lý yêu cầu thành công');
+        bgColor = Colors.green;
+        icon = Icons.check_circle;
+      } else if (successCount == 0) {
+        message = 'Không thể xử lý yêu cầu';
+        bgColor = Colors.red;
+        icon = Icons.error;
+      } else {
+        message = 'Đã xử lý $successCount/${ loanDetailIds.length} tài liệu';
+        bgColor = Colors.orange;
+        icon = Icons.warning;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(icon, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: bgColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      // Reload data
+      if (successCount > 0) {
+        await _loadData();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Lỗi: $e',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -680,6 +1166,10 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
           TextField(
             decoration: InputDecoration(
               hintText: 'Tìm kiếm theo mã phiếu, trạng thái...',
+              hintStyle: const TextStyle(
+                fontSize: 12,
+                color: Color.fromARGB(221, 79, 79, 79),
+              ),
               prefixIcon: const Icon(Icons.search, color: Colors.grey),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -699,8 +1189,8 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+                horizontal: 14,
+                vertical: 10,
               ),
             ),
             onChanged: (value) {
@@ -1096,21 +1586,21 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
               children: [
                 _buildInfoRow(
                   Icons.event_note_outlined,
-                  'Ngày mượn',
+                  'Ngày mượn:',
                   _formatDate(loan.loanDate),
                   Colors.blue,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   Icons.assignment_return_outlined,
-                  'Hẹn trả',
+                  'Hẹn trả:',
                   _formatDate(loan.dueDate),
                   Colors.orange,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   Icons.library_books_outlined,
-                  'Số đầu sách',
+                  'Số đầu sách:',
                   '$detailsCount',
                   AppPalette.gradient1,
                 ),
@@ -1178,31 +1668,31 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black87,
                                     ),
                                   ),
                                   
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, 
-                                      vertical: 2
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _statusColor(detail.status).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      _statusLabel(detail.status),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: _statusColor(detail.status),
-                                      ),
-                                    ),
-                                  ),
+                                  // const SizedBox(height: 4),
+                                  // Container(
+                                  //   padding: const EdgeInsets.symmetric(
+                                  //     horizontal: 8, 
+                                  //     vertical: 2
+                                  //   ),
+                                  //   decoration: BoxDecoration(
+                                  //     color: _statusColor(detail.status).withOpacity(0.1),
+                                  //     borderRadius: BorderRadius.circular(4),
+                                  //   ),
+                                  //   child: Text(
+                                  //     _statusLabel(detail.status),
+                                  //     style: TextStyle(
+                                  //       fontSize: 11,
+                                  //       fontWeight: FontWeight.w500,
+                                  //       color: _statusColor(detail.status),
+                                  //     ),
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),
@@ -1215,6 +1705,35 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
               ],
             ),
           ),
+          // Cancel button for PENDING or WAITING_FOR_PICKUP status
+          if (loan.status.toUpperCase() == 'PENDING' || 
+              loan.status.toUpperCase() == 'WAITING_FOR_PICKUP')
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showCancelDialog(loan),
+                  label: Text(
+                    loan.status.toUpperCase() == 'PENDING' 
+                        ? 'Hủy đặt mượn' 
+                        : 'Yêu cầu hủy',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

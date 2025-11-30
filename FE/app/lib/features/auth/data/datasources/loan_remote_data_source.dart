@@ -6,6 +6,11 @@ import 'package:book_tech/features/auth/data/models/loan_history_models.dart';
 
 abstract class LoanRemoteDataSource {
   Future<LoanResponse> getMyLoans({required int page, required int limit});
+  Future<Map<String, dynamic>> cancelLoanRequest({
+    required int loanSlipId,
+    String? reason,
+    int? loanDetailId,
+  });
 }
 
 class LoanRemoteDataSourceImpl implements LoanRemoteDataSource {
@@ -26,5 +31,21 @@ class LoanRemoteDataSourceImpl implements LoanRemoteDataSource {
       queryParameters: {'page': page, 'limit': limit},
     );
     return LoanResponse.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Map<String, dynamic>> cancelLoanRequest({
+    required int loanSlipId,
+    String? reason,
+    int? loanDetailId,
+  }) async {
+    final res = await dio.post(
+      '/loans/reader/loans/$loanSlipId/cancel-request',
+      data: {
+        'reason': reason ?? '',
+        'loanDetailId': loanDetailId ?? 0,
+      },
+    );
+    return res.data as Map<String, dynamic>;
   }
 }

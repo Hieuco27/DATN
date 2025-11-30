@@ -9,4 +9,16 @@ class LoanRepository {
   Future<LoanResponse> getMyLoans({required int page, required int limit}) {
     return remote.getMyLoans(page: page, limit: limit);
   }
+
+  Future<Map<String, dynamic>> cancelLoanRequest({
+    required int loanSlipId,
+    String? reason,
+    int? loanDetailId,
+  }) {
+    return remote.cancelLoanRequest(
+      loanSlipId: loanSlipId,
+      reason: reason,
+      loanDetailId: loanDetailId,
+    );
+  }
 }
