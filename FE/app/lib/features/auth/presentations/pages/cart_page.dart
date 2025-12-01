@@ -287,8 +287,6 @@ class _CartPageState extends State<CartPage>
       }
     } catch (e, stackTrace) {
       log.e('Book reservation failed: ${e.toString()}', e, 'CartPage');
-      print('❌ [CartPage] Reservation error: $e');
-      print('📍 [CartPage] Stack trace: $stackTrace');
       
       if (mounted) {
         // Loại bỏ prefix "Exception: " để hiển thị message gốc

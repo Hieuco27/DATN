@@ -146,15 +146,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                   wishlistState is WishlistData && 
                   wishlistState.contains(_vm.documentId);
               
-              print('🎨 UI: BlocBuilder rebuilt for documentId=${_vm.documentId}');
-              print('🎨 UI: wishlistState type: ${wishlistState.runtimeType}');
-              if (wishlistState is WishlistData) {
-                print('🎨 UI: Wishlist has ${wishlistState.items.length} items');
-                print('🎨 UI: Wishlist IDs: ${wishlistState.items.map((e) => e.documentId).toList()}');
-                print('🎨 UI: Contains documentId=${_vm.documentId}? $isBookmarked');
-              }
-              print('🎨 UI: Icon color will be: ${isBookmarked ? "RED" : "GREY"}');
-              
               return IconButton(
                 icon: Icon(
                   isBookmarked ? Icons.favorite : Icons.favorite_border,
@@ -166,21 +157,23 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                     // Lưu trạng thái trước khi toggle
                     final wasBookmarked = isBookmarked;
                     
-                    print('👆 UI: User tapped favorite icon, wasBookmarked=$wasBookmarked');
                     context.read<WishlistBloc>().add(WishlistItemToggled(item));
                     
-                    // Hiển thị thông báo dựa trên trạng thái cũ
-                    if (wasBookmarked) {
-                      NotificationService.showInfo(
-                        context,
-                        message: 'Đã bỏ khỏi yêu thích',
-                      );
-                    } else {
-                      NotificationService.showSuccess(
-                        context,
-                        message: 'Đã thêm vào yêu thích',
-                      );
-                    }
+                    // Hiển thị thông báo sau khi build phase hoàn thành
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      if (wasBookmarked) {
+                        NotificationService.showInfo(
+                          context,
+                          message: 'Đã bỏ khỏi yêu thích',
+                        );
+                      } else {
+                        NotificationService.showSuccess(
+                          context,
+                          message: 'Đã thêm vào yêu thích',
+                        );
+                      }
+                    });
                   }
                 },
               );

@@ -27,6 +27,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -175,8 +176,14 @@ class _SignUpPageState extends State<SignUpPage> {
       builder: (context, state) {
         return AuthField(
           hintText: 'Mật khẩu',
-          obsecureText: true,
+          obsecureText: _obscurePassword,
           controller: _passwordController,
+          showToggleIcon: true,
+          onToggleVisibility: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Vui lòng nhập mật khẩu';
@@ -243,12 +250,10 @@ class _SignUpPageState extends State<SignUpPage> {
           localStorageDataSource: LocalStorageDataSourceImpl(),
         );
 
-        print('📤 Đang gửi OTP đến: ${_emailController.text.trim()}');
         
         // Bước 1: Gửi OTP
         final response = await repository.registerInit(_emailController.text.trim());
         
-        print('✅ OTP đã được gửi thành công: $response');
 
         // Lưu thông tin đăng ký để dùng cho bước verify
         final registerData = {

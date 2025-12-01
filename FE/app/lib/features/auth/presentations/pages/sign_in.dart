@@ -29,6 +29,7 @@ class _SignInPageState extends State<SignInPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +136,13 @@ class _SignInPageState extends State<SignInPage> {
     return AuthField(
       hintText: 'Mật khẩu',
       controller: _passwordController,
-      obsecureText: true,
+      obsecureText: _obscurePassword,
+      showToggleIcon: true,
+      onToggleVisibility: () {
+        setState(() {
+          _obscurePassword = !_obscurePassword;
+        });
+      },
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Mật khẩu không được để trống';

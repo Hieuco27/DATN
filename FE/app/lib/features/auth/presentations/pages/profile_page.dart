@@ -19,6 +19,9 @@ import 'package:book_tech/features/auth/presentations/pages/profile_detail_page.
 import 'package:book_tech/features/auth/presentations/pages/membership_selection_page.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
 import 'package:book_tech/features/auth/presentations/pages/notifications_page.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -91,6 +94,8 @@ class _ProfilePageContent extends StatefulWidget {
 class _ProfilePageContentState extends State<_ProfilePageContent>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  String? _avatarPath;
+  final ImagePicker _picker = ImagePicker();
 
   // Màu sắc đồng nhất với cart_page và my_books_page
   static const Color _primaryColor = Color(0xFFFF6B35);
@@ -104,6 +109,51 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _avatarPath = prefs.getString('user_avatar');
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_avatar', image.path);
+        if (mounted) {
+          setState(() {
+            _avatarPath = image.path;
+          });
+        }
+        
+        if (mounted) {
+          NotificationService.showSuccess(
+            context,
+            message: 'Đã cập nhật ảnh đại diện',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: 'Không thể chọn ảnh: $e',
+        );
+      }
+    }
   }
 
   @override
@@ -379,26 +429,64 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             child: Row(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    // Avatar
-    Container(
-      width: 65,
-      height: 65,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryColor.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    // Avatar with Image Picker
+    GestureDetector(
+      onTap: _pickImage,
+      child: Stack(
+        children: [
+          Container(
+            width: 65,
+            height: 65,
+            decoration: BoxDecoration(
+              gradient: _avatarPath == null
+                  ? LinearGradient(
+                      colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: _avatarPath != null ? Colors.grey[200] : null,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryColor.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: _avatarPath == null
+                ? const Icon(Icons.person_rounded, size: 30, color: Colors.white)
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.file(
+                      File(_avatarPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.person_rounded, size: 30, color: Colors.white);
+                      },
+                    ),
+                  ),
+          ),
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: _primaryColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
-      child: const Icon(Icons.person_rounded, size: 30, color: Colors.white),
     ),
 
     const SizedBox(width: 12),
@@ -892,26 +980,21 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
     if (result == true && mounted) {
       print('✅ Password change successful, reloading profile...');
       
-      // Clear error state trước
-      context.read<ProfileBloc>().add(ProfileClearError());
-      print('🧹 Dispatched ProfileClearError');
+      // Hiển thị thông báo thành công
+      NotificationService.showSuccess(
+        context,
+        message: 'Đổi mật khẩu thành công!',
+      );
       
-      // Reload profile
+      // Reload profile trực tiếp không cần clear error state
       final authState = context.read<AuthBloc>().state;
       print('🔐 AuthState: ${authState.runtimeType}');
       
       if (authState is AuthAuthenticated &&
           (authState.account.accessToken?.isNotEmpty ?? false)) {
-        print('🔄 Dispatching ProfileLoadRequested after 100ms...');
-        // Đợi một chút để clear state xong rồi mới load
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) {
-            print('🚀 Dispatching ProfileLoadRequested now!');
-            context.read<ProfileBloc>().add(ProfileLoadRequested());
-          } else {
-            print('⚠️ Widget not mounted, skipping reload');
-          }
-        });
+        print('🔄 Dispatching ProfileLoadRequested...');
+        context.read<ProfileBloc>().add(ProfileLoadRequested());
+        print('✅ ProfileLoadRequested dispatched!');
       } else {
         print('❌ Auth state is not valid for reload');
       }

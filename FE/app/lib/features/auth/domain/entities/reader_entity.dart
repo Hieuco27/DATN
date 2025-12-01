@@ -8,10 +8,11 @@ class ReaderEntity {
   final String? address;
   final DateTime? dateOfBirth;
   final String? cccd;
-  final int? totolBorrow;
+  final int? totalBorrow;
   final String? gender;
   final String? note;
   final String? email;
+  final String? avatarUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final MemberCardEntity? memberCard;
@@ -26,8 +27,9 @@ class ReaderEntity {
     this.dateOfBirth,
     this.cccd,
     this.gender,
-    this.totolBorrow,
+    this.totalBorrow,
     this.note,
+    this.avatarUrl,
     this.createdAt,
     this.updatedAt,
     this.memberCard,
@@ -47,9 +49,10 @@ class ReaderEntity {
         other.createdAt == createdAt &&
         other.gender == gender &&
         other.updatedAt == updatedAt &&
-        other.totolBorrow == totolBorrow &&
+        other.totalBorrow == totalBorrow &&
         other.note == note &&
         other.email == email &&
+        other.avatarUrl == avatarUrl &&
         other.memberCard == memberCard;
   }
 
@@ -64,8 +67,9 @@ class ReaderEntity {
       gender,
       dateOfBirth,
       cccd,
-      totolBorrow,
+      totalBorrow,
       note,
+      avatarUrl,
       createdAt,
       updatedAt,
       email,
@@ -82,9 +86,10 @@ class ReaderEntity {
     String? address,
     DateTime? dateOfBirth,
     String? cccd,
-    int? totolBorrow,
+    int? totalBorrow,
     String? gender,
     String? note,
+    String? avatarUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? email,
@@ -99,8 +104,9 @@ class ReaderEntity {
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       cccd: cccd ?? this.cccd,
       gender: gender ?? this.gender,
-      totolBorrow: totolBorrow ?? this.totolBorrow,
+      totalBorrow: totalBorrow ?? this.totalBorrow,
       note: note ?? this.note,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       email: email ?? this.email,
@@ -118,9 +124,10 @@ class ReaderEntity {
       'address': address,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'cccd': cccd,
-      'totolBorrow': totolBorrow,
+      'totalBorrow': totalBorrow,
       'gender': gender,
       'note': note,
+      'avatarUrl': avatarUrl,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'email': email,
@@ -129,6 +136,6 @@ class ReaderEntity {
 
   @override
   String toString() {
-    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totolBorrow: $totolBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt, email: $email)';
+    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totalBorrow: $totalBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt, email: $email)';
   }
 }

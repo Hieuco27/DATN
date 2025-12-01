@@ -10,9 +10,10 @@ class ReaderModel extends ReaderEntity {
     super.address,
     super.dateOfBirth,
     super.cccd,
-    super.gender,
-    super.totolBorrow,
+    super.gender, 
+    super.totalBorrow,
     super.note,
+    super.avatarUrl,
     super.createdAt,
     super.updatedAt,
     super.email,
@@ -62,8 +63,9 @@ class ReaderModel extends ReaderEntity {
           : null,
       gender: reader['gender'] as String?,
       cccd: reader['cccd'] as String?,
-      totolBorrow: _parseInt(reader['totolBorrow']),
+      totalBorrow: _parseInt(reader['totalBorrow']),
       note: reader['note'] as String?,
+      avatarUrl: reader['avatarUrl'] as String?,
       createdAt: reader['created_at'] != null
           ? DateTime.tryParse(reader['created_at'])
           : null,
@@ -97,7 +99,7 @@ class ReaderModel extends ReaderEntity {
       'address': address,
       'dateOfBirth': dateOfBirth?.millisecondsSinceEpoch,
       'cccd': cccd,
-      'totolBorrow': totolBorrow,
+      'totalBorrow': totalBorrow,
       'gender': gender,
       'note': note,
       'createdAt': createdAt?.millisecondsSinceEpoch,
@@ -117,7 +119,7 @@ class ReaderModel extends ReaderEntity {
           ? DateTime.fromMillisecondsSinceEpoch(json['dateOfBirth'])
           : null,
       cccd: json['cccd'] as String?,
-      totolBorrow: json['totolBorrow'] as int? ?? 0,
+      totalBorrow: json['totalBorrow'] as int? ?? 0,
       note: json['note'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'])

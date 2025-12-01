@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/reader_entity.dart';
 import '../bloc/profile_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 class ProfileDetailPage extends StatefulWidget {
   const ProfileDetailPage({Key? key}) : super(key: key);
@@ -11,11 +13,23 @@ class ProfileDetailPage extends StatefulWidget {
 }
 
 class _ProfileDetailPageState extends State<ProfileDetailPage> {
+  String? _avatarPath;
+
   @override
   void initState() {
     super.initState();
     // Load profile mới khi mở trang
     context.read<ProfileBloc>().add(const ProfileLoadRequested());
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _avatarPath = prefs.getString('user_avatar');
+      });
+    }
   }
 
   String _formatGender(String? gender) {
@@ -130,11 +144,14 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                       height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade400, Colors.blue.shade700],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        gradient: _avatarPath == null
+                            ? LinearGradient(
+                                colors: [Colors.blue.shade400, Colors.blue.shade700],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: _avatarPath != null ? Colors.grey[200] : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.blue.withOpacity(0.25),
@@ -143,13 +160,31 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                           ),
                         ],
                       ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.person,
-                          size: 42,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: _avatarPath == null
+                          ? const Center(
+                              child: Icon(
+                                Icons.person,
+                                size: 42,
+                                color: Colors.white,
+                              ),
+                            )
+                          : ClipOval(
+                              child: Image.file(
+                                File(_avatarPath!),
+                                fit: BoxFit.cover,
+                                width: 60,
+                                height: 60,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Center(
+                                    child: Icon(
+                                      Icons.person,
+                                      size: 42,
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -446,7 +481,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                     _infoTile(
                       Icons.book_outlined,
                       'Tổng số lượt mượn',
-                      profile.totolBorrow,
+                      profile.totalBorrow,
                       Colors.purple.shade500,
                     ),
                     _divider(),

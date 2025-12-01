@@ -7,6 +7,8 @@ class AuthField extends StatefulWidget {
   final String? errorText;
   final ValueChanged<String>? onChanged;
   final FormFieldValidator<String>? validator;
+  final VoidCallback? onToggleVisibility;
+  final bool showToggleIcon;
 
   const AuthField({
     super.key,
@@ -16,6 +18,8 @@ class AuthField extends StatefulWidget {
     this.errorText,
     this.onChanged,
     this.validator,
+    this.onToggleVisibility,
+    this.showToggleIcon = false,
   });
 
   @override
@@ -75,6 +79,19 @@ class _AuthFieldState extends State<AuthField> {
           horizontal: 14,
           vertical: 12,
         ),
+        // Thêm icon toggle visibility cho password
+        suffixIcon: widget.showToggleIcon
+            ? IconButton(
+                icon: Icon(
+                  widget.obsecureText
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: const Color.fromARGB(255, 120, 120, 120),
+                  size: 20,
+                ),
+                onPressed: widget.onToggleVisibility,
+              )
+            : null,
         // Ẩn error mặc định bên dưới
         errorText: null,
         errorStyle: const TextStyle(height: 0, color: Colors.transparent),

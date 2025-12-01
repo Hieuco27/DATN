@@ -39,7 +39,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget build(BuildContext context) {
     return BlocListener<ProfileBloc, ProfileState>(
       listener: (context, state) {
-        print('🔔 ChangePasswordPage - State changed: ${state.runtimeType}');
         
         if (state is PasswordChanged) {
           print('✅ Password changed successfully, navigating back...');
@@ -47,23 +46,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             _isLoading = false;
           });
           
-          // Lưu navigator trước khi vào async
-          final navigator = Navigator.of(context);
+          // Quay về ProfilePage ngay lập tức
+          print('🔙 Popping with result: true');
+          Navigator.of(context).pop(true);
           
-          // Hiển thị thông báo thành công
-          NotificationService.showSuccess(
-            context,
-            message: 'Đổi mật khẩu thành công!',
-          );
-          
-          // Đợi một chút để người dùng thấy thông báo, sau đó tự động quay về
-          Future.delayed(const Duration(milliseconds: 1500), () {
-            if (mounted) {
-              print('🔙 Popping with result: true');
-              // Trả về true để báo cho profile page reload
-              navigator.pop(true);
-            }
-          });
+          // ProfilePage sẽ hiển thị thông báo sau khi reload thành công
         } else if (state is ProfileError) {
           setState(() {
             _isLoading = false;

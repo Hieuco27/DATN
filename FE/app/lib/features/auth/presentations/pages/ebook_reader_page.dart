@@ -31,7 +31,9 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
 
   Future<void> _detectFormat() async {
     _detectedFormat = await EbookReaderService.detectFormat(widget.ebookUrl);
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -165,17 +167,25 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
   }
 
   void _addBookmark() {
-    NotificationService.showSuccess(
-      context,
-      message: 'Đã thêm vào danh sách đánh dấu',
-    );
+    // Delay notification to avoid lifecycle conflict when menu is dismissing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      NotificationService.showSuccess(
+        context,
+        message: 'Đã thêm vào danh sách đánh dấu',
+      );
+    });
   }
 
   void _shareBook() {
-    NotificationService.showInfo(
-      context,
-      message: 'Tính năng chia sẻ đang được phát triển',
-    );
+    // Delay notification to avoid lifecycle conflict when menu is dismissing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      NotificationService.showInfo(
+        context,
+        message: 'Tính năng chia sẻ đang được phát triển',
+      );
+    });
   }
 
   void _showFormatInfo() {
