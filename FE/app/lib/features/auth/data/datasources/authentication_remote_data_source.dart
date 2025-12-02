@@ -522,7 +522,6 @@ class AuthenticationRemoteDataSourceImpl
     required String newPassword,
   }) async {
     try {
-      print('📤 [AuthRemoteDataSource] Changing password...');
       final response = await dio.put(
         '/profile/account',
         data: {
@@ -535,7 +534,6 @@ class AuthenticationRemoteDataSourceImpl
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [AuthRemoteDataSource] Password changed successfully');
       } else {
         final errorMessage = response.data is Map<String, dynamic>
             ? response.data['message'] ?? 'Không thể đổi mật khẩu'
@@ -545,7 +543,6 @@ class AuthenticationRemoteDataSourceImpl
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final resp = e.response?.data;
-      print('❌ Dio changePassword error: status=$status data=$resp');
 
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
@@ -573,7 +570,6 @@ class AuthenticationRemoteDataSourceImpl
   @override
   Future<void> registerFcmToken(String accessToken, String fcmToken) async {
     try {
-      print('📤 [AuthRemoteDataSource] Registering FCM Token...');
       final response = await dio.post(
         '/fcm/register',
         data: {'fcmToken': fcmToken},
@@ -581,22 +577,18 @@ class AuthenticationRemoteDataSourceImpl
       );
 
       if (response.statusCode == 200) {
-        print('✅ [AuthRemoteDataSource] FCM Token registered successfully');
       } else {
         print('⚠️ [AuthRemoteDataSource] Failed to register FCM Token: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      print('❌ [AuthRemoteDataSource] Error registering FCM Token: ${e.message}');
       // Không throw exception vì FCM token registration không nên làm gián đoạn flow chính
     } catch (e) {
-      print('❌ [AuthRemoteDataSource] Unexpected error registering FCM Token: $e');
     }
   }
 
   @override
   Future<Map<String, dynamic>> forgotPasswordSendOtp(String email) async {
     final startTime = DateTime.now();
-    print('🔵 [Forgot Password] Gửi OTP đến: $email');
     
     try {
       final response = await dio.post(
@@ -605,21 +597,16 @@ class AuthenticationRemoteDataSourceImpl
       );
       
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('✅ [Forgot Password] Phản hồi từ server sau ${elapsed}ms');
-      print('📊 [Forgot Password] Status: ${response.statusCode}');
-      print('📊 [Forgot Password] Data: ${response.data}');
+      
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [Forgot Password] Gửi OTP thành công!');
         return response.data as Map<String, dynamic>;
       } else {
         final message = response.data['message'] ?? 'Không thể gửi mã OTP';
-        print('❌ [Forgot Password] Thất bại: $message');
         throw Exception(message);
       }
     } on DioException catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('❌ [Forgot Password] Lỗi sau ${elapsed}ms - Type: ${e.type}');
       
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
@@ -639,7 +626,6 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('🔴 [Forgot Password] Exception sau ${elapsed}ms: ${e.toString()}');
       throw Exception('Có lỗi xảy ra khi gửi mã OTP: ${e.toString()}');
     }
   }
@@ -662,20 +648,15 @@ class AuthenticationRemoteDataSourceImpl
       );
       
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('✅ [Forgot Password] Phản hồi từ server sau ${elapsed}ms');
-      print('📊 [Forgot Password] Status: ${response.statusCode}');
-      
+    
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [Forgot Password] Xác thực OTP thành công!');
         return response.data as Map<String, dynamic>;
       } else {
         final message = response.data['message'] ?? 'Xác thực OTP thất bại';
-        print('❌ [Forgot Password] Thất bại: $message');
         throw Exception(message);
       }
     } on DioException catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('❌ [Forgot Password] Lỗi sau ${elapsed}ms - Type: ${e.type}');
       
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
@@ -695,7 +676,6 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('🔴 [Forgot Password] Exception sau ${elapsed}ms: ${e.toString()}');
       throw Exception('Có lỗi xảy ra khi xác thực OTP: ${e.toString()}');
     }
   }
@@ -718,20 +698,15 @@ class AuthenticationRemoteDataSourceImpl
       );
       
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('✅ [Forgot Password] Phản hồi từ server sau ${elapsed}ms');
-      print('📊 [Forgot Password] Status: ${response.statusCode}');
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [Forgot Password] Đặt lại mật khẩu thành công!');
         return response.data as Map<String, dynamic>;
       } else {
         final message = response.data['message'] ?? 'Đặt lại mật khẩu thất bại';
-        print('❌ [Forgot Password] Thất bại: $message');
-        throw Exception(message);
+          throw Exception(message);
       }
     } on DioException catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('❌ [Forgot Password] Lỗi sau ${elapsed}ms - Type: ${e.type}');
       
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
@@ -751,7 +726,6 @@ class AuthenticationRemoteDataSourceImpl
       }
     } catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('🔴 [Forgot Password] Exception sau ${elapsed}ms: ${e.toString()}');
       throw Exception('Có lỗi xảy ra khi đặt lại mật khẩu: ${e.toString()}');
     }
   }

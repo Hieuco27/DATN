@@ -82,7 +82,7 @@ class _CartPageState extends State<CartPage>
           if (mounted) {
             NotificationService.showWarning(
               context,
-              message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển sách. Vui lòng trả sách đã mượn trước khi đăng ký mượn thêm.',
+              message: 'Bạn đã đạt giới hạn mượn $_maxBorrowLimit quyển sách. Vui lòng trả sách đã mượn trước khi đăng ký mượn thêm.',
               duration: const Duration(seconds: 4),
             );
           }
@@ -111,7 +111,7 @@ class _CartPageState extends State<CartPage>
         if (totalAfterSelect > _maxBorrowLimit) {
           NotificationService.showWarning(
             context,
-            message: 'Bạn đã đạt giới hạn $_maxBorrowLimit quyển. Hiện đang mượn $_activeBorrowCount quyển. Vui lòng trả sách trước khi mượn thêm.',
+            message: 'Bạn đã đạt giới hạn mượn $_maxBorrowLimit quyển. Hiện đang mượn $_activeBorrowCount quyển. Vui lòng trả sách trước khi mượn thêm.',
             duration: const Duration(seconds: 4),
           );
         } else if (_selectedItems.length >= 3) {
@@ -151,6 +151,7 @@ class _CartPageState extends State<CartPage>
       final profile = await authRepo.getProfile();
       log.i('Profile fetched successfully. MemberCard: ${profile.memberCard != null ? "exists" : "null"}', 'CartPage');
       
+
       if (profile.memberCard == null) {
         log.w('User does not have a member card', 'CartPage');
         NotificationService.showWarning(
@@ -249,40 +250,61 @@ class _CartPageState extends State<CartPage>
         items: items,
       );
       
-      log.i('Reservation successful! Result: $result', 'CartPage');
-
-      // Clear chỉ các sách đã chọn khỏi giỏ
-      for (final it in selected) {
-        context.read<CartBloc>().add(CartItemRemoved(it.documentId));
-      }
-      _selectedItems.clear();
+      log.i('Reservation result: $result', 'CartPage');
 
       if (mounted) {
-        // Show overlay notification giống Messenger
-        OverlayNotificationService.show(
-          context,
-          title: 'Đặt mượn thành công! 🎉',
-          message: 'Đã gửi yêu cầu mượn ${selected.length} quyển sách. Chờ thư viện duyệt.',
-          icon: Icons.check_circle_rounded,
-          iconColor: Colors.green,
-          duration: const Duration(seconds: 5),
-          onTap: () {
-            // Navigate to notifications page nếu user click vào notification
-            Navigator.pushNamed(context, '/notifications');
-          },
-        );
+        // Kiểm tra xem có sách nào đã tồn tại trong phiếu mượn không
+        final isNotSuccess = result['success'] == false;
+        final hasExistingBooks = result['alreadyReserved'] != null || 
+                                 result['existingBooks'] != null || 
+                                 result['skipped'] != null ||
+                                 (result['message']?.toString().toLowerCase().contains('đã có') ?? false) ||
+                                 (result['message']?.toString().toLowerCase().contains('đã tồn tại') ?? false) ||
+                                 (result['message']?.toString().toLowerCase().contains('already') ?? false);
         
-        // Show snackbar phụ
-        NotificationService.showSuccess(
-          context,
-          message: result['message'] ?? 'Đăng ký mượn thành công!',
-        );
-        
-        // Tránh Navigator đang locked
-        await Future.delayed(const Duration(milliseconds: 300));
-        if (!mounted) return;
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+        if (isNotSuccess || hasExistingBooks) {
+          // Chỉ hiển thị message thông thường, không hiển thị success
+          // KHÔNG xóa sách khỏi giỏ hàng
+          final message = result['message'] ?? 'Một số sách đã có trong phiếu mượn của bạn.';
+          NotificationService.showInfo(
+            context,
+            message: message,
+            duration: const Duration(seconds: 4),
+          );
+        } else {
+          // Mượn thành công - Clear các sách đã chọn khỏi giỏ
+          for (final it in selected) {
+            context.read<CartBloc>().add(CartItemRemoved(it.documentId));
+          }
+          _selectedItems.clear();
+          
+          // Hiển thị success notification như bình thường
+          // Show overlay notification giống Messenger
+          OverlayNotificationService.show(
+            context,
+            title: 'Đặt mượn thành công! ',
+            message: 'Đã gửi yêu cầu mượn ${selected.length} quyển sách. Chờ thư viện duyệt.',
+            icon: Icons.check_circle_rounded,
+            iconColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            onTap: () {
+              // Navigate to notifications page nếu user click vào notification
+              Navigator.pushNamed(context, '/notifications');
+            },
+          );
+          
+          // Show snackbar phụ
+          NotificationService.showSuccess(
+            context,
+            message: result['message'] ?? 'Đăng ký mượn thành công!',
+          );
+          
+          // Tránh Navigator đang locked
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (!mounted) return;
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
         }
       }
     } catch (e, stackTrace) {
@@ -587,7 +609,7 @@ class _CartPageState extends State<CartPage>
                 Text(
                   isAtLimit
                       ? 'Bạn đang mượn $_activeBorrowCount/$_maxBorrowLimit quyển. Vui lòng trả sách trước khi mượn thêm.'
-                      : 'Đang mượn: $_activeBorrowCount/$_maxBorrowLimit quyển. Còn lại: $remainingSlots quyển.',
+                      : 'Bạn đang mượn: $_activeBorrowCount/$_maxBorrowLimit quyển. Còn lại: $remainingSlots quyển.',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[700],

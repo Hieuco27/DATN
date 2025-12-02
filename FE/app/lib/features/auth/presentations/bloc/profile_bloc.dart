@@ -129,7 +129,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     try {
       emit(ProfileLoading());
-      print('🔄 ProfileBloc: Loading profile...');
 
       // Đảm bảo loading hiển thị ít nhất 300ms để UX mượt mà
       final results = await Future.wait([
@@ -179,23 +178,17 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     Emitter<ProfileState> emit,
   ) {
     
-    print('🧹 ProfileClearError received, current state: ${state.runtimeType}');
     
     if (state is ProfileError) {
       final errorState = state as ProfileError;
       if (errorState.previousState != null) {
-        print('↩️ Restoring to previous state: ${errorState.previousState.runtimeType}');
         emit(errorState.previousState!);
       } else {
-        print('🔄 Emitting ProfileInitial (no previous state)');
         emit(ProfileInitial());
       }
     } else if (state is PasswordChanged) {
-      // Nếu state là PasswordChanged, reset về ProfileInitial
-      print('🔄 PasswordChanged -> ProfileInitial');
       emit(ProfileInitial());
     } else {
-      print('ℹ️ State is ${state.runtimeType}, no action needed');
     }
   }
 

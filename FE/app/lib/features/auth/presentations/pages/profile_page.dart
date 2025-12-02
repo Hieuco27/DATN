@@ -963,7 +963,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
 
   void _navigateToChangePassword() async {
     final profileBloc = context.read<ProfileBloc>();
-    print('📍 Navigating to ChangePasswordPage...');
     
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -974,11 +973,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
       ),
     );
     
-    print('📍 Returned from ChangePasswordPage with result: $result');
     
     // Nếu đổi mật khẩu thành công, reload profile
     if (result == true && mounted) {
-      print('✅ Password change successful, reloading profile...');
       
       // Hiển thị thông báo thành công
       NotificationService.showSuccess(
@@ -988,18 +985,13 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
       
       // Reload profile trực tiếp không cần clear error state
       final authState = context.read<AuthBloc>().state;
-      print('🔐 AuthState: ${authState.runtimeType}');
       
       if (authState is AuthAuthenticated &&
           (authState.account.accessToken?.isNotEmpty ?? false)) {
-        print('🔄 Dispatching ProfileLoadRequested...');
         context.read<ProfileBloc>().add(ProfileLoadRequested());
-        print('✅ ProfileLoadRequested dispatched!');
       } else {
-        print('❌ Auth state is not valid for reload');
       }
     } else {
-      print('ℹ️ Password change cancelled or failed, result: $result, mounted: $mounted');
     }
   }
 

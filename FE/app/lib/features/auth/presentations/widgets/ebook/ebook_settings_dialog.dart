@@ -115,22 +115,22 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.format_size_rounded,
-              color: Colors.black,
+              color: Colors.purple.shade400,
               size: 20,
             ),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.purple.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 '${_settings.fontSize.round()} pt',
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: Colors.purple.shade700,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -141,9 +141,9 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         const SizedBox(height: 12),
         SliderTheme(
           data: SliderThemeData(
-            activeTrackColor: Colors.black,
-            thumbColor: Colors.black,
-            inactiveTrackColor: Colors.black.withOpacity(0.2),
+            activeTrackColor: Colors.purple.shade400,
+            thumbColor: Colors.purple.shade600,
+            inactiveTrackColor: Colors.purple.shade100,
           ),
           child: Slider(
             value: _settings.fontSize,
@@ -211,16 +211,16 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.format_line_spacing_rounded,
-              color: Colors.black,
+              color: Colors.blue.shade400,
               size: 20,
             ),
             const Spacer(),
             Text(
               _settings.lineHeight.toStringAsFixed(1),
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: Colors.blue.shade700,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
@@ -230,9 +230,9 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         const SizedBox(height: 12),
         SliderTheme(
           data: SliderThemeData(
-            activeTrackColor: Colors.black,
-            thumbColor: Colors.black,
-            inactiveTrackColor: Colors.black.withOpacity(0.2),
+            activeTrackColor: Colors.blue.shade400,
+            thumbColor: Colors.blue.shade600,
+            inactiveTrackColor: Colors.blue.shade100,
           ),
           child: Slider(
             value: _settings.lineHeight,
@@ -252,9 +252,9 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
-            Icon(Icons.highlight_rounded, color: Colors.black, size: 20),
+            Icon(Icons.highlight_rounded, color: Colors.orange.shade400, size: 20),
           ],
         ),
         const SizedBox(height: 12),
@@ -278,22 +278,22 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected
-                        ? Colors.black
+                        ? Colors.purple.shade400
                         : Colors.grey.withOpacity(0.3),
                     width: isSelected ? 3 : 1,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 4,
+                            color: Colors.purple.withOpacity(0.3),
+                            blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
                         ]
                       : null,
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check, color: Colors.black87, size: 24)
+                    ? Icon(Icons.check_circle, color: Colors.purple.shade600, size: 24)
                     : null,
               ),
             );
@@ -447,7 +447,13 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         ? Colors.black.withOpacity(0.78)
         : isSepiaPreview
         ? const Color(0xFFF7EEDB)
-        : Colors.grey.withOpacity(0.1);
+        : Colors.purple.shade50.withOpacity(0.3);
+
+    final Color borderColor = isDarkPreview
+        ? Colors.purple.shade400.withOpacity(0.5)
+        : isSepiaPreview
+        ? Colors.orange.shade300
+        : Colors.purple.shade300;
 
     return Container(
       width: double.infinity,
@@ -455,7 +461,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: borderColor, width: 1.5),
       ),
     );
   }
@@ -482,7 +488,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         width: 40,
         height: 4,
         decoration: BoxDecoration(
-          color: Colors.grey[300],
+          color: Colors.purple.shade300,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -493,15 +499,15 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       color: Colors.white,
-      child: const TabBar(
+      child: TabBar(
         indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(color: Colors.black, width: 2),
-          insets: EdgeInsets.symmetric(horizontal: 16),
+          borderSide: BorderSide(color: Colors.purple.shade400, width: 2),
+          insets: const EdgeInsets.symmetric(horizontal: 16),
         ),
-        labelColor: Colors.black,
+        labelColor: Colors.purple.shade600,
         unselectedLabelColor: Colors.grey,
-        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        tabs: [
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        tabs: const [
           Tab(text: 'Giao diện'),
           Tab(text: 'Kiểu chữ'),
           Tab(text: 'Nhắc nghỉ'),
@@ -523,16 +529,16 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        border: Border.all(color: Colors.purple.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              color: Colors.purple.shade700,
+              fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
           ),
@@ -568,14 +574,14 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           color: isSelected
-              ? Colors.black.withOpacity(0.1)
+              ? Colors.purple.shade50
               : Colors.grey.withOpacity(0.1),
           border: Border.all(
-            color: isSelected ? Colors.black : Colors.grey.withOpacity(0.3),
+            color: isSelected ? Colors.purple.shade400 : Colors.grey.withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Icon(icon, color: Colors.black, size: 32),
+        child: Icon(icon, color: isSelected ? Colors.purple.shade600 : Colors.grey.shade700, size: 32),
       ),
     );
   }
@@ -592,23 +598,23 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: value ? Colors.teal.shade50.withOpacity(0.5) : Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: value ? Colors.teal.shade200 : Colors.grey.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.black.withOpacity(0.1),
-            child: Icon(icon, color: Colors.black),
+            backgroundColor: value ? Colors.teal.shade100 : Colors.grey.withOpacity(0.2),
+            child: Icon(icon, color: value ? Colors.teal.shade700 : Colors.grey.shade600),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: value ? Colors.teal.shade900 : Colors.black87,
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
               ),
@@ -616,7 +622,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
           ),
           Switch.adaptive(
             value: value,
-            activeColor: Colors.black,
+            activeColor: Colors.teal.shade600,
             onChanged: isEnabled ? onChanged : null,
           ),
         ],
@@ -641,22 +647,22 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, color: Colors.black, size: 20),
+              Icon(icon, color: Colors.indigo.shade400, size: 20),
               const SizedBox(width: 8),
             ],
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.indigo.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 valueFormatter != null
                     ? valueFormatter(value)
                     : label ?? value.toStringAsFixed(value % 1 == 0 ? 0 : 2),
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: Colors.indigo.shade700,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -667,9 +673,9 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
         const SizedBox(height: 8),
         SliderTheme(
           data: SliderThemeData(
-            thumbColor: Colors.black,
-            activeTrackColor: Colors.black,
-            inactiveTrackColor: Colors.black.withOpacity(0.2),
+            thumbColor: Colors.indigo.shade600,
+            activeTrackColor: Colors.indigo.shade400,
+            inactiveTrackColor: Colors.indigo.shade100,
           ),
           child: Slider(
             value: value,

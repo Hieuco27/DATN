@@ -155,7 +155,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
       final response = await repository.registerInit(widget.email);
       
-      print('✅ [RESEND OTP] Gửi lại thành công: $response');
 
       if (mounted) {
         setState(() {

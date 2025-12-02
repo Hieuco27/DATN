@@ -490,6 +490,26 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 400) {
+        // Bad request - có thể là sách đã tồn tại trong phiếu mượn
+        try {
+          final responseData = json.decode(response.body) as Map<String, dynamic>;
+          // Nếu parse được JSON và có field success, return response để xử lý ở UI
+          if (responseData.containsKey('success')) {
+            return responseData;
+          }
+          // Nếu không có field success, throw exception với message
+          final errorMessage = responseData['message'] ?? 'Không thể đăng ký mượn sách';
+          throw Exception(errorMessage);
+        } catch (parseError) {
+          if (parseError is Exception && parseError.toString().contains('Exception: ')) {
+            rethrow;
+          }
+          final rawMessage = response.body.isNotEmpty 
+            ? response.body 
+            : 'Không thể đăng ký mượn sách (HTTP ${response.statusCode})';
+          throw Exception(rawMessage);
+        }
       } else {
         try {
           final errorData = json.decode(response.body) as Map<String, dynamic>;

@@ -64,16 +64,16 @@ class DocumentDetailModel {
 
     return DocumentDetailModel(
       documentId: json['documentId'] as int,
-      documentType: json['documentType'] as String,
-      title: json['title'] as String,
-      language: json['language'] as String,
-      publicationYear: json['publicationYear'] as int,
+      documentType: (json['documentType'] ?? '') as String,
+      title: (json['title'] ?? 'Không có tiêu đề') as String,
+      language: (json['language'] ?? 'Tiếng Việt') as String,
+      publicationYear: (json['publicationYear'] ?? 0) as int,
       coverPrice: (json['coverPrice'] ?? 0) as int,
-      description: json['description'] as String,
-      coverPhoto: json['coverPhoto'] as String,
+      description: (json['description'] ?? 'Chưa có mô tả') as String,
+      coverPhoto: (json['coverPhoto'] ?? '') as String,
       ebookUrl: json['ebookUrl'] as String?,
       shelfLocation: json['shelfLocation'] as String?,
-      numberOfCopy: (json['numberOfCopy'] ?? json['totalCopies']) as int,
+      numberOfCopy: (json['numberOfCopy'] ?? json['totalCopies'] ?? 0) as int,
       category: (json['category'] ?? const {}) as Map<String, dynamic>,
       publisher: (json['publisher'] ?? const {}) as Map<String, dynamic>,
       book: json['book'] as Map<String, dynamic>?,
@@ -88,10 +88,10 @@ class DocumentDetailModel {
       copies: ((json['copies'] as List?) ?? const [])
           .map((e) => (e as Map).cast<String, dynamic>())
           .toList(),
-      totalCopies: json['totalCopies'] as int,
-      availableCopies: json['availableCopies'] as int,
+      totalCopies: (json['totalCopies'] ?? 0) as int,
+      availableCopies: (json['availableCopies'] ?? 0) as int,
       availableCopiesEffective:
-          (json['availableCopiesEffective'] ?? json['availableCopies']) as int,
+          (json['availableCopiesEffective'] ?? json['availableCopies'] ?? 0) as int,
       minDeposit: deposit?['minDeposit'] as int?,
       maxDeposit: deposit?['maxDeposit'] as int?,
     );
