@@ -372,13 +372,13 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                     _buildFeature(
                       
                       isFree ? Icons.menu_book : Icons.auto_stories,
-                      isFree ? 'Mượn sách cơ bản' : 'Mượn sách không giới hạn',
+                      isFree ? 'Mượn sách cơ bản' : 'Mượn sách online',
                       isFree,
                     ),
                     const SizedBox(height: 6),
                     _buildFeature(
                       isFree ? Icons.access_time : Icons.schedule,
-                      isFree ? 'Thời gian: 7 ngày' : 'Thời gian: 35 ngày',
+                      isFree ? 'Thời gian: 7 ngày' : 'Thời gian mượn: 30 ngày',
                       isFree,
                     ),
                     if (!isFree) ...[
@@ -408,7 +408,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                           ),
                         ),
                         Text(
-                          isFree ? 'MIỄN PHÍ' : '150k/năm',
+                          isFree ? 'MIỄN PHÍ' : '100k/năm',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
@@ -494,154 +494,318 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
     final amount = _paymentData?['amount'] as int? ?? 150000;
     final orderCode = _paymentData?['orderCode'] as int?;
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    Widget buildInfoRow(String label, String value, {bool isHighlight = false}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Thanh toán thẻ thư viện',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
             Text(
-              'Số tiền: ${amount.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VNĐ',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppPalette.gradient2,
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
               ),
             ),
-            if (orderCode != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Mã đơn hàng: $orderCode',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-            const SizedBox(height: 24),
-            // Hiển thị QR Code
-            if (qrCode.isNotEmpty) ...[
-              const Text(
-                'Quét mã QR để thanh toán',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: QrImageView(
-                  data: qrCode,
-                  version: QrVersions.auto,
-                  size: 250,
-                  backgroundColor: Colors.white,
-                  errorCorrectionLevel: QrErrorCorrectLevel.M,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Nút copy mã QR
-              OutlinedButton.icon(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: qrCode));
-                  NotificationService.showSuccess(
-                    context,
-                    message: 'Đã sao chép mã QR vào clipboard',
-                  );
-                },
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Sao chép mã QR'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-            // Nút mở link thanh toán
-            if (checkoutUrl.isNotEmpty) ...[
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final uri = Uri.parse(checkoutUrl);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(
-                        uri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    } else {
-                      NotificationService.showError(
-                        context,
-                        message: 'Không thể mở link thanh toán',
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.payment, size: 24),
-                  label: const Text(
-                    'Mở link thanh toán',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppPalette.gradient2,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 4,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Hoặc mở app ngân hàng và quét mã QR ở trên',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-            const SizedBox(height: 24),
-            TextButton(
-              onPressed: _checkPaymentStatus,
-              child: const Text(
-                'Đã thanh toán nhưng chưa thấy phản hồi?',
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
                 style: TextStyle(
-                  color: AppPalette.gradient2,
-                  decoration: TextDecoration.underline,
+                  fontSize: 13,
+                  fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
+                  color: isHighlight ? AppPalette.gradient2 : Colors.black87,
                 ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                if (widget.isFromRegistration) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const SignInPage()),
-                  );
-                } else {
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text(
-                'Hoàn tất sau',
-                style: TextStyle(color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
+        ),
+      );
+    }
+
+    return Container(
+      color: Colors.grey.shade50,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            children: [
+              // Header Info Card
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppPalette.gradient1.withValues(alpha: 0.1),
+                            AppPalette.gradient2.withValues(alpha: 0.1)
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.verified_user_outlined,
+                              color: AppPalette.gradient2,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Xác nhận thông tin đăng ký',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppPalette.gradient2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        children: [
+                          buildInfoRow('Tài khoản:', widget.email),
+                          buildInfoRow('Mã độc giả:', '#${widget.readerId}'),
+                          const Divider(height: 24),
+                          buildInfoRow('Loại thẻ:', 'Thẻ thư viện'),
+                          buildInfoRow(
+                            'Số tiền thanh toán:',
+                            '${amount.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VNĐ',
+                            isHighlight: true,
+                          ),
+                          if (orderCode != null)
+                            buildInfoRow('Mã đơn hàng: ', '$orderCode'),  
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // QR Code Section
+              if (qrCode.isNotEmpty) ...[
+                const Text(
+                  'Quét mã để thanh toán',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2A2A2A),
+                  ),
+                ),
+                // const SizedBox(height: 8),
+                // const Text(
+                //   'Sử dụng App ngân hàng bất kỳ để quét mã',
+                //   style: TextStyle(fontSize: 13, color: Colors.grey),
+                // ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        spreadRadius: 0,
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.grey.shade100),
+                  ),
+                  child: Column(
+                    children: [
+                      QrImageView(
+                        data: qrCode,
+                        version: QrVersions.auto,
+                        size: 220,
+                        backgroundColor: Colors.white,
+                        errorCorrectionLevel: QrErrorCorrectLevel.M,
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFFE0B2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, size: 20, color: Colors.orange),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Nội dung chuyển khoản:',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.deepOrange,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  SelectableText(
+                                    '$orderCode',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.deepOrange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: orderCode.toString()));
+                                NotificationService.showSuccess(
+                                  context,
+                                  message: 'Đã sao chép nội dung chuyển khoản',
+                                );
+                              },
+                              icon: const Icon(Icons.copy, color: Colors.deepOrange),
+                              tooltip: 'Sao chép',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: qrCode));
+                        NotificationService.showSuccess(
+                          context,
+                          message: 'Đã sao chép mã QR',
+                        );
+                      },
+                      icon: const Icon(Icons.qr_code, size: 20),
+                      label: const Text('Copy Mã QR'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        foregroundColor: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  if (checkoutUrl.isNotEmpty) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.parse(checkoutUrl);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } else {
+                            NotificationService.showError(
+                              context,
+                              message: 'Không thể mở link thanh toán',
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.account_balance_wallet, size: 20),
+                        label: const Text('Mở App NH'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppPalette.gradient2,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+
+              const SizedBox(height: 30),
+
+              // Footer Actions
+              TextButton(
+                onPressed: _checkPaymentStatus,
+                child: const Text.rich(
+                  TextSpan(
+                    text: 'Đã thanh toán? ',
+                    style: TextStyle(color: Colors.grey),
+                    children: [
+                      TextSpan(
+                        text: 'Kiểm tra trạng thái',
+                        style: TextStyle(
+                          color: AppPalette.gradient2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              TextButton(
+                onPressed: () {
+                  if (widget.isFromRegistration) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const SignInPage()),
+                    );
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Text(
+                  'Thực hiện sau',
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -839,7 +1003,7 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
     });
   }
 
-  Future<void> _handlePaymentSuccess(Map<String, dynamic> data) async {
+  Future<void> _handlePaymentSuccess([Map<String, dynamic>? data]) async {
     if (!mounted || _isPaymentSuccess) return;
 
     try {

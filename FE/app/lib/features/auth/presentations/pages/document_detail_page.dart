@@ -19,6 +19,11 @@ import '../bloc/wishlist_bloc.dart';
 import '../bloc/wishlist_event.dart';
 import '../bloc/wishlist_state.dart';
 import 'package:book_tech/features/auth/presentations/providers/document_detail_view_model.dart';
+import 'package:book_tech/features/reviews/presentation/bloc/review_bloc.dart'; // Import for ReviewBloc and events
+import 'package:book_tech/features/reviews/presentation/widgets/reviews_section.dart';
+import 'package:book_tech/features/reviews/data/repositories/review_repository_impl.dart';
+import 'package:book_tech/features/reviews/data/datasources/review_remote_data_source.dart';
+import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:book_tech/main.dart' show routeObserver;
 
@@ -98,95 +103,108 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: _textColor,
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          _vm.title,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 19,
-            fontWeight: FontWeight.w700,
-            color: _textColor,
-            letterSpacing: -0.3,
-          ),
-        ),
-        actions: [
-          if (_vm.ebookUrl != null)
-            IconButton(
-              tooltip: 'Tải ebook',
-              icon: const Icon(
-                Icons.download_for_offline_outlined,
-                color: _textColor,
-                size: 22,
-              ),
-              onPressed: _downloadEbook,
+    // Wrap with Review Provider & Bloc to share state between Header and ReviewsSection
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final accessToken = (authState is AuthAuthenticated) ? authState.account.accessToken ?? '' : '';
+        
+        return RepositoryProvider(
+          create: (context) => ReviewRepositoryImpl(
+            remoteDataSource: ReviewRemoteDataSourceImpl(
+              client: http.Client(),
             ),
-          IconButton(
-            tooltip: 'Chia sẻ',
-            icon: const Icon(Icons.ios_share, color: _textColor, size: 20),
-            onPressed: _shareDocument,
           ),
-          BlocBuilder<WishlistBloc, WishlistState>(
-            builder: (context, wishlistState) {
-              // Check bookmarked status directly from Bloc state for real-time UI update
-              final isBookmarked = _vm.documentId > 0 && 
-                  wishlistState is WishlistData && 
-                  wishlistState.contains(_vm.documentId);
-              
-              return IconButton(
-                icon: Icon(
-                  isBookmarked ? Icons.favorite : Icons.favorite_border,
-                  color: isBookmarked ? Colors.red : Colors.grey,
+          child: BlocProvider(
+            create: (context) => ReviewBloc(
+              repository: context.read<ReviewRepositoryImpl>(),
+            )..add(LoadReviews(documentId: widget.documentId, accessToken: accessToken)),
+            child: Scaffold(
+              backgroundColor: _backgroundColor,
+              appBar: AppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new,
+                    color: _textColor,
+                    size: 18,
+                  ),
+                  onPressed: () => Navigator.pop(context),
                 ),
-                onPressed: () {
-                  final item = _vm.getWishlistItem();
-                  if (item != null) {
-                    // Lưu trạng thái trước khi toggle
-                    final wasBookmarked = isBookmarked;
-                    
-                    context.read<WishlistBloc>().add(WishlistItemToggled(item));
-                    
-                    // Hiển thị thông báo sau khi build phase hoàn thành
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted) return;
-                      if (wasBookmarked) {
-                        NotificationService.showInfo(
-                          context,
-                          message: 'Đã bỏ khỏi yêu thích',
-                        );
-                      } else {
-                        NotificationService.showSuccess(
-                          context,
-                          message: 'Đã thêm vào yêu thích',
-                        );
-                      }
-                    });
+                title: Text(
+                  _vm.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: _textColor,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                actions: [
+                  if (_vm.ebookUrl != null)
+                    IconButton(
+                      tooltip: 'Tải ebook',
+                      icon: const Icon(
+                        Icons.download_for_offline_outlined,
+                        color: _textColor,
+                        size: 22,
+                      ),
+                      onPressed: _downloadEbook,
+                    ),
+                  IconButton(
+                    tooltip: 'Chia sẻ',
+                    icon: const Icon(Icons.ios_share, color: _textColor, size: 20),
+                    onPressed: _shareDocument,
+                  ),
+                  BlocBuilder<WishlistBloc, WishlistState>(
+                    builder: (context, wishlistState) {
+                      final isBookmarked = _vm.documentId > 0 && 
+                          wishlistState is WishlistData && 
+                          wishlistState.contains(_vm.documentId);
+                      
+                      return IconButton(
+                        icon: Icon(
+                          isBookmarked ? Icons.favorite : Icons.favorite_border,
+                          color: isBookmarked ? Colors.red : Colors.grey,
+                        ),
+                        onPressed: () {
+                          final item = _vm.getWishlistItem();
+                          if (item != null) {
+                            final wasBookmarked = isBookmarked;
+                            context.read<WishlistBloc>().add(WishlistItemToggled(item));
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              if (wasBookmarked) {
+                                NotificationService.showInfo(context, message: 'Đã bỏ khỏi yêu thích');
+                              } else {
+                                NotificationService.showSuccess(context, message: 'Đã thêm vào yêu thích');
+                              }
+                            });
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              body: RefreshIndicator(
+                onRefresh: () async {
+                  await _loadDocumentDetail();
+                  // Refresh reviews too
+                  if (context.mounted) {
+                    context.read<ReviewBloc>().add(LoadReviews(documentId: widget.documentId, accessToken: accessToken));
                   }
                 },
-              );
-            },
+                color: _primaryColor,
+                child: _buildBody(),
+              ),
+            ),
           ),
-        ],
-      ),
-
-      body: RefreshIndicator(
-        onRefresh: _loadDocumentDetail,
-        color: _primaryColor,
-        child: _buildBody(),
-      ),
+        );
+      }
     );
   }
 
@@ -272,22 +290,85 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
     }
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 30),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           _buildHeader(),
-          _buildInfo(),
-          _buildActions(),
-          _buildDescription(),
+          const SizedBox(height: 16),
           _buildDetails(),
+          const SizedBox(height: 16),
+          _buildDescription(),
+          const SizedBox(height: 16),
+          // Thêm ReviewsSection
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              int? currentReaderId;
+              String accessToken = '';
+              
+              if (authState is AuthAuthenticated) {
+                accessToken = authState.account.accessToken ?? '';
+                currentReaderId = authState.account.readerId;
+              }
+              
+              return ReviewsSection(
+                documentId: widget.documentId,
+                accessToken: accessToken,
+                currentUserId: currentReaderId,
+              );
+            },
+          ),
+          const SizedBox(height: 16),
           // Thêm widget hiển thị sách tương tự
           SimilarBooksModelWidget(
             similarBooks: _vm.similarBooks,
             isLoading: _vm.isSimilarLoading,
           ),
-          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection({required Widget child, String? title, Widget? trailing}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: _textColor,
+                  ),
+                ),
+                if (trailing != null) trailing,
+              ],
+            ),
+            const SizedBox(height: 12),
+            Divider(height: 1, color: Colors.grey[100]),
+            const SizedBox(height: 16),
+          ],
+          child,
         ],
       ),
     );
@@ -295,222 +376,201 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(horizontal: 11),
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 100,
-            height: 140,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+          Column(
+            children: [
+              Container(
+                width: 90,
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),  
+                  ],
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: CachedNetworkImage(
-                imageUrl: _vm.coverPhoto,
-                fit: BoxFit.cover,
-                cacheKey: 'doc_detail_${_vm.documentId}',
-                placeholder: (context, url) => Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _primaryColor.withOpacity(0.1),
-                        _primaryColor.withOpacity(0.05),
-                      ],
-                    ),
-                  ),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: _primaryColor,
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          _primaryColor.withOpacity(0.25),
-                          _primaryColor.withOpacity(0.1),
-                        ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: _vm.coverPhoto,
+                    fit: BoxFit.cover,
+                    cacheKey: 'doc_detail_${_vm.documentId}',
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[100],
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _primaryColor,
+                        ),
                       ),
                     ),
-                    child: const Icon(
-                      Icons.book_rounded,
-                      size: 42,
-                      color: _primaryColor,
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[100],
+                      child: const Icon(Icons.book, color: _primaryColor),
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Flexible(
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _vm.title,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _textColor,
-                    height: 1.35,
-                    letterSpacing: -0.2,
+                    height: 1.3,
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-                // Debug: Hiển thị trạng thái ebook (có thể ẩn sau khi debug xong)
-                // if (_document!.ebookUrl == null || _document!.ebookUrl!.isEmpty)
-                //   Container(
-                //     padding: const EdgeInsets.symmetric(
-                //       horizontal: 8,
-                //       vertical: 4,
-                //     ),
-                //     decoration: BoxDecoration(
-                //       color: Colors.orange.withOpacity(0.1),
-                //       borderRadius: BorderRadius.circular(6),
-                //       border: Border.all(color: Colors.orange, width: 1),
-                //     ),
-                //     child: const Text(
-                //       '⚠️ Không có phiên bản điện tử',
-                //       style: TextStyle(
-                //         fontSize: 11,
-                //         color: Colors.orange,
-                //         fontWeight: FontWeight.w500,
-                //       ),
-                //     ),
-                //   )
-                // else
-                //   Container(
-                //     padding: const EdgeInsets.symmetric(
-                //       horizontal: 8,
-                //       vertical: 4,
-                //     ),
-                //     decoration: BoxDecoration(
-                //       color: Colors.green.withOpacity(0.1),
-                //       borderRadius: BorderRadius.circular(6),
-                //       border: Border.all(color: Colors.green, width: 1),
-                //     ),
-                //     child: Text(
-                //       '✓ Có ebook: ${_document!.ebookUrl!.substring(0, _document!.ebookUrl!.length > 40 ? 40 : _document!.ebookUrl!.length)}${_document!.ebookUrl!.length > 40 ? '...' : ''}',
-                //       style: const TextStyle(
-                //         fontSize: 11,
-                //         color: Colors.green,
-                //         fontWeight: FontWeight.w500,
-                //       ),
-                //     ),
-                //   ),
-                // const SizedBox(height: 8),
                 Text(
                   _vm.authors
                           .where((author) => author['role'] == 'main')
                           .map((author) => '${author['fullName'] ?? ''} ')
                           .firstOrNull ??
                       'Không có tác giả chính',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color.fromARGB(255, 113, 113, 113),
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final screenWidth = constraints.maxWidth;
-                    final isVerySmallScreen = screenWidth < 250;
-                    final isSmallScreen = screenWidth < 300;
-                    final isMediumScreen = screenWidth < 350;
-                    
-                    // Responsive values
-                    final iconSize = isVerySmallScreen ? 15.0 : (isSmallScreen ? 16.0 : 18.0);
-                    final fontSize = isVerySmallScreen ? 10.0 : (isSmallScreen ? 11.0 : (isMediumScreen ? 11.5 : 12.0));
-                    final verticalPadding = isVerySmallScreen ? 6.0 : (isSmallScreen ? 7.0 : 9.0);
-                    final horizontalPadding = isVerySmallScreen ? 8.0 : (isSmallScreen ? 10.0 : (isMediumScreen ? 12.0 : 14.0));
-                    final spacing = isVerySmallScreen ? 5.0 : (isSmallScreen ? 6.0 : 10.0);
-                    
-                    return Row(
+                const SizedBox(height: 6),
+                // Rating and Availability Row
+                Row(
+                  children: [
+                    // Sẵn có
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Sẵn có: ${_vm.availableCopies}/${_vm.totalCopies}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Rating from Bloc
+                    BlocBuilder<ReviewBloc, ReviewState>(
+                      builder: (context, state) {
+                        if (state is ReviewLoaded) {
+                          return Row(
+                            children: [
+                              const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
+                              const SizedBox(width: 2),
+                              Text(
+                                state.stats.averageRating.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textColor,
+                                ),
+                              ),
+                              Text(
+                                ' (${state.stats.totalReviews})',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (_vm.ebookUrl != null || _vm.availableCopies > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
                       children: [
-                        Flexible(
-                          flex: _vm.ebookUrl != null ? 1 : 1,
-                          child: ElevatedButton.icon(
-                            onPressed: _vm.ebookUrl != null ? _readNow : null,
-                            icon: Icon(Icons.play_arrow, size: iconSize),
-                            label: Text(
-                              'ĐỌC NGAY',
-                              style: TextStyle(
-                                fontSize: fontSize,
-                                fontWeight: FontWeight.w600,
+                        if (_vm.ebookUrl != null)
+                          Expanded(
+                            child: SizedBox(
+                              height: 34,
+                              child: ElevatedButton.icon(
+                                onPressed: _readNow,
+                                label: const Text(
+                                  'Đọc ngay', 
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color.fromARGB(255, 53, 110, 255),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 0,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                vertical: verticalPadding,
-                                horizontal: horizontalPadding,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 4,
-                              shadowColor: _primaryColor.withOpacity(0.3),
                             ),
                           ),
-                        ),
-                        SizedBox(width: spacing),
-                        if (_vm.ebookUrl != null)
-                          Flexible(
-                            flex: 1,
-                            child: OutlinedButton.icon(
-                              onPressed: _downloadEbook,
-                              icon: Icon(Icons.download_outlined, size: iconSize),
-                              label: Text(
-                                isVerySmallScreen ? 'TẢI' : 'TẢI EBOOK',
-                                style: TextStyle(
-                                  fontSize: fontSize,
-                                  fontWeight: FontWeight.w600,
+                        if (_vm.ebookUrl != null && _vm.availableCopies > 0)
+                          const SizedBox(width: 10),
+                        if (_vm.availableCopies > 0)
+                          Expanded(
+                            child: SizedBox(
+                              height: 34,
+                              child: ElevatedButton.icon(
+                                onPressed: _addToCart,
+                                icon: const Icon(Icons.add_shopping_cart_rounded, size: 12),
+                                label: const Text(
+                                  'Thêm sách', 
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _primaryColor,
-                                side: const BorderSide(
-                                  color: _primaryColor,
-                                  width: 1.5,
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  vertical: verticalPadding,
-                                  horizontal: horizontalPadding * 0.8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color.fromARGB(255, 5, 97, 63),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 0,
                                 ),
                               ),
                             ),
                           ),
                       ],
-                    );
-                  },
-                ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -519,226 +579,35 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
     );
   }
 
-  Widget _buildInfo() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmallScreen = constraints.maxWidth < 360;
-        final horizontalPadding = isSmallScreen ? 8.0 : 12.0;
-        
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 5),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(child: _buildInfoItem('Tổng', '${_vm.totalCopies}', isSmallScreen)),
-              Container(width: 1, height: 34, color: Colors.grey[200]),
-              Expanded(child: _buildInfoItem('Hiện có', '${_vm.availableCopies}', isSmallScreen)),
-              Container(width: 1, height: 34, color: Colors.grey[200]),
-              Expanded(
-                child: _buildInfoItem(
-                  'Cho mượn',
-                  '${_vm.totalCopies - _vm.availableCopies}',
-                  isSmallScreen,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildInfoItem(String label, String value, bool isSmallScreen) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: isSmallScreen ? 17 : 19,
-            fontWeight: FontWeight.w800,
-            color: _primaryColor,
-            letterSpacing: -0.2,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: isSmallScreen ? 11 : 13,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActions() {
-    return Container(
-      margin: const EdgeInsets.all(10),
-      child: Row(
-        children: [
-          // Expanded(
-          //   child: ElevatedButton.icon(
-          //     onPressed: _document!.ebookUrl != null ? _downloadEbook : null,
-          //     icon: const Icon(Icons.download, size: 20),
-          //     label: const Text('Tải xuống'),
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: AppPalette.gradient1,
-          //       foregroundColor: Colors.white,
-          //       padding: const EdgeInsets.symmetric(vertical: 12),
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(8),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-          // Expanded(
-          //   child: ElevatedButton.icon(
-          //     onPressed: _document!.ebookUrl != null ? _readNow : null,
-          //     icon: const Icon(Icons.play_arrow, size: 20),
-          //     label: const Text('Đọc ngay'),
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: Colors.green,
-          //       foregroundColor: Colors.white,
-          //       padding: const EdgeInsets.symmetric(vertical: 12),
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(8),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildDescription() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Mô tả',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: _textColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            padding: const EdgeInsets.all(14),
-            child: Text(
-              _vm.description,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[700],
-                height: 1.55,
-              ),
-            ),
-          ),
-        ],
+    return _buildSection(
+      title: 'Mô tả nội dung',
+      child: Text(
+        _vm.description,
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[800],
+          height: 1.6,
+        ),
+        textAlign: TextAlign.justify,
       ),
     );
   }
-
+    
   Widget _buildDetails() {
-    return Container(
-      margin: const EdgeInsets.all(14),
+    return _buildSection(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_vm.availableCopies > 0) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _addToCart,
-                icon: const Icon(Icons.shopping_cart_outlined, size: 20),
-                label: const Text('Thêm vào giỏ sách'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
-                  foregroundColor: Colors.white,
-                  textStyle: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                  shadowColor: _primaryColor.withOpacity(0.3),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          const Text(
-            'Thông tin chi tiết',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: _textColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildDetailRow('Nhà xuất bản', _vm.publisher['name'] ?? ''),
-          _buildDetailRow('Năm xuất bản', _vm.publicationYear.toString()),
-          _buildDetailRow('Thể loại', _vm.category['name'] ?? ''),
-          _buildDetailRow('Ngôn ngữ', _vm.language),
+          _buildDetailRow('Nhà xuất bản:', _vm.publisher['name'] ?? ''),
+          _buildDetailRow('Năm xuất bản:', _vm.publicationYear.toString()),
+          _buildDetailRow('Thể loại:', _vm.category['name'] ?? ''),
+          _buildDetailRow('Ngôn ngữ:', _vm.language),
           if (_vm.minDeposit != null && _vm.maxDeposit != null)
             _buildDetailRow(
               'Tiền cọc',
               '${_formatCurrency(_vm.minDeposit!)} - ${_formatCurrency(_vm.maxDeposit!)}',
             ),
-
-          // _buildDetailRow(
-          //   'Giá bìa',
-          //   '${_document!.coverPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VNĐ',
-          // ),
-          // if (_document!.book != null) ...[
-          //   _buildDetailRow('ISBN', _document!.book!['isbn'] ?? ''),
-          //   _buildDetailRow(
-          //     'Số trang',
-          //     '${_document!.book!['pageCount'] ?? 0}',
-          //   ),
-          //   _buildDetailRow(
-          //     'Lần tái bản',
-          //     '${_document!.book!['edition'] ?? 0}',
-          //   ),
-          // ],
-          // _buildDetailRow(
-          //   'Thể loại con',
-          //   _document!.genres.map((g) => g['name'] ?? '').join(', '),
-          // ),
         ],
       ),
     );
@@ -746,17 +615,17 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 120,
             child: Text(
-              '$label:',
+              label,
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
+                fontSize: 15,
+                color: Colors.grey[500],
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -768,6 +637,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                 fontSize: 14,
                 color: _textColor,
                 height: 1.4,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

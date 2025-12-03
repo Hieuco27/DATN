@@ -65,6 +65,7 @@ class EbookSettings {
   final bool restReminderEnabled;
   final int restReminderMinutes;
   final String highlightColor;
+  final String scrollDirection; // 'vertical' or 'horizontal'
 
   EbookSettings({
     this.fontSize = 16.0,
@@ -77,6 +78,7 @@ class EbookSettings {
     this.restReminderEnabled = true,
     this.restReminderMinutes = 30,
     this.highlightColor = '#FFF59D',
+    this.scrollDirection = 'vertical',
   });
 
   EbookSettings copyWith({
@@ -90,6 +92,7 @@ class EbookSettings {
     bool? restReminderEnabled,
     int? restReminderMinutes,
     String? highlightColor,
+    String? scrollDirection,
   }) {
     return EbookSettings(
       fontSize: fontSize ?? this.fontSize,
@@ -102,6 +105,7 @@ class EbookSettings {
       restReminderEnabled: restReminderEnabled ?? this.restReminderEnabled,
       restReminderMinutes: restReminderMinutes ?? this.restReminderMinutes,
       highlightColor: highlightColor ?? this.highlightColor,
+      scrollDirection: scrollDirection ?? this.scrollDirection,
     );
   }
 }

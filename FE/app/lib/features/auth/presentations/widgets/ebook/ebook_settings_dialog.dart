@@ -21,16 +21,7 @@ class EbookSettingsDialog extends StatefulWidget {
 
 class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
   late EbookSettings _settings;
-  // final List<String> _fontFamilies = [
-  //   'Roboto',
-  //   'Lora',
-  //   'Merriweather',
-  //   'Nunito',
-  //   'Open Sans',
-  //   'Source Serif Pro',
-  //   'Lexend Deca',
-  //   'Noto Serif',
-  // ];
+ 
   static const List<_HighlightColorOption> _highlightColors = [
     _HighlightColorOption(
       label: 'Vàng',
@@ -248,60 +239,60 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     );
   }
 
-  Widget _buildHighlightColorSelector(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.highlight_rounded, color: Colors.orange.shade400, size: 20),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: _highlightColors.map((colorOption) {
-            final bool isSelected = _settings.highlightColor == colorOption.hex;
-            return InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                _updateSettingsRealTime(
-                  _settings.copyWith(highlightColor: colorOption.hex),
-                );
-              },
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: colorOption.color,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected
-                        ? Colors.purple.shade400
-                        : Colors.grey.withOpacity(0.3),
-                    width: isSelected ? 3 : 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.purple.withOpacity(0.3),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: isSelected
-                    ? Icon(Icons.check_circle, color: Colors.purple.shade600, size: 24)
-                    : null,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
+  // Widget _buildHighlightColorSelector(BuildContext context) {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Row(
+  //         children: [
+  //           Icon(Icons.highlight_rounded, color: Colors.orange.shade400, size: 20),
+  //         ],
+  //       ),
+  //       const SizedBox(height: 12),
+  //       Wrap(
+  //         spacing: 10,
+  //         runSpacing: 10,
+  //         children: _highlightColors.map((colorOption) {
+  //           final bool isSelected = _settings.highlightColor == colorOption.hex;
+  //           return InkWell(
+  //             borderRadius: BorderRadius.circular(12),
+  //             onTap: () {
+  //               _updateSettingsRealTime(
+  //                 _settings.copyWith(highlightColor: colorOption.hex),
+  //               );
+  //             },
+  //             child: Container(
+  //               width: 50,
+  //               height: 50,
+  //               decoration: BoxDecoration(
+  //                 color: colorOption.color,
+  //                 borderRadius: BorderRadius.circular(12),
+  //                 border: Border.all(
+  //                   color: isSelected
+  //                       ? Colors.purple.shade400
+  //                       : Colors.grey.withOpacity(0.3),
+  //                   width: isSelected ? 3 : 1,
+  //                 ),
+  //                 boxShadow: isSelected
+  //                     ? [
+  //                         BoxShadow(
+  //                           color: Colors.purple.withOpacity(0.3),
+  //                           blurRadius: 6,
+  //                           offset: const Offset(0, 2),
+  //                         ),
+  //                       ]
+  //                     : null,
+  //               ),
+  //               child: isSelected
+  //                   ? Icon(Icons.check_circle, color: Colors.purple.shade600, size: 24)
+  //                   : null,
+  //             ),
+  //           );
+  //         }).toList(),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildThemeSelector(BuildContext context) {
     final items = [
@@ -311,8 +302,8 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     ];
 
     return Wrap(
-      spacing: 16,
-      runSpacing: 16,
+      spacing: 12,
+      runSpacing: 12,
       children: items.map((item) {
         final bool isSelected = _settings.theme == item.key;
         return _buildThemeOption(
@@ -324,6 +315,115 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
           },
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildScrollDirectionSelector(BuildContext context) {
+    final items = [
+      (key: 'vertical', icon: Icons.swap_vert, label: 'Dọc'),
+      (key: 'horizontal', icon: Icons.swap_horiz, label: 'Ngang'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Text(
+        //   'Hướng cuộn trang',
+        //   style: TextStyle(
+        //     color: Colors.purple.shade700,
+        //     fontWeight: FontWeight.bold,
+        //     fontSize: 13,
+        //   ),
+        // ),
+        // const SizedBox(height: 10),
+        Row(
+          children: items.map((item) {
+            final bool isSelected = _settings.scrollDirection == item.key;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    _updateSettingsRealTime(
+                      _settings.copyWith(scrollDirection: item.key),
+                    );
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    height: 56,
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: isSelected
+                          ? Colors.green.shade50
+                          : Colors.grey.withOpacity(0.1),
+                      border: Border.all(
+                        color: isSelected 
+                            ? Colors.green.shade400 
+                            : Colors.grey.withOpacity(0.3),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          item.icon,
+                          color: isSelected 
+                              ? Colors.green.shade600 
+                              : Colors.grey.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            color: isSelected 
+                                ? Colors.green.shade900 
+                                : Colors.grey.shade700,
+                            fontWeight: isSelected 
+                                ? FontWeight.w700 
+                                : FontWeight.w500,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        // Container(
+        //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        //   decoration: BoxDecoration(
+        //     color: Colors.blue.shade50.withOpacity(0.5),
+        //     borderRadius: BorderRadius.circular(8),
+        //     border: Border.all(color: Colors.blue.shade200.withOpacity(0.5)),
+        //   ),
+        //   // child: Row(
+        //   //   children: [
+        //   //     Icon(Icons.info_outline, size: 13, color: Colors.blue.shade700),
+        //   //     const SizedBox(width: 6),
+        //   //     // Expanded(
+        //   //     //   child: Text(
+        //   //     //     _settings.scrollDirection == 'horizontal'
+        //   //     //         ? 'Vuốt trái/phải để chuyển trang'
+        //   //     //         : 'Vuốt lên/xuống để đọc liên tục',
+        //   //     //     style: TextStyle(
+        //   //     //       fontSize: 10,
+        //   //     //       color: Colors.blue.shade900,
+        //   //     //     ),
+        //   //     //   ),
+        //   //     // ),
+        //   //   ],
+        //   // ),
+        // ),
+      ],
     );
   }
 
@@ -351,7 +451,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
           curve: Curves.easeInOut,
           height: _settings.eyeComfortEnabled ? null : 0,
           padding: _settings.eyeComfortEnabled
-              ? const EdgeInsets.only(top: 16)
+              ? const EdgeInsets.only(top: 12)
               : EdgeInsets.zero,
           child: _settings.eyeComfortEnabled && _settings.theme == 'light'
               ? Column(
@@ -371,7 +471,6 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
                     _buildLabeledSlider(
                       context: context,
                       value: _settings.brightness,
@@ -386,7 +485,6 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
                     _buildToggleTile(
                       context: context,
                       icon: Icons.timer_rounded,
@@ -403,7 +501,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
                       secondChild: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           _buildLabeledSlider(
                             context: context,
                             value: _settings.restReminderMinutes.toDouble(),
@@ -439,32 +537,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     );
   }
 
-  Widget _buildPreview(BuildContext context) {
-    final bool isDarkPreview = _settings.theme == 'dark';
-    final bool isSepiaPreview = _settings.theme == 'sepia';
-
-    final Color backgroundColor = isDarkPreview
-        ? Colors.black.withOpacity(0.78)
-        : isSepiaPreview
-        ? const Color(0xFFF7EEDB)
-        : Colors.purple.shade50.withOpacity(0.3);
-
-    final Color borderColor = isDarkPreview
-        ? Colors.purple.shade400.withOpacity(0.5)
-        : isSepiaPreview
-        ? Colors.orange.shade300
-        : Colors.purple.shade300;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.5),
-      ),
-    );
-  }
+  
 
   TextStyle _fontPreviewStyle(String font) {
     try {
@@ -563,16 +636,16 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
     required VoidCallback onTap,
   }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
-        width: 80,
-        height: 80,
-        padding: const EdgeInsets.all(14),
+        width: 60,
+        height: 60,
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           color: isSelected
               ? Colors.purple.shade50
               : Colors.grey.withOpacity(0.1),
@@ -581,7 +654,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Icon(icon, color: isSelected ? Colors.purple.shade600 : Colors.grey.shade700, size: 32),
+        child: Icon(icon, color: isSelected ? Colors.purple.shade600 : Colors.grey.shade700, size: 24),
       ),
     );
   }
@@ -596,7 +669,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
   }) {
     final isEnabled = enabled ?? true;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: value ? Colors.teal.shade50.withOpacity(0.5) : Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(18),
@@ -605,25 +678,28 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
       child: Row(
         children: [
           CircleAvatar(
-            radius: 20,
+            radius: 18,
             backgroundColor: value ? Colors.teal.shade100 : Colors.grey.withOpacity(0.2),
-            child: Icon(icon, color: value ? Colors.teal.shade700 : Colors.grey.shade600),
+            child: Icon(icon, size: 20, color: value ? Colors.teal.shade700 : Colors.grey.shade600),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               title,
               style: TextStyle(
                 color: value ? Colors.teal.shade900 : Colors.black87,
                 fontWeight: FontWeight.w600,
-                fontSize: 15,
+                fontSize: 14,
               ),
             ),
           ),
-          Switch.adaptive(
-            value: value,
-            activeColor: Colors.teal.shade600,
-            onChanged: isEnabled ? onChanged : null,
+          Transform.scale(
+            scale: 0.85,
+            child: Switch.adaptive(
+              value: value,
+              activeColor: Colors.teal.shade600,
+              onChanged: isEnabled ? onChanged : null,
+            ),
           ),
         ],
       ),
@@ -648,7 +724,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
           children: [
             if (icon != null) ...[
               Icon(icon, color: Colors.indigo.shade400, size: 20),
-              const SizedBox(width: 8),
+              const SizedBox(width: 5),
             ],
             const Spacer(),
             Container(
@@ -689,7 +765,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
       ],
     );
   }
-
+  // chế độ 
   Widget _buildThemeTab(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -701,8 +777,15 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
             subtitle: '',
             children: [
               _buildThemeSelector(context),
-              const SizedBox(height: 12),
-              _buildPreview(context),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            context: context,
+            title: 'Cuộn trang',
+            subtitle: '',
+            children: [
+              _buildScrollDirectionSelector(context),
             ],
           ),
         ],
@@ -721,7 +804,7 @@ class _EbookSettingsDialogState extends State<EbookSettingsDialog> {
           const SizedBox(height: 14),
           _buildLineHeightSlider(context),
           const SizedBox(height: 14),
-          _buildHighlightColorSelector(context),
+          //_buildHighlightColorSelector(context),
         ],
       ),
     );

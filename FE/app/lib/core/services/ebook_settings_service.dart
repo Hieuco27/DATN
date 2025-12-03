@@ -37,6 +37,7 @@ class EbookSettingsService {
         highlightColor: settingsMap['highlightColor'] is String
             ? settingsMap['highlightColor'] as String
             : '#FFF59D',
+        scrollDirection: settingsMap['scrollDirection'] ?? 'vertical',
       );
     }
 
@@ -56,6 +57,7 @@ class EbookSettingsService {
       'restReminderEnabled': settings.restReminderEnabled,
       'restReminderMinutes': settings.restReminderMinutes,
       'highlightColor': settings.highlightColor,
+      'scrollDirection': settings.scrollDirection,
     };
     await prefs.setString(_settingsKey, json.encode(settingsMap));
   }

@@ -41,6 +41,11 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
     return gender;
   }
 
+  String _formatDateOfBirth(DateTime? dateOfBirth) {
+    if (dateOfBirth == null) return 'Chưa cập nhật';
+    return '${dateOfBirth.day.toString().padLeft(2, '0')}/${dateOfBirth.month.toString().padLeft(2, '0')}/${dateOfBirth.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProfileBloc, ProfileState>(
@@ -453,7 +458,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                     _infoTile(
                       Icons.cake_outlined,
                       'Ngày sinh',
-                      profile.dateOfBirth,
+                      _formatDateOfBirth(profile.dateOfBirth),
                       Colors.orange.shade400,
                     ),
                     _divider(),

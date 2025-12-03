@@ -369,11 +369,10 @@ class _SearchPageState extends State<SearchPage>
                         ),
                         child: Icon(
                           Icons.search_rounded,
-                          size: 80,
+                          size: 20,
                           color: primaryColor,
                         ),
                       ),
-                      const SizedBox(height: 24),
                       Text(
                         'Nhập từ khóa để tìm kiếm',
                         style: TextStyle(

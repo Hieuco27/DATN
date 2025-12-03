@@ -20,6 +20,10 @@ import 'package:book_tech/features/auth/data/datasources/document_remote_data_so
 import 'package:book_tech/features/auth/data/repositories/document_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/loan_remote_data_source.dart';
 import 'package:book_tech/features/auth/data/repositories/loan_repository.dart';
+import 'package:book_tech/features/reviews/data/datasources/review_remote_data_source.dart';
+import 'package:book_tech/features/reviews/data/repositories/review_repository_impl.dart';
+import 'package:book_tech/features/reviews/domain/repositories/review_repository.dart';
+import 'package:http/http.dart' as http; // Required for ReviewRemoteDataSource
 import 'package:book_tech/features/auth/presentations/providers/document_provider.dart';
 import 'package:book_tech/features/auth/presentations/providers/search_provider.dart';
 import 'package:book_tech/features/auth/presentations/pages/home_page.dart';
@@ -119,6 +123,15 @@ class MyApp extends StatelessWidget {
         Provider<LoanRepository>(
           create: (context) => LoanRepository(
             remote: context.read<LoanRemoteDataSource>(),
+          ),
+        ),
+        // Review Repository
+        Provider<ReviewRemoteDataSource>(
+          create: (_) => ReviewRemoteDataSourceImpl(client: http.Client()),
+        ),
+        Provider<ReviewRepository>(
+          create: (context) => ReviewRepositoryImpl(
+            remoteDataSource: context.read<ReviewRemoteDataSource>(),
           ),
         ),
         // ✅ Migration to BLoC-only: Replace all Providers with BLoCs

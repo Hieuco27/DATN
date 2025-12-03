@@ -79,9 +79,9 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
           icon: const Icon(Icons.more_vert, color: Colors.black),
           onSelected: (value) {
             switch (value) {
-              case 'bookmark':
-                _addBookmark();
-                break;
+              // case 'bookmark':
+              //   _addBookmark();
+              //   break;
               case 'share':
                 _shareBook();
                 break;
@@ -166,16 +166,16 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
     setState(() {});
   }
 
-  void _addBookmark() {
-    // Delay notification to avoid lifecycle conflict when menu is dismissing
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      NotificationService.showSuccess(
-        context,
-        message: 'Đã thêm vào danh sách đánh dấu',
-      );
-    });
-  }
+  // void _addBookmark() {
+  //   // Delay notification to avoid lifecycle conflict when menu is dismissing
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     if (!mounted) return;
+  //     NotificationService.showSuccess(
+  //       context,
+  //       message: 'Đã thêm vào danh sách đánh dấu',
+  //     );
+  //   });
+  // }
 
   void _shareBook() {
     // Delay notification to avoid lifecycle conflict when menu is dismissing
@@ -192,24 +192,38 @@ class _EbookReaderPageState extends State<EbookReaderPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thông tin định dạng'),
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Thông tin định dạng',
+          style: TextStyle(color: Colors.black),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Định dạng: ${_detectedFormat?.name.toUpperCase() ?? 'Không xác định'}',
+              style: const TextStyle(color: Colors.black),
             ),
             const SizedBox(height: 8),
-            Text('URL: ${widget.ebookUrl}'),
+            Text(
+              'URL: ${widget.ebookUrl}',
+              style: const TextStyle(color: Colors.black),
+            ),
             const SizedBox(height: 8),
-            Text('Tiêu đề: ${widget.document.title}'),
+            Text(
+              'Tiêu đề: ${widget.document.title}',
+              style: const TextStyle(color: Colors.black),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
+            child: const Text(
+              'Đóng',
+              style: TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),

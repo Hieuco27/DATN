@@ -1,5 +1,6 @@
 class Account {
   final int? accountId;
+  final int? readerId; // Added for review ownership check
   final String email;
   final String phoneNumber;
   final int? roleId;
@@ -10,6 +11,7 @@ class Account {
 
   const Account({
     this.accountId,
+    this.readerId,
     required this.email,
     required this.phoneNumber,
     this.fullName,
@@ -21,7 +23,7 @@ class Account {
 
   Account copyWith({
     int? accountId,
-
+    int? readerId,
     String? email,
     String? phoneNumber,
     int? roleId,
@@ -32,6 +34,7 @@ class Account {
   }) {
     return Account(
       accountId: accountId ?? this.accountId,
+      readerId: readerId ?? this.readerId,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
@@ -48,6 +51,7 @@ class Account {
 
     return other is Account &&
         other.accountId == accountId &&
+        other.readerId == readerId &&
         other.email == email &&
         other.fullName == fullName &&
         other.phoneNumber == phoneNumber &&
@@ -60,6 +64,7 @@ class Account {
   @override
   int get hashCode {
     return accountId.hashCode ^
+        readerId.hashCode ^
         email.hashCode ^
         phoneNumber.hashCode ^
         roleId.hashCode ^
