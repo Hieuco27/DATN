@@ -9,6 +9,8 @@ import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dar
 import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
+import 'package:book_tech/features/auth/presentations/bloc/cart_bloc.dart';
+import 'package:book_tech/features/auth/presentations/bloc/cart_event.dart';
 import 'package:book_tech/features/auth/presentations/pages/cart_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -35,6 +37,9 @@ class _HomePageState extends State<HomePage> {
       listener: (context, state) {
         // Khi logout thành công, navigate về trang đăng nhập
         if (state is AuthUnauthenticated) {
+          // Clear cart state locally khi logout (không xóa trên server)
+          context.read<CartBloc>().add(const CartStateReset());
+          
           // Đóng loading dialog nếu đang mở (sử dụng rootNavigator)
           if (Navigator.of(context, rootNavigator: true).canPop()) {
             Navigator.of(context, rootNavigator: true).pop();

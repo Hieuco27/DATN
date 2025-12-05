@@ -19,6 +19,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemQuantityUpdated>(_onQuantityUpdated);
     on<CartItemRemoved>(_onItemRemoved);
     on<CartCleared>(_onCartCleared);
+    on<CartStateReset>(_onStateReset);
   }
 
   Future<void> _onStarted(CartStarted event, Emitter<CartState> emit) async {
@@ -26,7 +27,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       final items = await _repository.getCart();
       emit(CartLoaded(items: items));
     } catch (e) {
-      // Giữ state hiện tại hoặc handle error
+      // Nếu lỗi (401, network...), emit empty cart để đảm bảo UI đúng
+      emit(const CartLoaded(items: []));
     }
   }
 
@@ -69,5 +71,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       emit(const CartLoaded(items: []));
     } catch (e) {
     }
+  }
+
+  /// Reset cart state locally without API call (used on logout)
+  void _onStateReset(CartStateReset event, Emitter<CartState> emit) {
+    emit(const CartLoaded(items: []));
   }
 }

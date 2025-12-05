@@ -553,7 +553,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                                 onPressed: _addToCart,
                                 icon: const Icon(Icons.add_shopping_cart_rounded, size: 12),
                                 label: const Text(
-                                  'Thêm sách', 
+                                  'Đặt mượn', 
                                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                 ),
                                 style: ElevatedButton.styleFrom(

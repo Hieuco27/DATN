@@ -48,7 +48,12 @@ class CartItemRemoved extends CartEvent {
   List<Object?> get props => [documentId];
 }
 
-/// Event: Clear all items
+/// Event: Clear all items (calls API to delete cart on server)
 class CartCleared extends CartEvent {
   const CartCleared();
+}
+
+/// Event: Reset cart state locally (no API call, used on logout)
+class CartStateReset extends CartEvent {
+  const CartStateReset();
 }

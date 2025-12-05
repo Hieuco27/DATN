@@ -39,6 +39,8 @@ class _CartPageState extends State<CartPage>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    // Load cart từ server khi mở trang
+    context.read<CartBloc>().add(const CartStarted());
     _checkActiveBorrowCount();
   }
 
@@ -252,7 +254,7 @@ class _CartPageState extends State<CartPage>
 
       if (mounted) {
         // Kiểm tra xem có sách nào đã tồn tại trong phiếu mượn không
-        final isNotSuccess = result['success'] == false;
+        // Chỉ dựa vào message, không check success field
         final hasExistingBooks = result['alreadyReserved'] != null || 
                                  result['existingBooks'] != null || 
                                  result['skipped'] != null ||
@@ -260,8 +262,8 @@ class _CartPageState extends State<CartPage>
                                  (result['message']?.toString().toLowerCase().contains('đã tồn tại') ?? false) ||
                                  (result['message']?.toString().toLowerCase().contains('already') ?? false);
         
-        if (isNotSuccess || hasExistingBooks) {
-          // Chỉ hiển thị message thông thường, không hiển thị success
+        if (hasExistingBooks) {
+          // Chỉ hiển thị message từ backend, không check success
           // KHÔNG xóa sách khỏi giỏ hàng
           final message = result['message'] ?? 'Một số sách đã có trong phiếu mượn của bạn.';
           NotificationService.showInfo(
@@ -291,7 +293,7 @@ class _CartPageState extends State<CartPage>
             },
           );
           
-          // Show snackbar phụ
+          // Show snackbar phụ - chỉ dùng message từ backend
           NotificationService.showSuccess(
             context,
             message: result['message'] ?? 'Đăng ký mượn thành công!',
@@ -310,7 +312,16 @@ class _CartPageState extends State<CartPage>
       
       if (mounted) {
         // Loại bỏ prefix "Exception: " để hiển thị message gốc
-        final errorMessage = e.toString().replaceFirst('Exception: ', '');
+        String errorMessage = e.toString().replaceFirst('Exception: ', '');
+        
+        // Nếu là JSON response, extract chỉ message field (bỏ success field)
+        if (errorMessage.contains('"message"')) {
+          final messageMatch = RegExp(r'"message"\s*:\s*"([^"]*)"').firstMatch(errorMessage);
+          if (messageMatch != null && messageMatch.group(1) != null) {
+            errorMessage = messageMatch.group(1)!;
+          }
+        }
+        
         NotificationService.showError(
           context, 
           message: errorMessage,
@@ -356,10 +367,10 @@ class _CartPageState extends State<CartPage>
               ),
             ),
             title: Text(
-              'Giỏ sách',
+              'Danh sách đặt mượn',
               style: TextStyle(
                 color: Color(0xFF1A202C),
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.5,
               ),

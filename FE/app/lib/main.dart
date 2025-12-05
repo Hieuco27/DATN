@@ -147,7 +147,7 @@ class MyApp extends StatelessWidget {
         
         // ✅ BLoC implementations (simple features done)
         BlocProvider(
-          create: (_) => CartBloc()..add(const CartStarted()),
+          create: (_) => CartBloc(), // Không auto-load, sẽ load khi login
         ),
         BlocProvider(
           create: (_) => WishlistBloc(),
@@ -232,6 +232,9 @@ class AuthWrapper extends StatelessWidget {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
+          // Reload cart khi login thành công
+          context.read<CartBloc>().add(const CartStarted());
+          
           // Navigate to main home page when authenticated
           // Use addPostFrameCallback to avoid Navigator lock during build
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -241,6 +244,9 @@ class AuthWrapper extends StatelessWidget {
               );
             }
           });
+        } else if (state is AuthUnauthenticated) {
+          // Clear cart state locally khi logout (không xóa trên server)
+          context.read<CartBloc>().add(const CartStateReset());
         }
       },
       child: BlocBuilder<AuthBloc, AuthState>(

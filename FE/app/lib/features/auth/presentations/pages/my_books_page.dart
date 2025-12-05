@@ -281,7 +281,7 @@ class _MyBooksPageState extends State<MyBooksPage>
           });
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             gradient: isSelected
                 ? LinearGradient(
@@ -289,7 +289,7 @@ class _MyBooksPageState extends State<MyBooksPage>
                   )
                 : null,
             color: isSelected ? null : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
