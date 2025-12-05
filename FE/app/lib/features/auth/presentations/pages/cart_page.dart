@@ -58,16 +58,24 @@ class _CartPageState extends State<CartPage>
       // Lấy tất cả borrow history (page 1, limit lớn để lấy hết)
       final response = await loanRepo.getMyLoans(page: 1, limit: 100);
       
-      // Đếm số sách đang active (không phải RETURNED, CANCELLED, REJECTED)
+      // Đếm số sách đang mượn (đang có sách trong tay)
       int activeCount = 0;
       for (final loan in response.data) {
-        final status = loan.status.toUpperCase();
-        // Các trạng thái tính là "đang mượn":
-        // PENDING, WAITING_FOR_PICKUP, APPROVED, BORROWING, OVERDUE
-        // Loại trừ: RETURNED, CANCELLED, REJECTED
-        if (status != 'RETURNED' && status != 'CANCELLED' && status != 'REJECTED') {
-          // Mỗi loan có thể có nhiều details (nhiều sách)
-          activeCount += loan.details.length;
+        // Đếm từng quyển sách trong details
+        for (final detail in loan.details) {
+          final detailStatus = detail.status.toUpperCase();
+          
+          // CHỈ tính các trạng thái đang có sách trong tay người mượn:
+          // - BORROWED: Đang mượn bình thường
+          // - OVERDUE: Quá hạn (vẫn đang giữ sách)
+          // 
+          // KHÔNG tính:
+          // - PENDING, WAITING_FOR_PICKUP: Chưa lấy sách
+          // - RETURNED, CANCELLED, REJECTED: Đã kết thúc
+          // - LOST, DAMAGED: Đã xử lý phạt
+          if (detailStatus == 'BORROWED' || detailStatus == 'OVERDUE') {
+            activeCount++;
+          }
         }
       }
       
@@ -187,9 +195,7 @@ class _CartPageState extends State<CartPage>
         log.w('Borrow limit exceeded: $totalAfterSubmit > $memberCardLimit', 'CartPage');
         NotificationService.showWarning(
           context,
-          message: 'Bạn đã đạt giới hạn $memberCardLimit quyển của thẻ "${profile.memberCard!.cardType?.typeName ?? "thành viên"}". Đang mượn: $_activeBorrowCount quyển.',
-          duration: const Duration(seconds: 5),
-        );
+message: 'Bạn đã đạt giới hạn $memberCardLimit quyển của thẻ thư viện. Đang mượn: $_activeBorrowCount quyển.',        );
         return;
       }
       
@@ -298,6 +304,9 @@ class _CartPageState extends State<CartPage>
             context,
             message: result['message'] ?? 'Đăng ký mượn thành công!',
           );
+          
+          // Cập nhật lại số sách đang mượn sau khi đăng ký thành công
+          await _checkActiveBorrowCount();
           
           // Tránh Navigator đang locked
           await Future.delayed(const Duration(milliseconds: 300));
