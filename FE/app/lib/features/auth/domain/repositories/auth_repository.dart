@@ -39,4 +39,7 @@ abstract class AuthenticationRepository {
     required String email,
     required String newPassword,
   });
+  
+  // Avatar Upload
+  Future<Map<String, dynamic>> uploadAvatar(String filePath);
 }

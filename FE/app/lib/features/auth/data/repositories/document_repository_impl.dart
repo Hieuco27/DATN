@@ -138,13 +138,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required int documentId,
   }) async {
     try {
-      // Kiểm tra cache trước
-      final cachedDetail = await CacheService.getDocumentDetail(documentId);
-      if (cachedDetail != null) {
-        return DocumentDetailModel.fromJson(cachedDetail);
-      }
-
-      // Fetch từ server
+      // ALWAYS fetch from server to get latest data (especially for availableCopies)
+      // Cache is only used as fallback when network fails
       final response = await remoteDataSource.getDocumentDetail(
         accessToken: accessToken,
         documentId: documentId,

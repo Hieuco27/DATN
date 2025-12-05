@@ -383,26 +383,25 @@ class _ForgotPasswordOtpPageState extends State<ForgotPasswordOtpPage>
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
-                
+                const SizedBox(height: 10),
                 // Icon
                 Center(
                   child: ScaleTransition(
                     scale: _scaleAnimation,
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 70,
+                      height: 70,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.purple.withOpacity(0.2),
-                            Colors.blue.withOpacity(0.1),
+                            Colors.purple.withValues(alpha: 0.2),
+                            Colors.blue.withValues(alpha: 0.1),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -424,13 +423,12 @@ class _ForgotPasswordOtpPageState extends State<ForgotPasswordOtpPage>
                 Text(
                   'Xác thực OTP',
                   style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 ),
-                
-                const SizedBox(height: 12),
-                
+                const SizedBox(height: 12),              
                 // Description
                 RichText(
                   text: TextSpan(
@@ -455,45 +453,46 @@ class _ForgotPasswordOtpPageState extends State<ForgotPasswordOtpPage>
                     ],
                   ),
                 ),
-                
-                const SizedBox(height: 40),
-                
+                const SizedBox(height: 20),
                 // OTP Input
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(6, (index) {
                     return SizedBox(
-                      width: (size.width - 48 - 50) / 6,
+                      width: (size.width - 40 - 60) / 6,
                       child: TextFormField(
                         controller: _otpControllers[index],
                         focusNode: _focusNodes[index],
                         textAlign: TextAlign.center,
+                        
                         keyboardType: TextInputType.number,
                         maxLength: 1,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
                         style: const TextStyle(
-                          fontSize: 24,
+                          fontSize: 20,
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
                         ),
                         decoration: InputDecoration(
                           counterText: '',
+                          contentPadding: const EdgeInsets.symmetric(vertical: 16),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide.none,
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
                               color: Colors.grey[300]!,
-                              width: 2,
+                              width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
                               color: theme.primaryColor,
                               width: 2,
@@ -512,7 +511,7 @@ class _ForgotPasswordOtpPageState extends State<ForgotPasswordOtpPage>
                   }),
                 ),
                 
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 
                 // Resend OTP
                 Center(
@@ -554,6 +553,10 @@ class _ForgotPasswordOtpPageState extends State<ForgotPasswordOtpPage>
                       TextFormField(
                         controller: _newPasswordController,
                         obscureText: _obscureNewPassword,
+                        style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 14,
+                  ),
                         decoration: InputDecoration(
                           hintText: 'Nhập mật khẩu mới',
                           prefixIcon: Icon(
@@ -630,6 +633,10 @@ class _ForgotPasswordOtpPageState extends State<ForgotPasswordOtpPage>
                       TextFormField(
                         controller: _confirmPasswordController,
                         obscureText: _obscureConfirmPassword,
+                        style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 14,
+                  ),
                         decoration: InputDecoration(
                           hintText: 'Nhập lại mật khẩu mới',
                           prefixIcon: Icon(

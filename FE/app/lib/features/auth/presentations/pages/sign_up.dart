@@ -25,6 +25,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _cccdController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -35,6 +36,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
+    _cccdController.dispose();
     super.dispose();
   }
 
@@ -93,6 +95,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             _buildPasswordField(),
                             SizedBox(height: spacing2),
                             _buildPhoneField(),
+                            SizedBox(height: spacing2),
+                            _buildCCCDField(),
                             SizedBox(height: spacing3),
                             _buildSignUpButton(),
                             SizedBox(height: spacing2),
@@ -119,10 +123,10 @@ class _SignUpPageState extends State<SignUpPage> {
           controller: _nameController,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Vui lòng nhập họ tên';
+              return 'Họ và tên không được để trống!';
             }
             if (value.length < 2) {
-              return 'Họ tên phải có ít nhất 2 ký tự';
+              return 'Họ và tên phải có ít nhất 2 ký tự!';
             }
             return null;
           },
@@ -139,10 +143,10 @@ class _SignUpPageState extends State<SignUpPage> {
           controller: _emailController,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Vui lòng nhập email';
+              return 'Email không được để trống!';
             }
             if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-              return 'Email không hợp lệ';
+              return 'Địa chỉ email không hợp lệ!';
             }
             return null;
           },
@@ -159,10 +163,31 @@ class _SignUpPageState extends State<SignUpPage> {
           controller: _phoneController,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Vui lòng nhập số điện thoại';
+              return 'Số điện thoại không được để trống!';
             }
             if (!RegExp(r'^(0|\+84)[3|5|7|8|9][0-9]{8}$').hasMatch(value)) {
-              return 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam';
+              return 'Số điện thoại không hợp lệ, yêu cầu 10 chữ số!';
+            }
+            return null;
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCCCDField() {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        return AuthField(
+          hintText: 'Số CCCD (12 số)',
+          controller: _cccdController,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Số CCCD không được để trống!';
+            }
+            // CCCD: 12 số
+            if (!RegExp(r'^[0-9]{12}$').hasMatch(value)) {
+              return 'Số CCCD không hợp lệ (phải có đúng 12 số)!';
             }
             return null;
           },
@@ -186,10 +211,10 @@ class _SignUpPageState extends State<SignUpPage> {
           },
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Vui lòng nhập mật khẩu';
+              return 'Mật khẩu không được để trống!';
             }
             if (value.length < 6) {
-              return 'Mật khẩu phải có ít nhất 6 ký tự';
+              return 'Mật khẩu phải có ít nhất 6 ký tự!';
             }
             return null;
           },
@@ -263,7 +288,7 @@ class _SignUpPageState extends State<SignUpPage> {
           'fullName': _nameController.text.trim(),
           'dateOfBirth': '2000-01-01', // Có thể thêm date picker sau
           'gender': 'nam', // Có thể thêm gender picker sau
-          'cccd': '', // Có thể thêm CCCD field sau
+          'cccd': _cccdController.text.trim(),
           'address': '', // Có thể thêm address field sau
         };
 

@@ -141,7 +141,7 @@ class _SearchPageState extends State<SearchPage>
                   ),
                   cursorColor: primaryColor,
                   decoration: InputDecoration(
-                    hintText: 'Tìm kiếm sách, tác giả...',
+                    hintText: 'Tìm kiếm sách',
                     hintStyle: TextStyle(
                       fontSize: 16,
                       color: textSecondary,
@@ -353,7 +353,7 @@ class _SearchPageState extends State<SearchPage>
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      const SizedBox(height: 40),
+                      // const SizedBox(height: 40),
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -381,12 +381,12 @@ class _SearchPageState extends State<SearchPage>
                           color: textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tìm kiếm sách, tác giả hoặc nội dung bạn quan tâm',
-                        style: TextStyle(fontSize: 14, color: textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
+                      // const SizedBox(height: 8),
+                      // Text(
+                      //   'Tìm kiếm sách, tác giả hoặc nội dung bạn quan tâm',
+                      //   style: TextStyle(fontSize: 14, color: textSecondary),
+                      //   textAlign: TextAlign.center,
+                      // ),
                       if (searchProvider.searchHistory.isNotEmpty) ...[
                         const SizedBox(height: 48),
                         Row(

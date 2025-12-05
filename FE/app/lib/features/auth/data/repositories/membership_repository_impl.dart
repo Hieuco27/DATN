@@ -52,4 +52,36 @@ class MembershipRepositoryImpl implements MembershipRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<Map<String, dynamic>> createMemberCardTopup(
+    String accessToken,
+    int memberCardId,
+    int readerId,
+  ) async {
+    try {
+      return await remoteDataSource.createMemberCardTopup(
+        accessToken,
+        memberCardId,
+        readerId,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getMemberCard(
+    String accessToken,
+    int memberCardId,
+  ) async {
+    try {
+      return await remoteDataSource.getMemberCard(
+        accessToken,
+        memberCardId,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

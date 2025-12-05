@@ -18,6 +18,19 @@ abstract class MembershipRemoteDataSource {
     int cardTypeId,
     String paymentMethod,
   );
+  
+  // Nạp tiền vào thẻ thành viên
+  Future<Map<String, dynamic>> createMemberCardTopup(
+    String accessToken,
+    int memberCardId,
+    int readerId,
+  );
+  
+  // Lấy thông tin thẻ thành viên
+  Future<Map<String, dynamic>> getMemberCard(
+    String accessToken,
+    int memberCardId,
+  );
 }
 
 class MembershipRemoteDataSourceImpl implements MembershipRemoteDataSource {
@@ -156,6 +169,91 @@ class MembershipRemoteDataSourceImpl implements MembershipRemoteDataSource {
         case DioExceptionType.badResponse:
           final message =
               e.response?.data?['message'] ?? 'Lỗi khi xử lý thanh toán';
+          throw Exception(message);
+        default:
+          throw Exception(
+            'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+          );
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> createMemberCardTopup(
+    String accessToken,
+    int memberCardId,
+    int readerId,
+  ) async {
+    try {
+      final response = await dio.post(
+        '/member-cards/topup',
+        data: {
+          'memberCardId': memberCardId,
+          'readerId': readerId,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          response.data['message'] ?? 'Không thể tạo thanh toán nạp thẻ',
+        );
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Lỗi khi tạo thanh toán nạp thẻ';
+          throw Exception(message);
+        default:
+          throw Exception(
+            'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+          );
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getMemberCard(
+    String accessToken,
+    int memberCardId,
+  ) async {
+    try {
+      final response = await dio.get(
+        '/member-cards/$memberCardId',
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          response.data['message'] ?? 'Không thể lấy thông tin thẻ',
+        );
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Kết nối tới server quá lâu. Vui lòng kiểm tra mạng và thử lại.',
+          );
+        case DioExceptionType.badResponse:
+          final message =
+              e.response?.data?['message'] ?? 'Lỗi khi lấy thông tin thẻ';
           throw Exception(message);
         default:
           throw Exception(

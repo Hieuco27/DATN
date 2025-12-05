@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/reader_entity.dart';
 import '../bloc/profile_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_state.dart';
+import 'package:book_tech/features/auth/data/repositories/membership_repository_impl.dart';
+import 'package:book_tech/features/auth/data/datasources/membership_remote_data_source.dart';
+import 'package:book_tech/core/ui/notification_service.dart';
+import 'payment_qr_page.dart';
 
 class ProfileDetailPage extends StatefulWidget {
   const ProfileDetailPage({Key? key}) : super(key: key);
@@ -13,23 +17,11 @@ class ProfileDetailPage extends StatefulWidget {
 }
 
 class _ProfileDetailPageState extends State<ProfileDetailPage> {
-  String? _avatarPath;
-
   @override
   void initState() {
     super.initState();
     // Load profile mới khi mở trang
     context.read<ProfileBloc>().add(const ProfileLoadRequested());
-    _loadAvatar();
-  }
-
-  Future<void> _loadAvatar() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _avatarPath = prefs.getString('user_avatar');
-      });
-    }
   }
 
   String _formatGender(String? gender) {
@@ -44,6 +36,35 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
   String _formatDateOfBirth(DateTime? dateOfBirth) {
     if (dateOfBirth == null) return 'Chưa cập nhật';
     return '${dateOfBirth.day.toString().padLeft(2, '0')}/${dateOfBirth.month.toString().padLeft(2, '0')}/${dateOfBirth.year}';
+  }
+
+  Widget _buildAvatarImage(ReaderEntity profile) {
+    // Chỉ dùng avatarUrl từ backend
+    if (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          profile.avatarUrl!,
+          fit: BoxFit.cover,
+          width: 60,
+          height: 60,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(Icons.person, size: 42, color: Colors.white),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+          },
+        ),
+      );
+    }
+    // Default icon
+    return const Center(
+      child: Icon(Icons.person, size: 42, color: Colors.white),
+    );
   }
 
   @override
@@ -149,14 +170,14 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                       height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: _avatarPath == null
-                            ? LinearGradient(
+                        gradient: (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty)
+                            ? null
+                            : LinearGradient(
                                 colors: [Colors.blue.shade400, Colors.blue.shade700],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                              )
-                            : null,
-                        color: _avatarPath != null ? Colors.grey[200] : null,
+                              ),
+                        color: (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty) ? Colors.grey[200] : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.blue.withOpacity(0.25),
@@ -165,31 +186,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                           ),
                         ],
                       ),
-                      child: _avatarPath == null
-                          ? const Center(
-                              child: Icon(
-                                Icons.person,
-                                size: 42,
-                                color: Colors.white,
-                              ),
-                            )
-                          : ClipOval(
-                              child: Image.file(
-                                File(_avatarPath!),
-                                fit: BoxFit.cover,
-                                width: 60,
-                                height: 60,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Center(
-                                    child: Icon(
-                                      Icons.person,
-                                      size: 42,
-                                      color: Colors.white,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
+                      child: _buildAvatarImage(profile),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -261,170 +258,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
 
             // Card thông tin thành viên (nếu có)
             if (profile.memberCard != null)
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 3,
-                color: Colors.blue.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Builder(
-                    builder: (context) {
-                      final memberCard = profile.memberCard!;
-                      final cardType = memberCard.cardType;
-                      final bool isUpgradeableCard =
-                          cardType != null && cardType.maxBorrowLimit > 0;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade600,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.card_membership,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Thẻ thư viện',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: memberCard.status == 'ACTIVE'
-                                                ? Colors.green.shade100
-                                                : Colors.grey.shade200,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                memberCard.status == 'ACTIVE'
-                                                    ? Icons.check_circle
-                                                    : Icons.cancel,
-                                                size: 11,
-                                                color: memberCard.status == 'ACTIVE'
-                                                    ? Colors.green.shade700
-                                                    : Colors.grey.shade700,
-                                              ),
-                                              const SizedBox(width: 3),
-                                              Text(
-                                                memberCard.status == 'ACTIVE'
-                                                    ? 'Hoạt động'
-                                                    : 'Không hoạt động',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: memberCard.status == 'ACTIVE'
-                                                      ? Colors.green.shade700
-                                                      : Colors.grey.shade700,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _memberInfo(
-                            Icons.credit_card,
-                            'Số thẻ',
-                            memberCard.cardNumber,
-                          ),
-                          const SizedBox(height: 8),
-                          _memberInfo(
-                            Icons.account_balance_wallet,
-                            'Số dư',
-                            '${memberCard.balance} VNĐ',
-                          ),
-                          if (isUpgradeableCard &&
-                              memberCard.expiryDate != null) ...[
-                            const SizedBox(height: 8),
-                            _memberInfo(
-                              Icons.calendar_today,
-                              'Hết hạn',
-                              '${memberCard.expiryDate!.day}/${memberCard.expiryDate!.month}/${memberCard.expiryDate!.year}',
-                            ),
-                          ],
-                          if (cardType != null) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Quyền lợi thẻ:',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.grey.shade800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  if (cardType.canBorrowHome)
-                                    _benefitItem('Mượn sách về nhà'),
-                                  if (cardType.canReadEbook)
-                                    _benefitItem('Đọc sách điện tử (Ebook)'),
-                                  if (cardType.canSearchCatalog)
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Giới hạn: ${cardType.maxBorrowLimit} quyển / ${cardType.borrowDuration} ngày',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
+              _buildMemberCardWidget(profile),
 
             const SizedBox(height: 16),
 
@@ -696,5 +530,369 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildMemberCardWidget(ReaderEntity profile) {
+    final memberCard = profile.memberCard!;
+    final cardType = memberCard.cardType;
+    final balance = double.tryParse(memberCard.balance) ?? 0;
+
+    return Column(
+      children: [
+        // Card thẻ thành viên với gradient
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF667eea),
+                Color(0xFF764ba2),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF667eea).withOpacity(0.3),
+                blurRadius: 15,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header với icon
+                Row(
+                  children: [
+                    Icon(Icons.credit_card, color: Colors.white, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Thẻ thư viện',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Thông tin thẻ
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Số thẻ
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Số thẻ',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          memberCard.cardNumber,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Số dư hiện tại
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Số dư hiện tại',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${balance.toStringAsFixed(0)} đ',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Hạn sử dụng
+                if (memberCard.expiryDate != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hạn sử dụng',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${memberCard.expiryDate!.day}/${memberCard.expiryDate!.month}/${memberCard.expiryDate!.year}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+
+                // Nút nạp tiền
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => _handleTopUp(profile),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Color(0xFF667eea),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.account_balance_wallet, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Nạp tiền vào thẻ',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Ghi chú
+                Row(
+                  children: [
+                    Text(
+                      '💡',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Nạp tiền để đủ số dư mặc định của loại thẻ',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Thông tin quyền lợi (nếu có)
+        // if (cardType != null) ...[
+        //   const SizedBox(height: 12),
+        //   Container(
+        //     padding: const EdgeInsets.all(16),
+        //     decoration: BoxDecoration(
+        //       color: Colors.white,
+        //       borderRadius: BorderRadius.circular(16),
+        //       border: Border.all(color: Colors.grey.shade200),
+        //     ),
+        //     child: Column(
+        //       crossAxisAlignment: CrossAxisAlignment.start,
+        //       children: [
+        //         Text(
+        //           'Quyền lợi thẻ',
+        //           style: TextStyle(
+        //             fontSize: 15,
+        //             fontWeight: FontWeight.w700,
+        //             color: Colors.black87,
+        //           ),
+        //         ),
+        //         const SizedBox(height: 12),
+        //         if (cardType.canBorrowHome)
+        //           _benefitItem('Mượn sách về nhà'),
+        //         if (cardType.canReadEbook)
+        //           _benefitItem('Đọc sách điện tử (Ebook)'),
+        //         if (cardType.canSearchCatalog)
+        //           _benefitItem('Tra cứu thư mục'),
+        //         const SizedBox(height: 8),
+        //         Container(
+        //           padding: const EdgeInsets.all(10),
+        //           decoration: BoxDecoration(
+        //             color: Colors.blue.shade50,
+        //             borderRadius: BorderRadius.circular(8),
+        //           ),
+        //           child: Text(
+        //             'Giới hạn: ${cardType.maxBorrowLimit} quyển / ${cardType.borrowDuration} ngày',
+        //             style: TextStyle(
+        //               fontSize: 12,
+        //               color: Colors.blue.shade900,
+        //               fontWeight: FontWeight.w600,
+        //             ),
+        //           ),
+        //         ),
+        //       ],
+        //     ),
+        //   ),
+        // ],
+      ],
+    );
+  }
+
+  Future<void> _handleTopUp(ReaderEntity profile) async {
+    final memberCard = profile.memberCard;
+    if (memberCard == null) {
+      NotificationService.showError(
+        context,
+        message: 'Không tìm thấy thông tin thẻ thành viên',
+      );
+      return;
+    }
+
+    final balance = double.tryParse(memberCard.balance) ?? 0;
+    
+    // Check if balance is already sufficient
+    if (balance >= 10000) {
+      NotificationService.showInfo(
+        context,
+        message: 'Thẻ đã đủ số dư mặc định (10,000 VND)',
+      );
+      return;
+    }
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is! AuthAuthenticated) {
+        throw Exception('Vui lòng đăng nhập');
+      }
+
+      final membershipRepo = MembershipRepositoryImpl(
+        remoteDataSource: MembershipRemoteDataSourceImpl(),
+      );
+
+      final result = await membershipRepo.createMemberCardTopup(
+        authState.account.accessToken!,
+        memberCard.memberCardId,
+        profile.readerId,
+      );
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      print('🔍 Topup API Response: $result');
+
+      // Check if success
+      final isSuccess = result['success'] == true;
+      if (!isSuccess) {
+        throw Exception(result['message'] ?? 'Không thể tạo thanh toán');
+      }
+
+      final data = result['data'];
+      if (data == null) {
+        throw Exception('Dữ liệu trả về không hợp lệ');
+      }
+      
+      // Check if has checkout URL (need payment)
+      if (data.containsKey('checkoutUrl') && data['checkoutUrl'] != null) {
+        // Navigate to QR payment page
+        final paymentSuccess = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (context) => BlocProvider.value(
+              value: BlocProvider.of<ProfileBloc>(this.context),
+              child: PaymentQrPage(
+                paymentId: data['paymentId'] as int,
+                orderCode: data['orderCode'] as int,
+                amount: (data['amount'] as num).toInt(),
+                checkoutUrl: data['checkoutUrl'] as String,
+                qrCode: data['qrCode'] as String,
+                readerId: profile.readerId,
+              ),
+            ),
+          ),
+        );
+
+        // If payment was successful, reload profile
+        if (paymentSuccess == true && mounted) {
+          // Show loading while reloading
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+          
+          // Reload profile
+          context.read<ProfileBloc>().add(ProfileLoadRequested());
+          
+          // Wait a bit for the data to update
+          await Future.delayed(const Duration(milliseconds: 1500));
+          
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(); // Close loading dialog
+          }
+        }
+      } else {
+        // Already sufficient balance
+        if (mounted) {
+          NotificationService.showInfo(
+            context,
+            message: result['message'] ?? 'Thẻ đã đủ số dư',
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if still showing
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    }
   }
 }

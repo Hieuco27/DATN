@@ -476,7 +476,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                       child: Text(
                         'Sẵn có: ${_vm.availableCopies}/${_vm.totalCopies}',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: _primaryColor,
                         ),
@@ -502,7 +502,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                               Text(
                                 ' (${state.stats.totalReviews})',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   color: Colors.grey[600],
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -529,7 +529,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                                 onPressed: _readNow,
                                 label: const Text(
                                   'Đọc ngay', 
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color.fromARGB(255, 53, 110, 255),
@@ -544,7 +544,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> with RouteAware
                             ),
                           ),
                         if (_vm.ebookUrl != null && _vm.availableCopies > 0)
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                         if (_vm.availableCopies > 0)
                           Expanded(
                             child: SizedBox(

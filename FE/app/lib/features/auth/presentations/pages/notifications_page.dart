@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_bloc.dart';
+import 'package:book_tech/features/auth/presentations/bloc/auth_event.dart';
 import 'package:book_tech/features/auth/presentations/bloc/auth_state.dart';
 import 'package:book_tech/features/auth/data/repositories/notification_repository_impl.dart';
 import 'package:book_tech/features/auth/data/datasources/notification_remote_data_source.dart';
@@ -92,6 +93,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
         });
       }
     } catch (e) {
+      // Handle 401 Unauthorized explicitly
+      if (e.toString().contains('401')) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          // Trigger token refresh
+          context.read<AuthBloc>().add(AuthTokenRefreshRequested());
+        }
+        return;
+      }
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -256,8 +269,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthAuthenticated) {
+          // Token refreshed successfully, retry loading
+          _loadNotifications(refresh: true);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text(
           'Thông báo',
@@ -292,9 +312,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 Expanded(
                   child: DropdownButton<String>(
                     value: _selectedType,
-                    hint: const Text('Tất cả loại'),
+                    hint: const Text('Tất cả loại', style: TextStyle(color: Colors.black)),
                     isExpanded: true,
                     isDense: true,
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(color: Colors.black, fontSize: 14),
+                    iconEnabledColor: Colors.black,
+                    underline: Container(),
                     items: [
                       const DropdownMenuItem<String>(
                         value: null,
@@ -302,27 +326,27 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       ),
                       const DropdownMenuItem<String>(
                         value: 'reservation',
-                        child: Text('📚 Đặt mượn'),
+                        child: Text('Đặt mượn'),
                       ),
                       const DropdownMenuItem<String>(
                         value: 'loan_approved',
-                        child: Text('✅ Đã duyệt'),
+                        child: Text('Đã duyệt'),
                       ),
                       const DropdownMenuItem<String>(
                         value: 'loan_rejected',
-                        child: Text('❌ Từ chối'),
+                        child: Text('Từ chối'),
                       ),
                       const DropdownMenuItem<String>(
                         value: 'loan_ready',
-                        child: Text('🎉 Sẵn sàng lấy'),
+                        child: Text('Sẵn sàng lấy'),
                       ),
                       const DropdownMenuItem<String>(
                         value: 'loan_overdue',
-                        child: Text('⚠️ Quá hạn'),
+                        child: Text('Quá hạn'),
                       ),
                       const DropdownMenuItem<String>(
                         value: 'system',
-                        child: Text('🔔 Hệ thống'),
+                        child: Text('Hệ thống'),
                       ),
                     ],
                     onChanged: (value) {
@@ -337,9 +361,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 Expanded(
                   child: DropdownButton<bool>(
                     value: _selectedIsRead,
-                    hint: const Text('Tất cả'),
+                    hint: const Text('Tất cả', style: TextStyle(color: Colors.black)),
                     isExpanded: true,
                     isDense: true,
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(color: Colors.black, fontSize: 14),
+                    iconEnabledColor: Colors.black,
+                    underline: Container(),
                     items: const [
                       DropdownMenuItem<bool>(
                         value: null,
@@ -416,6 +444,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
           ),
         ],
+      ),
       ),
     );
   }

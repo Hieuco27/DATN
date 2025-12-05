@@ -27,6 +27,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
   bool _isFilterByMonth = false;
   bool _isFilterByDate = false;
   bool _isFilterByDateRange = false;
+  String? _selectedStatus;
   int? _readerId;
   bool _socketListenerInitialized = false;
 
@@ -114,13 +115,22 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
   void _applyFilters() {
     List<LoanItem> filtered = List.from(_allItems);
 
-    // Filter by search query
+    // Filter by status
+    if (_selectedStatus != null && _selectedStatus!.isNotEmpty) {
+      filtered = filtered.where((loan) {
+        return loan.status.toLowerCase() == _selectedStatus!.toLowerCase();
+      }).toList();
+    }
+
+    // Filter by search query (tìm theo tên sách)
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((loan) {
         final query = _searchQuery.toLowerCase();
-        return loan.loanSlipId.toString().contains(query) ||
-            loan.status.toLowerCase().contains(query) ||
-            _formatDate(loan.loanDate).toLowerCase().contains(query);
+        // Tìm kiếm trong tất cả các sách của phiếu mượn
+        return loan.details.any((detail) {
+          final bookTitle = detail.bookInfo?.title.toLowerCase() ?? '';
+          return bookTitle.contains(query);
+        });
       }).toList();
     }
 
@@ -219,6 +229,11 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
       firstDate: DateTime(2020),
       lastDate: now,
       helpText: 'Chọn ngày',
+      fieldLabelText: 'Nhập ngày (Ngày/Tháng/Năm)',
+      fieldHintText: 'dd/mm/yyyy',
+      errorFormatText: 'Nhập theo định dạng dd/mm/yyyy',
+      errorInvalidText: 'Ngày không hợp lệ',
+      locale: const Locale('vi', 'VN'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -338,6 +353,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                               tempEndDate = picked;
                             }
                           });
+                        } else {
                         }
                       },
                     ),
@@ -360,13 +376,17 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                           initialDate: tempEndDate,
                           firstDate: tempStartDate,
                         );
+                        print('🟠 End date picked: $picked');
                         if (picked != null) {
                           setModalState(() {
                             tempEndDate = picked;
                             if (tempStartDate != null && picked.isBefore(tempStartDate!)) {
                               tempStartDate = picked;
                             }
+                            print('🟠 Updated tempEndDate: $tempEndDate');
                           });
+                        } else {
+                          print('🟠 End date picker returned null');
                         }
                       },
                     ),
@@ -516,11 +536,17 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
     DateTime? lastDate,
   }) async {
     final now = DateTime.now();
-    return await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
       initialDate: initialDate ?? now,
       firstDate: firstDate ?? DateTime(2020),
       lastDate: lastDate ?? now,
+      initialEntryMode: DatePickerEntryMode.calendar,
+      fieldLabelText: 'Nhập ngày (Ngày/Tháng/Năm)',
+      fieldHintText: 'dd/mm/yyyy',
+      errorFormatText: 'Nhập theo định dạng dd/mm/yyyy',
+      errorInvalidText: 'Ngày không hợp lệ',
+      locale: const Locale('vi', 'VN'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -535,6 +561,8 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
         );
       },
     );
+    print('📅 Date picked: $picked'); // Debug log
+    return picked;
   }
 
   void _clearFilters() {
@@ -544,6 +572,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
       _selectedDate = null;
       _startDate = null;
       _endDate = null;
+      _selectedStatus = null;
       _isFilterByMonth = false;
       _isFilterByDate = false;
       _isFilterByDateRange = false;
@@ -1165,12 +1194,12 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
           // Search bar
           TextField(
             decoration: InputDecoration(
-              hintText: 'Tìm kiếm theo mã phiếu, trạng thái...',
+              hintText: 'Tìm kiếm theo tên sách đã mượn',
               hintStyle: const TextStyle(
                 fontSize: 12,
                 color: Color.fromARGB(221, 79, 79, 79),
               ),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              prefixIcon: const Icon(Icons.search, color: Color.fromARGB(255, 109, 109, 109)),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, color: Colors.grey),
@@ -1199,6 +1228,26 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
               });
               _applyFilters();
             },
+          ),
+          const SizedBox(height: 12),
+          // Status filter chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildStatusChip('Tất cả', null),
+                const SizedBox(width: 8),
+                _buildStatusChip('Chờ duyệt', 'pending'),
+                const SizedBox(width: 8),
+                _buildStatusChip('Chờ lấy sách', 'waiting_pickup'),
+                const SizedBox(width: 8),
+                _buildStatusChip('Đang mượn', 'borrowing'),
+                const SizedBox(width: 8),
+                _buildStatusChip('Đã trả', 'returned'),
+                const SizedBox(width: 8),
+                _buildStatusChip('Đã hủy', 'cancelled'),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           // Filter buttons
@@ -1311,6 +1360,7 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                           _startDate = null;
                           _endDate = null;
                           _isFilterByDateRange = false;
+                          _selectedStatus = null;
                           _filteredItems = _allItems;
                         });
                         _applyFilters();
@@ -1324,6 +1374,37 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String label, String? statusValue) {
+    final isActive = _selectedStatus == statusValue;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedStatus = statusValue;
+        });
+        _applyFilters();
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppPalette.gradient1
+              : Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            color: isActive ? Colors.white : Colors.grey[700],
+          ),
+        ),
       ),
     );
   }
@@ -1459,12 +1540,12 @@ class _BorrowHistoryPageState extends State<BorrowHistoryPage> {
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 8),
-            if (_allItems.isNotEmpty)
-              Text(
-                'Thử thay đổi bộ lọc',
-                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              ),
+            // const SizedBox(height: 8),
+            // if (_allItems.isNotEmpty)
+            //   Text(
+            //     'Thử thay đổi bộ lọc',
+            //     style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            //   ),
           ],
         ),
       );

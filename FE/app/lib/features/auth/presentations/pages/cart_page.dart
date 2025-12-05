@@ -194,8 +194,6 @@ class _CartPageState extends State<CartPage>
       log.i('Member card validation passed. Proceeding with reservation...', 'CartPage');
     } catch (e, stackTrace) {
       log.e('Failed to check member card status: ${e.toString()}', e, 'CartPage');
-      print('❌ [CartPage] Member card check error: $e');
-      print('📍 [CartPage] Stack trace: $stackTrace');
       
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
       NotificationService.showError(
@@ -224,6 +222,7 @@ class _CartPageState extends State<CartPage>
       );
       return;
     }
+    
 
     setState(() => _isSubmitting = true);
 
@@ -243,7 +242,6 @@ class _CartPageState extends State<CartPage>
 
       final items = selected.map((item) => item.toJson()).toList();
       log.i('Reserving ${items.length} books...', 'CartPage');
-      print('📚 Items to reserve: $items');
 
       final result = await repository.reserveBooks(
         accessToken: authState.account.accessToken!,
@@ -394,6 +392,7 @@ class _CartPageState extends State<CartPage>
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
+                            backgroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -402,15 +401,19 @@ class _CartPageState extends State<CartPage>
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 20,
+                                color: Color(0xFF1A202C),
                               ),
                             ),
                             content: const Text(
-                              'Bạn có chắc chắn muốn xóa tất cả sách khỏi giỏ hàng?',
+                              'Bạn có chắc chắn muốn xóa tất cả sách khỏi giỏ ?',
+                              style: TextStyle(
+                                color: Color(0xFF1A202C),
+                              ),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
-                                child: const Text('Hủy'),
+                                child: const Text('Hủy', style: TextStyle(color: Color(0xFF1A202C))),
                               ),
                               ElevatedButton(
                                 onPressed: () {
@@ -426,7 +429,7 @@ class _CartPageState extends State<CartPage>
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                child: const Text('Xóa'),
+                                child: const Text('Xóa', style: TextStyle(color: Colors.white)),
                               ),
                             ],
                           ),
@@ -555,7 +558,7 @@ class _CartPageState extends State<CartPage>
     
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isAtLimit
@@ -577,7 +580,7 @@ class _CartPageState extends State<CartPage>
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: isAtLimit 
                   ? Colors.red.withOpacity(0.2) 
@@ -639,13 +642,13 @@ class _CartPageState extends State<CartPage>
             ),
             child: Icon(
               Icons.shopping_cart_outlined,
-              size: 80,
+              size: 50,
               color: Colors.grey[400],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           Text(
-            'Giỏ hàng trống',
+            'Giỏ sách trống',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -655,8 +658,8 @@ class _CartPageState extends State<CartPage>
           ),
           const SizedBox(height: 12),
           Text(
-            'Hãy thêm sách vào giỏ hàng để tiếp tục',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            'Hãy thêm sách vào giỏ để đăng ký mượn',
+            style: TextStyle(fontSize: 15, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -691,7 +694,7 @@ class _CartPageState extends State<CartPage>
           onTap: () => _toggleItemSelection(item.documentId, isSelected),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -733,7 +736,7 @@ class _CartPageState extends State<CartPage>
                           ),
                           child: const Icon(
                             Icons.book_rounded,
-                            size: 40,
+                            size: 30,
                             color: Color(0xFFFF6B35),
                           ),
                         ),
@@ -741,7 +744,7 @@ class _CartPageState extends State<CartPage>
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
 
                 // Book info
                 Expanded(
@@ -752,7 +755,7 @@ class _CartPageState extends State<CartPage>
                         item.title,
                         style: const TextStyle(
                           color: Color(0xFF1A202C),
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           height: 1.3,
                         ),
@@ -790,14 +793,14 @@ class _CartPageState extends State<CartPage>
                           onTap: () => _toggleItemSelection(item.documentId, isSelected),
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
-                            width: 28,
-                            height: 28,
+                            width: 26,
+                            height: 26,
                             alignment: Alignment.center,
                             child: isSelected
                                 ? const Icon(
                                     Icons.check_rounded,
                                     color: Colors.white,
-                                    size: 18,
+                                    size: 16,
                                   )
                                 : null,
                           ),
@@ -825,8 +828,8 @@ class _CartPageState extends State<CartPage>
                           },
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
-                            width: 36,
-                            height: 36,
+                            width: 26,
+                            height: 26,
                             alignment: Alignment.center,
                             child: const Icon(
                               Icons.delete_outline_rounded,

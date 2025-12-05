@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:book_tech/core/services/socket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:book_tech/core/ui/notification_service.dart';
@@ -10,6 +11,7 @@ import 'package:book_tech/features/auth/presentations/pages/sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 class MembershipSelectionPage extends StatefulWidget {
   final int readerId;
@@ -41,6 +43,9 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
   dynamic _currentOrderCode;
   Timer? _paymentCheckTimer;
   bool _socketListenerSetup = false;
+  File? _selectedImage;
+  String? _uploadedAvatarUrl;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -111,6 +116,8 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
                           'Thẻ thư viện',
                           '150000',
                         ),
+                        const SizedBox(height: 20),
+                        _buildAvatarUploadSection(),
                         const SizedBox(height: 20),
                         Container(
                           decoration: BoxDecoration(
@@ -447,6 +454,289 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
         ),
       ],
     );
+  }
+
+  Widget _buildAvatarUploadSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _selectedImage != null 
+            ? AppPalette.gradient2 
+            : Colors.grey.shade200,
+          width: _selectedImage != null ? 3 : 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _selectedImage != null
+                ? AppPalette.gradient2.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.1),
+            blurRadius: _selectedImage != null ? 20 : 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppPalette.gradient1, AppPalette.gradient2],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppPalette.gradient2.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Xác minh khuôn mặt',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _selectedImage != null 
+                            ? AppPalette.gradient1 
+                            : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _selectedImage != null 
+                          ? 'Ảnh đã chọn' 
+                          : 'Chọn ảnh chân dung của bạn',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_selectedImage != null)
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppPalette.gradient2,
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Image preview or picker button
+            if (_selectedImage != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        _selectedImage!,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ảnh của bạn',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Sẵn sàng để xác minh',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _showImageSourceOptions,
+                      icon: const Icon(Icons.edit, color: AppPalette.gradient2),
+                      tooltip: 'Đổi ảnh',
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _pickImageFromCamera,
+                      icon: const Icon(Icons.camera_alt, size: 20),
+                      label: const Text('Chụp ảnh'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppPalette.gradient2,
+                        side: BorderSide(color: AppPalette.gradient2),
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.photo_library, size: 20),
+                      label: const Text('Thư viện'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppPalette.gradient2,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showImageSourceOptions() async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, size: 28, color: Colors.black),
+                title: const Text(
+                  'Chụp ảnh',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImageFromCamera();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, size: 28, color: Colors.black),
+                title: const Text(
+                  'Tải ảnh lên',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _uploadedAvatarUrl = null; // Reset uploaded URL when selecting new image
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: 'Không thể chọn ảnh: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _uploadedAvatarUrl = null; // Reset uploaded URL when selecting new image
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: 'Không thể chụp ảnh: ${e.toString()}',
+        );
+      }
+    }
   }
 
   Widget _buildPaymentSuccessView() {
@@ -820,6 +1110,15 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
       return;
     }
 
+    // Check if avatar is selected
+    if (_selectedImage == null) {
+      NotificationService.showError(
+        context,
+        message: 'Vui lòng chọn ảnh chân dung để xác minh',
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -830,10 +1129,23 @@ class _MembershipSelectionPageState extends State<MembershipSelectionPage> {
         localStorageDataSource: LocalStorageDataSourceImpl(),
       );
 
+      // Step 1: Upload avatar first
+      if (_uploadedAvatarUrl == null) {
+        final uploadResult = await repository.uploadAvatar(_selectedImage!.path);
+        
+        if (uploadResult['ok'] == true && uploadResult['avatarUrl'] != null) {
+          _uploadedAvatarUrl = uploadResult['avatarUrl'] as String;
+        } else {
+          throw Exception('Không thể tải lên ảnh xác minh');
+        }
+      }
+
+      // Step 2: Complete registration with avatarUrl
       final completeData = {
         'readerId': widget.readerId,
         'cardTypeId': _selectedCardTypeId,
         'action': _selectedCardTypeId == 1 ? 'SKIP' : 'PAY',
+        'avatarUrl': _uploadedAvatarUrl,
       };
 
       final response = await repository.registerComplete(completeData);

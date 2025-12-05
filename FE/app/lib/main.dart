@@ -3,6 +3,7 @@ import 'package:book_tech/features/auth/domain/repositories/auth_repository.dart
 import 'package:book_tech/features/auth/presentations/pages/ebook_reader_page.dart';
 import 'package:book_tech/features/auth/presentations/pages/genres_list_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:book_tech/core/services/notification_service.dart';
@@ -49,11 +50,9 @@ void main() async {
   
   // Khởi tạo Firebase
   await Firebase.initializeApp();
-  print('🔥 Firebase initialized');
   
   // Khởi tạo Notification Service
   await NotificationService().initialize();
-  print('🔔 NotificationService initialized');
   
   final prefs = await SharedPreferences.getInstance();
   final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;
@@ -160,6 +159,16 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Book Tech',
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('vi', 'VN'),
+          Locale('en', 'US'),
+        ],
+        locale: const Locale('vi', 'VN'),
         theme: AppTheme.darkThemeMode,
         navigatorObservers: [
           routeObserver, // ✅ Global observer cho RouteAware

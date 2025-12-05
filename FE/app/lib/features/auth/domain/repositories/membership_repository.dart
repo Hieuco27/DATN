@@ -17,4 +17,17 @@ abstract class MembershipRepository {
     int cardTypeId,
     String paymentMethod,
   );
+  
+  // Nạp tiền vào thẻ thành viên
+  Future<Map<String, dynamic>> createMemberCardTopup(
+    String accessToken,
+    int memberCardId,
+    int readerId,
+  );
+  
+  // Lấy thông tin thẻ thành viên
+  Future<Map<String, dynamic>> getMemberCard(
+    String accessToken,
+    int memberCardId,
+  );
 }

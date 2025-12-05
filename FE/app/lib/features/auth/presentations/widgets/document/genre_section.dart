@@ -59,7 +59,6 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
         );
       }
     } catch (e) {
-      print('❌ Error loading documents for genre ${widget.genre.name}: $e');
     } finally {
       if (!mounted) return;
       setState(() {
@@ -83,7 +82,7 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.montserrat(
-                  fontSize: 14,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1E1E1E),
                   letterSpacing: 0.2,
@@ -109,7 +108,7 @@ class _GenreSectionWidgetState extends State<GenreSectionWidget> {
                   vertical: 6,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 foregroundColor: const Color(0xFFFF1744),
                 backgroundColor: const Color(0x1AFF1744),

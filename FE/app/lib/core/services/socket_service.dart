@@ -12,24 +12,42 @@ class SocketService {
   SocketService._internal();
 
   void initSocket({int? userId}) {
+    // If socket already exists and connected, just join room
     if (_socket != null && _socket!.connected) {
+      print('✅ Socket already connected, joining room...');
       if (userId != null) {
         joinUserRoom(userId);
       }
       return;
     }
 
+    // If socket exists but not connected, disconnect first
+    if (_socket != null) {
+      print('⚠️ Socket exists but not connected, recreating...');
+      _socket?.disconnect();
+      _socket = null;
+    }
+
+    print('🔌 Creating new socket connection...');
     _socket = IO.io(_serverUrl, IO.OptionBuilder()
         .setTransports(['websocket'])
         .enableAutoConnect()
         .build());
     
-    _socket?.connect();
+    // Setup event handlers BEFORE connect
+    _setupEventHandlers(userId);
     
+    print('📞 Calling socket.connect()...');
+    _socket?.connect();
+  }
+
+  void _setupEventHandlers(int? userId) {
     _socket?.onConnect((_) {
+      print('✅ Socket CONNECTED to $_serverUrl');
       
       // Auto join user room if userId provided
       if (userId != null) {
+        print('🚪 Attempting to join room for user: $userId');
         joinUserRoom(userId);
       }
       
@@ -40,27 +58,41 @@ class SocketService {
     });
     
     _socket?.onReconnect((_) {
+      print('🔄 Socket RECONNECTED');
       // Rejoin room after reconnect
       if (userId != null) {
+        print('🚪 Rejoining room for user: $userId');
         joinUserRoom(userId);
       }
     });
 
-    _socket?.onDisconnect((_) {});
+    _socket?.onDisconnect((_) {
+      print('❌ Socket DISCONNECTED');
+    });
 
-    _socket?.onConnectError((data) {});
+    _socket?.onConnectError((data) {
+      print('❌ Socket CONNECT ERROR: $data');
+    });
     
     _socket?.onError((data) {
-      print('❌ Socket error: $data');
+      print('❌ Socket ERROR: $data');
     });
   }
 
   void joinUserRoom(int userId) {
-    if (_socket == null || !_socket!.connected) {
+    if (_socket == null) {
+      print('❌ Cannot join room: Socket is null');
       return;
     }
     
+    if (!_socket!.connected) {
+      print('❌ Cannot join room: Socket not connected');
+      return;
+    }
+    
+    print('📤 Emitting "register" event with userId: $userId');
     _socket?.emit('register', userId);
+    print('✅ "register" event emitted, waiting for server confirmation...');
   }
 
   void emit(String event, dynamic data) {

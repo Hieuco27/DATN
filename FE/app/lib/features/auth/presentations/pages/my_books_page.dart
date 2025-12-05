@@ -87,7 +87,7 @@ class _MyBooksPageState extends State<MyBooksPage>
           _isSelectionMode ? 'Đã chọn ${_selectedItems.length}' : 'Thư viện',
           style: const TextStyle(
             color: _textColor,
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
           ),
@@ -632,7 +632,7 @@ class _MyBooksPageState extends State<MyBooksPage>
                     ),
                     child: Icon(
                       icon,
-                      size: isSmallScreen ? 54 : 72,
+                      size: isSmallScreen ? 32 : 54,
                       color: Colors.grey[400],
                     ),
                   ),
@@ -663,6 +663,7 @@ class _MyBooksPageState extends State<MyBooksPage>
                   SizedBox(height: isSmallScreen ? 24 : 40),
                   ElevatedButton.icon(
                     onPressed: () {
+                      Navigator.pushNamed(context, '/search');
                       // Có thể navigate đến trang tìm kiếm
                     },
                     icon: Icon(

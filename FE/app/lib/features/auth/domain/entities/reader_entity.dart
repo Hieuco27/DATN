@@ -136,6 +136,6 @@ class ReaderEntity {
 
   @override
   String toString() {
-    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totalBorrow: $totalBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt, email: $email)';
+    return 'ReaderEntity(readerId: $readerId, accountId: $accountId, fullName: $fullName, phoneNumber: $phoneNumber, address: $address, dateOfBirth: $dateOfBirth, cccd: $cccd, gender: $gender, totalBorrow: $totalBorrow, note: $note, createdAt: $createdAt, updatedAt: $updatedAt, email: $email, avatarUrl: $avatarUrl)';
   }
 }

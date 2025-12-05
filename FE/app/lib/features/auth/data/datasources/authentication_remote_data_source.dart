@@ -44,6 +44,20 @@ abstract class AuthenticationRemoteDataSource {
     required String email,
     required String newPassword,
   });
+  
+  // Member Card Topup
+  Future<Map<String, dynamic>> createMemberCardTopup({
+    required String accessToken,
+    required int memberCardId,
+    required int readerId,
+  });
+  Future<Map<String, dynamic>> getMemberCard({
+    required String accessToken,
+    required int memberCardId,
+  });
+  
+  // Avatar Upload
+  Future<Map<String, dynamic>> uploadAvatar(String filePath);
 }
 
 class AuthenticationRemoteDataSourceImpl
@@ -159,50 +173,38 @@ class AuthenticationRemoteDataSourceImpl
       );
       
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('✅ [OTP] Phản hồi từ server sau ${elapsed}ms');
-      print('📊 [OTP] Status code: ${response.statusCode}');
-      print('📊 [OTP] Response data: ${response.data}');
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [OTP] Gửi OTP thành công!');
         return response.data as Map<String, dynamic>;
       } else {
         final message = response.data['message'] ?? 'Không thể gửi mã OTP';
-        print('❌ [OTP] Thất bại: $message');
         throw Exception(message);
       }
     } on DioException catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('❌ [OTP] Lỗi sau ${elapsed}ms - Type: ${e.type}');
-      print('❌ [OTP] Error message: ${e.message}');
       
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
-          print('⏱️ [OTP] Timeout - Server phản hồi chậm');
           throw Exception(
             'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng và thử lại.',
           );
         case DioExceptionType.badResponse:
           final message =
               e.response?.data?['message'] ?? 'Không thể gửi mã OTP';
-          print('🚨 [OTP] Bad response: $message');
           throw Exception(message);
         case DioExceptionType.connectionError:
-          print('🚫 [OTP] Lỗi kết nối mạng');
           throw Exception(
             'Không thể kết nối đến server. Kiểm tra kết nối internet.',
           );
         default:
-          print('❓ [OTP] Lỗi không xác định: ${e.type}');
           throw Exception(
             'Không thể kết nối đến server. Vui lòng thử lại.',
           );
       }
     } catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      print('🔴 [OTP] Exception sau ${elapsed}ms: ${e.toString()}');
       throw Exception('Có lỗi xảy ra khi gửi mã OTP: ${e.toString()}');
     }
   }
@@ -247,12 +249,10 @@ class AuthenticationRemoteDataSourceImpl
   @override
   Future<Map<String, dynamic>> checkPaymentStatus(String accessToken) async {
     try {
-      print('📤 Checking if MemberCard has been created via profile...');
       final profile = await getProfile(accessToken);
       
       // Check if memberCard exists in profile
       final hasMemberCard = profile.memberCard != null;
-      print('📥 Profile checked - Has MemberCard: $hasMemberCard');
       
       return {
         'paid': hasMemberCard,
@@ -260,7 +260,6 @@ class AuthenticationRemoteDataSourceImpl
         'profile': profile.toJson(),
       };
     } catch (e) {
-      print('⚠️ Error checking profile: $e');
       return {
         'paid': false,
         'status': 'PENDING',
@@ -273,15 +272,12 @@ class AuthenticationRemoteDataSourceImpl
     Map<String, dynamic> completeData,
   ) async {
     try {
-      print('📤 Sending registerComplete request: $completeData');
       final response = await dio.post(
         '/auth/register/complete',
         data: completeData,
       );
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response data: ${response.data}');
-      print('📥 Response data type: ${response.data.runtimeType}');
+ 
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Kiểm tra xem response có được wrap trong 'data' không
@@ -485,7 +481,6 @@ class AuthenticationRemoteDataSourceImpl
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final resp = e.response?.data;
-      print('❌ Dio updateProfile error: status=$status data=$resp');
 
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
@@ -578,7 +573,6 @@ class AuthenticationRemoteDataSourceImpl
 
       if (response.statusCode == 200) {
       } else {
-        print('⚠️ [AuthRemoteDataSource] Failed to register FCM Token: ${response.statusCode}');
       }
     } on DioException catch (e) {
       // Không throw exception vì FCM token registration không nên làm gián đoạn flow chính
@@ -636,7 +630,6 @@ class AuthenticationRemoteDataSourceImpl
     required String otp,
   }) async {
     final startTime = DateTime.now();
-    print('🔵 [Forgot Password] Xác thực OTP');
     
     try {
       final response = await dio.post(
@@ -686,7 +679,6 @@ class AuthenticationRemoteDataSourceImpl
     required String newPassword,
   }) async {
     final startTime = DateTime.now();
-    print('🔵 [Forgot Password] Đặt lại mật khẩu');
     
     try {
       final response = await dio.post(
@@ -727,6 +719,139 @@ class AuthenticationRemoteDataSourceImpl
     } catch (e) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
       throw Exception('Có lỗi xảy ra khi đặt lại mật khẩu: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> createMemberCardTopup({
+    required String accessToken,
+    required int memberCardId,
+    required int readerId,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/member-cards/topup',
+        data: {
+          'memberCardId': memberCardId,
+          'readerId': readerId,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Không thể tạo thanh toán nạp thẻ';
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng.',
+          );
+        case DioExceptionType.badResponse:
+          final message = e.response?.data?['message'] ?? 'Không thể tạo thanh toán nạp thẻ';
+          throw Exception(message);
+        case DioExceptionType.connectionError:
+          throw Exception('Không thể kết nối đến server. Kiểm tra internet.');
+        default:
+          throw Exception('Không thể kết nối đến server. Vui lòng thử lại.');
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra khi tạo thanh toán nạp thẻ: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getMemberCard({
+    required String accessToken,
+    required int memberCardId,
+  }) async {
+    try {
+      final response = await dio.get(
+        '/member-cards/$memberCardId',
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Không thể lấy thông tin thẻ';
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng.',
+          );
+        case DioExceptionType.badResponse:
+          final message = e.response?.data?['message'] ?? 'Không thể lấy thông tin thẻ';
+          throw Exception(message);
+        case DioExceptionType.connectionError:
+          throw Exception('Không thể kết nối đến server. Kiểm tra internet.');
+        default:
+          throw Exception('Không thể kết nối đến server. Vui lòng thử lại.');
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra khi lấy thông tin thẻ: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadAvatar(String filePath) async {
+    try {
+      // Create multipart form data
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(
+          filePath,
+          filename: filePath.split('/').last,
+        ),
+      });
+
+      final response = await dio.post(
+        '/files/upload/avatar',
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        final message = response.data['message'] ?? 'Không thể tải lên ảnh';
+        throw Exception(message);
+      }
+    } on DioException catch (e) {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw Exception(
+            'Server phản hồi chậm. Vui lòng kiểm tra kết nối mạng.',
+          );
+        case DioExceptionType.badResponse:
+          final message = e.response?.data?['message'] ?? 'Không thể tải lên ảnh';
+          throw Exception(message);
+        case DioExceptionType.connectionError:
+          throw Exception('Không thể kết nối đến server. Kiểm tra internet.');
+        default:
+          throw Exception('Không thể kết nối đến server. Vui lòng thử lại.');
+      }
+    } catch (e) {
+      throw Exception('Có lỗi xảy ra khi tải lên ảnh: ${e.toString()}');
     }
   }
 }

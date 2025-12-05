@@ -309,7 +309,7 @@ class _SignInPageState extends State<SignInPage> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -319,30 +319,30 @@ class _SignInPageState extends State<SignInPage> {
             children: [
               // Icon
               Container(
-                width: 70,
-                height: 70,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppPalette.gradient1.withOpacity(0.2),
-                      AppPalette.gradient2.withOpacity(0.1),
+                      AppPalette.gradient1.withValues(alpha: 0.2),
+                      AppPalette.gradient2.withValues(alpha: 0.1),
                     ],
                   ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.lock_reset,
-                  size: 35,
+                  size: 30,
                   color: AppPalette.gradient2,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               
               // Title
               const Text(
                 'Quên mật khẩu?',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
@@ -354,12 +354,12 @@ class _SignInPageState extends State<SignInPage> {
                 'Nhập email của bạn để nhận mã OTP khôi phục mật khẩu',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: Colors.grey[600],
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               
               // Email Field
               Form(
@@ -367,8 +367,16 @@ class _SignInPageState extends State<SignInPage> {
                 child: TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 13,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Nhập email của bạn',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
                     prefixIcon: Icon(
                       Icons.email_outlined,
                       color: AppPalette.gradient2,
@@ -415,7 +423,7 @@ class _SignInPageState extends State<SignInPage> {
                   },
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               
               // Buttons
               Row(
@@ -424,7 +432,7 @@ class _SignInPageState extends State<SignInPage> {
                     child: TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(color: Colors.grey[300]!),
@@ -433,7 +441,7 @@ class _SignInPageState extends State<SignInPage> {
                       child: Text(
                         'Hủy',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.grey[700],
                         ),
@@ -451,7 +459,7 @@ class _SignInPageState extends State<SignInPage> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppPalette.gradient2,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -460,7 +468,7 @@ class _SignInPageState extends State<SignInPage> {
                       child: const Text(
                         'Gửi OTP',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),

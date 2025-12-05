@@ -42,6 +42,8 @@ class DocumentDetailViewModel extends ChangeNotifier {
   int? get minDeposit => _document?.minDeposit;
   int? get maxDeposit => _document?.maxDeposit;
   List<Map<String, dynamic>> get authors => _document?.authors ?? const [];
+  List<Map<String, dynamic>> get copies => _document?.copies ?? const [];
+  int get availableCopiesEffective => _document?.availableCopiesEffective ?? 0;
 
   List<DocumentResponseModel> get similarBooks => _similarBooks;
 

@@ -20,8 +20,9 @@ import 'package:book_tech/features/auth/presentations/pages/membership_selection
 import 'package:book_tech/core/ui/notification_service.dart';
 import 'package:book_tech/features/auth/presentations/pages/notifications_page.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:http_parser/http_parser.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -94,8 +95,8 @@ class _ProfilePageContent extends StatefulWidget {
 class _ProfilePageContentState extends State<_ProfilePageContent>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  String? _avatarPath;
   final ImagePicker _picker = ImagePicker();
+  bool _isUploadingAvatar = false;
 
   // Màu sắc đồng nhất với cart_page và my_books_page
   static const Color _primaryColor = Color(0xFFFF6B35);
@@ -109,42 +110,121 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _loadAvatar();
   }
 
-  Future<void> _loadAvatar() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _avatarPath = prefs.getString('user_avatar');
-      });
+  Widget _buildAvatarImage(ProfileState state) {
+    // Chỉ dùng avatarUrl từ backend
+    if (state is ProfileLoaded && state.profile.avatarUrl != null && state.profile.avatarUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Image.network(
+          state.profile.avatarUrl!,
+          fit: BoxFit.cover,
+          width: 65,
+          height: 65,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.person_rounded, size: 30, color: Colors.white);
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            );
+          },
+        ),
+      );
     }
+    if (state is ProfileUpdated && state.profile.avatarUrl != null && state.profile.avatarUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Image.network(
+          state.profile.avatarUrl!,
+          fit: BoxFit.cover,
+          width: 65,
+          height: 65,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.person_rounded, size: 30, color: Colors.white);
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            );
+          },
+        ),
+      );
+    }
+    // Default icon
+    return const Icon(Icons.person_rounded, size: 30, color: Colors.white);
   }
 
-  Future<void> _pickImage() async {
+  bool _hasAvatarUrl(ProfileState state) {
+    if (state is ProfileLoaded) {
+      return state.profile.avatarUrl != null && state.profile.avatarUrl!.isNotEmpty;
+    }
+    if (state is ProfileUpdated) {
+      return state.profile.avatarUrl != null && state.profile.avatarUrl!.isNotEmpty;
+    }
+    return false;
+  }
+
+  Future<void> _showImageSourceDialog() async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, size: 28, color: Colors.black),
+                title: const Text(
+                  'Chụp ảnh',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, size: 28, color: Colors.black),
+                title: const Text(
+                  'Tải ảnh lên',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 70,
       );
       
       if (image != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_avatar', image.path);
-        if (mounted) {
-          setState(() {
-            _avatarPath = image.path;
-          });
-        }
-        
-        if (mounted) {
-          NotificationService.showSuccess(
-            context,
-            message: 'Đã cập nhật ảnh đại diện',
-          );
-        }
+        await _uploadAvatar(File(image.path));
       }
     } catch (e) {
       if (mounted) {
@@ -152,6 +232,72 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
           context,
           message: 'Không thể chọn ảnh: $e',
         );
+      }
+    }
+  }
+
+  Future<void> _uploadAvatar(File imageFile) async {
+    setState(() {
+      _isUploadingAvatar = true;
+    });
+
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is! AuthAuthenticated || authState.account.accessToken == null) {
+        throw Exception('Vui lòng đăng nhập');
+      }
+
+      final token = authState.account.accessToken!;
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://kltn-2025-ehsx.onrender.com/api/profile/upload-avatar'),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+      
+      // Detect file extension và set content-type đúng
+      final fileExtension = imageFile.path.split('.').last.toLowerCase();
+      final contentType = (fileExtension == 'png') 
+          ? MediaType('image', 'png')
+          : MediaType('image', 'jpeg');
+      
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'avatar',
+          imageFile.path,
+          contentType: contentType,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonResponse = json.decode(response.body);
+        final success = jsonResponse['success'] as bool? ?? false;
+        final message = jsonResponse['message'] as String? ?? 'Upload thành công';
+        
+        if (success && mounted) {
+          NotificationService.showSuccess(context, message: message);
+          context.read<ProfileBloc>().add(const ProfileLoadRequested());
+        }
+      } else {
+        final jsonResponse = json.decode(response.body);
+        final errorMessage = jsonResponse['message'] as String? ?? 'Internal Server Error';
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          message: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingAvatar = false;
+        });
       }
     }
   }
@@ -429,23 +575,23 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
             child: Row(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    // Avatar with Image Picker
+    // Avatar with upload button
     GestureDetector(
-      onTap: _pickImage,
+      onTap: _showImageSourceDialog,
       child: Stack(
         children: [
           Container(
             width: 65,
             height: 65,
             decoration: BoxDecoration(
-              gradient: _avatarPath == null
-                  ? LinearGradient(
+              gradient: _hasAvatarUrl(state)
+                  ? null
+                  : LinearGradient(
                       colors: [_primaryColor, _primaryColor.withOpacity(0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: _avatarPath != null ? Colors.grey[200] : null,
+                    ),
+              color: _hasAvatarUrl(state) ? Colors.grey[200] : null,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -455,18 +601,14 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                 ),
               ],
             ),
-            child: _avatarPath == null
-                ? const Icon(Icons.person_rounded, size: 30, color: Colors.white)
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.file(
-                      File(_avatarPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.person_rounded, size: 30, color: Colors.white);
-                      },
+            child: _isUploadingAvatar
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
-                  ),
+                  )
+                : _buildAvatarImage(state),
           ),
           Positioned(
             right: -2,
@@ -609,16 +751,17 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
               ),
               _buildDivider(),
               _buildMenuItem(
-                icon: Icons.notifications_outlined,
-                title: 'Thông báo',
-                onTap: () {},
-              ),
-              _buildDivider(),
-              _buildMenuItem(
                 icon: Icons.lock_reset_rounded,
                 title: 'Đổi mật khẩu',
                 onTap: _navigateToChangePassword,
               ),
+              _buildDivider(),
+              _buildMenuItem(
+                icon: Icons.notifications_outlined,
+                title: 'Thông báo',
+                onTap: () {},
+              ),
+              
               _buildDivider(),
               _buildMenuItem(
                 icon: Icons.help_outline_rounded,
@@ -810,16 +953,16 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
         return Dialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 70,
-                  height: 70,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -832,7 +975,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                   child: const Icon(
                     Icons.logout_rounded,
                     color: Color(0xFFE53E3E),
-                    size: 32,
+                    size: 30,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -850,7 +993,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                   'Bạn có chắc chắn muốn đăng xuất?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     color: Colors.grey[700],
                     height: 1.4,
                   ),
@@ -865,9 +1008,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                         },
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           side: BorderSide(color: Colors.grey[300]!),
                         ),
                         child: Text(
@@ -890,9 +1033,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent>
                           backgroundColor: const Color(0xFFE53E3E),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           elevation: 0,
                         ),
                         child: const Text(

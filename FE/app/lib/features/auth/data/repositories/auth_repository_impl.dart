@@ -536,4 +536,13 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
       throw Exception(errorMessage);
     }
   }
+
+  @override
+  Future<Map<String, dynamic>> uploadAvatar(String filePath) async {
+    try {
+      return await remoteDataSource.uploadAvatar(filePath);
+    } catch (e) {
+      throw Exception('Không thể tải lên ảnh: ${e.toString()}');
+    }
+  }
 }

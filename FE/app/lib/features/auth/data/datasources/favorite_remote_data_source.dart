@@ -19,20 +19,16 @@ class FavoriteRemoteDataSourceImpl implements FavoriteRemoteDataSource {
   @override
   Future<List<FavoriteItemModel>> getFavorites() async {
     try {
-      print('📡 API: GET /favorite');
       final response = await dio.get('/favorite');
-      print('📡 API Response: ${response.statusCode}');
-      print('📡 API Data: ${response.data}');
+   
       
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         final items = data.map((json) => FavoriteItemModel.fromJson(json)).toList();
-        print('✅ Parsed ${items.length} favorites');
         return items;
       }
       return [];
     } catch (e) {
-      print('❌ API Error: $e');
       throw Exception('Lỗi tải danh sách yêu thích: $e');
     }
   }
@@ -41,8 +37,8 @@ class FavoriteRemoteDataSourceImpl implements FavoriteRemoteDataSource {
   Future<void> addToFavorite(int documentId) async {
     try {
       print('📡 API: POST /favorite/add with documentId=$documentId');
-      final response = await dio.post('/favorite/add', data: {'documentId': documentId});
-      print('✅ API Response: ${response.statusCode} - ${response.data}');
+      await dio.post('/favorite/add', data: {'documentId': documentId});
+      print('✅ Added to favorites successfully');
     } catch (e) {
       print('❌ API Error: $e');
       throw Exception('Lỗi thêm vào yêu thích: $e');
@@ -52,11 +48,8 @@ class FavoriteRemoteDataSourceImpl implements FavoriteRemoteDataSource {
   @override
   Future<void> removeFromFavorite(int documentId) async {
     try {
-      print('📡 API: DELETE /favorite/$documentId');
-      final response = await dio.delete('/favorite/$documentId');
-      print('✅ API Response: ${response.statusCode} - ${response.data}');
+      await dio.delete('/favorite/$documentId');
     } catch (e) {
-      print('❌ API Error: $e');
       throw Exception('Lỗi xóa khỏi yêu thích: $e');
     }
   }

@@ -100,6 +100,7 @@ class ReaderModel extends ReaderEntity {
       'dateOfBirth': dateOfBirth?.millisecondsSinceEpoch,
       'cccd': cccd,
       'totalBorrow': totalBorrow,
+      'avatarUrl': avatarUrl,
       'gender': gender,
       'note': note,
       'createdAt': createdAt?.millisecondsSinceEpoch,
@@ -120,6 +121,7 @@ class ReaderModel extends ReaderEntity {
           : null,
       cccd: json['cccd'] as String?,
       totalBorrow: json['totalBorrow'] as int? ?? 0,
+      avatarUrl: json['avatarUrl'] as String?,
       note: json['note'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'])

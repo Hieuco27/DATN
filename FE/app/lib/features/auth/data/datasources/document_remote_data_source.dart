@@ -224,7 +224,6 @@ class DocumentRemoteDataSourceImpl implements DocumentRemoteDataSource {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('❌ Error in getDocumentDetail: $e');
       throw Exception('Network error: $e');
     }
   }
